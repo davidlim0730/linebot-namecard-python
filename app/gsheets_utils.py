@@ -36,24 +36,31 @@ def get_gspread_client():
         # GCP 預設方式，或是透過環境變數傳入 JSON
         gac_str = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
         if gac_str:
-            cred_json = json.loads(gac_str)
-            credentials = service_account.Credentials.from_service_account_info(
-                cred_json,
-                scopes=[
-                    "https://www.googleapis.com/auth/spreadsheets",
-                    "https://www.googleapis.com/auth/drive"
-                ]
-            )
-            _gc = gspread.authorize(credentials)
-            print("gspread initialized successfully from ENV VAR.")
-        else:
-            # GCP 預設授權 (例如 Cloud Run)
-            credentials, _ = google.auth.default(scopes=[
-                "https://www.googleapis.com/auth/spreadsheets",
-                "https://www.googleapis.com/auth/drive"
-            ])
-            _gc = gspread.authorize(credentials)
-            print("gspread initialized successfully from default service account.")
+            try:
+                # 嘗試修復字串中常見的反斜線跳脫問題（Invalid \escape）
+                if '\\n' in gac_str and '\\\\n' not in gac_str:
+                    gac_str = gac_str.replace('\\n', '\\\\n')
+                cred_json = json.loads(gac_str, strict=False)
+                credentials = service_account.Credentials.from_service_account_info(
+                    cred_json,
+                    scopes=[
+                        "https://www.googleapis.com/auth/spreadsheets",
+                        "https://www.googleapis.com/auth/drive"
+                    ]
+                )
+                _gc = gspread.authorize(credentials)
+                print("gspread initialized successfully from ENV VAR.")
+                return _gc
+            except Exception as e:
+                print(f"Failed to parse GOOGLE_APPLICATION_CREDENTIALS_JSON, falling back to default: {e}")
+        
+        # GCP 預設授權 (例如 Cloud Run)
+        credentials, _ = google.auth.default(scopes=[
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"
+        ])
+        _gc = gspread.authorize(credentials)
+        print("gspread initialized successfully from default service account.")
             
         return _gc
     except Exception as e:
