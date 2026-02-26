@@ -138,16 +138,14 @@ def sync_card_to_sheet_sync(user_id: str, card_id: str, card_data: dict):
 
 def trigger_sync(user_id: str, card_id: str, card_data: dict):
     """
-    觸發同步操作，將其放入背景執行以避免阻塞主執行緒
-    如果卡在事件迴圈中，使用 asyncio.create_task; 否則建立新 task 丟給 loop
+    觸發同步操作，在 Cloud Run 環境下我們改為直接同步執行，
+    以確保容器的 CPU 不會在背景執行緒完成前被限流或凍結。
     """
     if not config.GOOGLE_SHEET_ID:
         return
         
     try:
-        loop = asyncio.get_running_loop()
-        # 由於 gspread 的 API (非 async 版) 會阻塞，因此丟給 ThreadPoolExecutor 執行
-        loop.run_in_executor(None, sync_card_to_sheet_sync, user_id, card_id, card_data)
-    except RuntimeError:
-        # 沒有 running loop, 就在當下同步執行 (通常是 standalone script 呼叫)
+        # 直接同步執行，確保寫入成功前不會回傳 HTTP 200 給 LINE
         sync_card_to_sheet_sync(user_id, card_id, card_data)
+    except Exception as e:
+        print(f"Error in trigger_sync wrapper: {e}")
