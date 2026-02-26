@@ -103,8 +103,8 @@ def sync_card_to_sheet_sync(user_id: str, card_id: str, card_data: dict):
         return
 
     try:
-        # 準備資料列
-        row_data = [
+        # 準備資料列並確保所有值都是字串或基本可被寫入的型別，且不會是 None
+        raw_data = [
             user_id,
             card_id,
             card_data.get("name", ""),
@@ -118,15 +118,16 @@ def sync_card_to_sheet_sync(user_id: str, card_id: str, card_data: dict):
             card_data.get("photo_url", ""),
             card_data.get("qrcode_url", "")
         ]
+        row_data = [str(x) if x is not None else "" for x in raw_data]
 
         # 找尋是否已經存在該 card_id
         # 我們假設 card_id 在 B 欄 (index=2)
         try:
-            cell = worksheet.find(card_id, in_column=2)
+            cell = worksheet.find(str(card_id), in_column=2)
             # 已存在，則更新該列
             col_start = gspread.utils.rowcol_to_a1(cell.row, 1)
             col_end = gspread.utils.rowcol_to_a1(cell.row, len(SHEET_HEADERS))
-            worksheet.update([row_data], f"{col_start}:{col_end}")
+            worksheet.update(range_name=f"{col_start}:{col_end}", values=[row_data])
             print(f"Updated card {card_id} in Google Sheet.")
         except gspread.exceptions.CellNotFound:
             # 不存在，則新增一列
