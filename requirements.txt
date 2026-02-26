@@ -7,3 +7,4 @@ tiktoken
 Pillow
 qrcode[pil]
 firebase-admin
+gspread

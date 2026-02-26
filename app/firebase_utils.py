@@ -3,6 +3,7 @@ from . import config
 from io import BytesIO
 from datetime import timedelta, datetime
 from collections import Counter
+from .gsheets_utils import trigger_sync
 
 
 def get_all_cards(u_id: str) -> dict:
@@ -24,7 +25,9 @@ def add_namecard(namecard_obj: dict, u_id: str) -> str:
 
         ref = db.reference(f"{config.NAMECARD_PATH}/{u_id}")
         new_card_ref = ref.push(namecard_obj)
-        return new_card_ref.key  # 回傳新資料的唯一 ID
+        card_id = new_card_ref.key
+        trigger_sync(u_id, card_id, namecard_obj)
+        return card_id  # 回傳新資料的唯一 ID
     except Exception as e:
         print(f"Error adding namecard: {e}")
         return None
@@ -35,6 +38,12 @@ def update_namecard_memo(card_id: str, u_id: str, memo: str) -> bool:
     try:
         ref = db.reference(f"{config.NAMECARD_PATH}/{u_id}/{card_id}")
         ref.update({"memo": memo})
+        try:
+            card_data = ref.get()
+            if card_data:
+                trigger_sync(u_id, card_id, card_data)
+        except Exception as e_sync:
+            print(f"Error triggering sync on memo update: {e_sync}")
         return True
     except Exception as e:
         print(f"Error updating memo: {e}")
@@ -106,6 +115,12 @@ def update_namecard_field(
     try:
         ref = db.reference(f"{config.NAMECARD_PATH}/{u_id}/{card_id}")
         ref.update({field: value})
+        try:
+            card_data = ref.get()
+            if card_data:
+                trigger_sync(u_id, card_id, card_data)
+        except Exception as e_sync:
+            print(f"Error triggering sync on field update: {e_sync}")
         return True
     except Exception as e:
         print(f"Error updating {field}: {e}")

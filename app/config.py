@@ -18,6 +18,7 @@ GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 FIREBASE_URL = os.environ.get("FIREBASE_URL")
 FIREBASE_STORAGE_BUCKET = os.environ.get("FIREBASE_STORAGE_BUCKET")
 NAMECARD_PATH = "namecard"
+GOOGLE_SHEET_ID = os.environ.get("GOOGLE_SHEET_ID")
 
 # =====================
 # Gemini Prompt 設定

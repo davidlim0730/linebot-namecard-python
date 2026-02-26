@@ -11,6 +11,7 @@ from . import config
 from .line_handlers import (
     handle_text_event, handle_image_event, handle_postback_event)
 from .bot_instance import close_session, parser
+from .firebase_utils import get_all_cards
 
 # =====================
 # 初始化區塊
@@ -75,6 +76,25 @@ async def handle_callback(request: Request):
 @app.get("/")
 async def health_check():
     return {"status": "ok"}
+
+
+@app.get("/api/admin/export/{user_id}")
+async def export_user_contacts(user_id: str):
+    """
+    匯出特定使用者所有的名片資料為 JSON
+    """
+    contacts = get_all_cards(user_id)
+    if not contacts:
+        return {"user_id": user_id, "total": 0, "contacts": []}
+    
+    # Optional formatting: convert to list and ensure card_id is in each contact
+    contact_list = []
+    for card_id, card_data in contacts.items():
+        if isinstance(card_data, dict):
+            card_data["card_id"] = card_id
+            contact_list.append(card_data)
+        
+    return {"user_id": user_id, "total": len(contact_list), "contacts": contact_list}
 
 
 @app.on_event("shutdown")
