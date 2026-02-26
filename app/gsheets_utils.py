@@ -3,10 +3,8 @@ import json
 import gspread
 import asyncio
 from google.oauth2 import service_account
+import google.auth
 from . import config
-import logging
-
-logger = logging.getLogger(__name__)
 
 # 全域變數供存放 gspread 客戶端與工作表物件
 _gc = None
@@ -47,15 +45,19 @@ def get_gspread_client():
                 ]
             )
             _gc = gspread.authorize(credentials)
-            logger.info("gspread initialized successfully from ENV VAR.")
+            print("gspread initialized successfully from ENV VAR.")
         else:
-            # 本機 default
-            _gc = gspread.service_account()
-            logger.info("gspread initialized successfully from default service account.")
+            # GCP 預設授權 (例如 Cloud Run)
+            credentials, _ = google.auth.default(scopes=[
+                "https://www.googleapis.com/auth/spreadsheets",
+                "https://www.googleapis.com/auth/drive"
+            ])
+            _gc = gspread.authorize(credentials)
+            print("gspread initialized successfully from default service account.")
             
         return _gc
     except Exception as e:
-        logger.error(f"Failed to initialize gspread client: {e}")
+        print(f"Failed to initialize gspread client: {e}")
         return None
 
 def get_worksheet():
@@ -65,7 +67,7 @@ def get_worksheet():
         return _worksheet
     
     if not config.GOOGLE_SHEET_ID:
-        logger.warning("GOOGLE_SHEET_ID is not configured. Sync skipped.")
+        print("GOOGLE_SHEET_ID is not configured. Sync skipped.")
         return None
         
     client = get_gspread_client()
@@ -80,11 +82,11 @@ def get_worksheet():
         first_row = _worksheet.row_values(1)
         if not first_row or first_row[0] != SHEET_HEADERS[0]:
             _worksheet.insert_row(SHEET_HEADERS, index=1)
-            logger.info("Initialized Google Sheet headers.")
+            print("Initialized Google Sheet headers.")
             
         return _worksheet
     except Exception as e:
-        logger.error(f"Failed to open Google Sheet: {e}")
+        print(f"Failed to open Google Sheet: {e}")
         return None
 
 def sync_card_to_sheet_sync(user_id: str, card_id: str, card_data: dict):
@@ -118,14 +120,14 @@ def sync_card_to_sheet_sync(user_id: str, card_id: str, card_data: dict):
             col_start = gspread.utils.rowcol_to_a1(cell.row, 1)
             col_end = gspread.utils.rowcol_to_a1(cell.row, len(SHEET_HEADERS))
             worksheet.update([row_data], f"{col_start}:{col_end}")
-            logger.info(f"Updated card {card_id} in Google Sheet.")
+            print(f"Updated card {card_id} in Google Sheet.")
         except gspread.exceptions.CellNotFound:
             # 不存在，則新增一列
             worksheet.append_row(row_data)
-            logger.info(f"Appended new card {card_id} to Google Sheet.")
+            print(f"Appended new card {card_id} to Google Sheet.")
             
     except Exception as e:
-        logger.error(f"Error syncing card {card_id} to Google Sheet: {e}")
+        print(f"Error syncing card {card_id} to Google Sheet: {e}")
 
 def trigger_sync(user_id: str, card_id: str, card_data: dict):
     """
