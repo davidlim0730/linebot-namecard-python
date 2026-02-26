@@ -124,18 +124,27 @@ def sync_card_to_sheet_sync(user_id: str, card_id: str, card_data: dict):
         # 我們假設 card_id 在 B 欄 (index=2)
         try:
             cell = worksheet.find(str(card_id), in_column=2)
-            # 已存在，則更新該列
-            col_start = gspread.utils.rowcol_to_a1(cell.row, 1)
-            col_end = gspread.utils.rowcol_to_a1(cell.row, len(SHEET_HEADERS))
-            worksheet.update(range_name=f"{col_start}:{col_end}", values=[row_data])
-            print(f"Updated card {card_id} in Google Sheet.")
-        except gspread.exceptions.CellNotFound:
-            # 不存在，則新增一列
-            worksheet.append_row(row_data)
-            print(f"Appended new card {card_id} to Google Sheet.")
             
+            # gspread 6.0+ 會回傳 None 而不會丟出 CellNotFound 的例外
+            if cell is None:
+                worksheet.append_row(row_data)
+                print(f"Appended new card {card_id} to Google Sheet.")
+            else:
+                # 已存在，則更新該列
+                col_start = gspread.utils.rowcol_to_a1(cell.row, 1)
+                col_end = gspread.utils.rowcol_to_a1(cell.row, len(SHEET_HEADERS))
+                worksheet.update(range_name=f"{col_start}:{col_end}", values=[row_data])
+                print(f"Updated card {card_id} in Google Sheet.")
+        except Exception as e:
+            # 支援舊版 gspread 的 CellNotFound
+            if getattr(e, "__class__", None) and getattr(e.__class__, "__name__", "") == "CellNotFound":
+                worksheet.append_row(row_data)
+                print(f"Appended new card {card_id} to Google Sheet (legacy fallback).")
+            else:
+                print(f"Error finding/updating card {card_id} to Google Sheet: {e}")
+                
     except Exception as e:
-        print(f"Error syncing card {card_id} to Google Sheet: {e}")
+        print(f"Error syncing card {card_id} to Google Sheet base loop: {e}")
 
 def trigger_sync(user_id: str, card_id: str, card_data: dict):
     """
