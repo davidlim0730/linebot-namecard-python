@@ -2,6 +2,47 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Product Strategy
+
+### Product Vision
+
+「用 LINE 就能管名片」——為台灣企業業務團隊打造的共享名片管理工具。利用 LINE 作為台灣最普及的公務聯繫工具，讓使用者無需額外安裝 App，即可在日常使用的通訊軟體中完成名片掃描、查詢、共享與管理。
+
+**目標用戶**：企業業務團隊，需要共用名片庫、快速查找聯絡人、協作管理客戶關係的工作場景。
+
+### Design Principles
+
+1. **LINE 優先，但不綁定**：LINE 是現階段的主要介面，但核心邏輯不應與 LINE SDK 耦合。未來可根據客戶情境擴展至 Web UI 或其他通訊平台。
+2. **平台解耦**：業務邏輯應與資料存取層分離（service layer）。Firebase 是 MVP 階段的選擇（開發快速、公司有免費 GCP 資源），但架構上應保持可替換性。
+3. **團隊優先於個人**：功能設計以團隊協作為核心考量，個人使用是團隊場景的子集。資料結構與權限設計應預留組織層級的擴展空間。
+4. **搜尋即核心體驗**：名片量大時仍能快速找人是產品的關鍵體驗，檢索功能的效能與準確度應持續優化。
+
+### Roadmap Phases
+
+**Phase 1 — MVP（現階段）**
+- 名片 OCR 掃描與結構化儲存
+- 自然語言智慧搜尋
+- 名片編輯與備註
+- vCard QR Code 匯出
+- Google Sheets 同步
+
+**Phase 2 — 團隊化**
+- 組織（organization）概念與資料結構重構
+- 名片可見性控制（私人 vs 團隊共享）
+- 角色權限（管理員 vs 一般成員）
+- 加入/邀請機制
+
+**Phase 3 — 管理與整合**
+- 群組與分類標籤系統
+- 匯出功能（CSV 等格式）
+- API 對接企業內部 CRM / 業務管理系統
+- 進階檢索（依公司、職稱、標籤等多維篩選）
+
+**Phase 4 — 自動化與追蹤**
+- 聯絡人 follow-up 提醒
+- 自動化跟進與業務追蹤
+- 互動數據分析
+
 ## Commands
 
 ### Development
