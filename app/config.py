@@ -19,6 +19,7 @@ FIREBASE_URL = os.environ.get("FIREBASE_URL")
 FIREBASE_STORAGE_BUCKET = os.environ.get("FIREBASE_STORAGE_BUCKET")
 NAMECARD_PATH = "namecard"
 GOOGLE_SHEET_ID = os.environ.get("GOOGLE_SHEET_ID")
+DEFAULT_ORG_ID = os.environ.get("DEFAULT_ORG_ID", "org_default")
 
 # =====================
 # Gemini Prompt 設定

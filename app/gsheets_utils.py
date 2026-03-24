@@ -1,7 +1,6 @@
 import os
 import json
 import gspread
-import asyncio
 from google.oauth2 import service_account
 import google.auth
 from . import config
@@ -12,7 +11,7 @@ _worksheet = None
 
 # 定義寫入 Google Sheet 的欄位名稱
 SHEET_HEADERS = [
-    "user_id",
+    "org_id",
     "card_id",
     "name",
     "title",
@@ -22,6 +21,7 @@ SHEET_HEADERS = [
     "address",
     "memo",
     "created_at",
+    "added_by",
     "photo_url",
     "qrcode_url"
 ]
@@ -96,7 +96,7 @@ def get_worksheet():
         print(f"Failed to open Google Sheet: {e}")
         return None
 
-def sync_card_to_sheet_sync(user_id: str, card_id: str, card_data: dict):
+def sync_card_to_sheet_sync(org_id: str, card_id: str, card_data: dict):
     """同步單筆名片資料到 Google Sheet (同步執行)"""
     worksheet = get_worksheet()
     if not worksheet:
@@ -105,7 +105,7 @@ def sync_card_to_sheet_sync(user_id: str, card_id: str, card_data: dict):
     try:
         # 準備資料列並確保所有值都是字串或基本可被寫入的型別，且不會是 None
         raw_data = [
-            user_id,
+            org_id,
             card_id,
             card_data.get("name", ""),
             card_data.get("title", ""),
@@ -115,6 +115,7 @@ def sync_card_to_sheet_sync(user_id: str, card_id: str, card_data: dict):
             card_data.get("address", ""),
             card_data.get("memo", ""),
             card_data.get("created_at", ""),
+            card_data.get("added_by", ""),
             card_data.get("photo_url", ""),
             card_data.get("qrcode_url", "")
         ]
@@ -146,16 +147,15 @@ def sync_card_to_sheet_sync(user_id: str, card_id: str, card_data: dict):
     except Exception as e:
         print(f"Error syncing card {card_id} to Google Sheet base loop: {e}")
 
-def trigger_sync(user_id: str, card_id: str, card_data: dict):
+def trigger_sync(org_id: str, card_id: str, card_data: dict):
     """
     觸發同步操作，在 Cloud Run 環境下我們改為直接同步執行，
     以確保容器的 CPU 不會在背景執行緒完成前被限流或凍結。
     """
     if not config.GOOGLE_SHEET_ID:
         return
-        
+
     try:
-        # 直接同步執行，確保寫入成功前不會回傳 HTTP 200 給 LINE
-        sync_card_to_sheet_sync(user_id, card_id, card_data)
+        sync_card_to_sheet_sync(org_id, card_id, card_data)
     except Exception as e:
         print(f"Error in trigger_sync wrapper: {e}")

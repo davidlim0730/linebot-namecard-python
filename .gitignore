@@ -46,3 +46,9 @@ db.sqlite3-journal
 
 # macOS
 .DS_Store
+
+# Secrets & credentials
+env.yaml
+*-firebase-adminsdk-*.json
+*service-account*.json
+*credentials*.json

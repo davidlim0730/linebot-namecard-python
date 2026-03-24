@@ -1,3 +1,6 @@
+import random
+import string
+import uuid
 from firebase_admin import db, storage
 from . import config
 from io import BytesIO
@@ -6,10 +9,159 @@ from collections import Counter
 from .gsheets_utils import trigger_sync
 
 
-def get_all_cards(u_id: str) -> dict:
-    """取得使用者所有名片資料"""
+# ---------------------------------------------------------------------------
+# Organization helpers
+# ---------------------------------------------------------------------------
+
+def get_user_org_id(user_id: str) -> str:
+    """從 user_org_map 取得使用者所屬的 org_id，若無則回傳 None"""
     try:
-        ref = db.reference(f"{config.NAMECARD_PATH}/{u_id}")
+        ref = db.reference(f"user_org_map/{user_id}")
+        return ref.get()
+    except Exception as e:
+        print(f"Error getting user org id: {e}")
+        return None
+
+
+def create_org(user_id: str, org_name: str) -> str:
+    """建立新組織，指定使用者為 admin，回傳 org_id"""
+    org_id = f"org_{uuid.uuid4().hex[:8]}"
+    now = datetime.now().isoformat()
+    try:
+        db.reference(f"organizations/{org_id}").set({
+            "name": org_name,
+            "created_by": user_id,
+            "created_at": now,
+            "members": {
+                user_id: {
+                    "role": "admin",
+                    "joined_at": now
+                }
+            }
+        })
+        db.reference(f"user_org_map/{user_id}").set(org_id)
+        return org_id
+    except Exception as e:
+        print(f"Error creating org: {e}")
+        return None
+
+
+def get_org(org_id: str) -> dict:
+    """取得組織資訊（name, members, ...）"""
+    try:
+        ref = db.reference(f"organizations/{org_id}")
+        return ref.get() or {}
+    except Exception as e:
+        print(f"Error getting org: {e}")
+        return {}
+
+
+def update_org_name(org_id: str, name: str) -> bool:
+    """更新組織名稱"""
+    try:
+        db.reference(f"organizations/{org_id}/name").set(name)
+        return True
+    except Exception as e:
+        print(f"Error updating org name: {e}")
+        return False
+
+
+def get_user_role(org_id: str, user_id: str) -> str:
+    """取得使用者在組織中的角色 ('admin' | 'member' | None)"""
+    try:
+        ref = db.reference(f"organizations/{org_id}/members/{user_id}/role")
+        return ref.get()
+    except Exception as e:
+        print(f"Error getting user role: {e}")
+        return None
+
+
+def add_member(org_id: str, user_id: str, role: str = "member") -> bool:
+    """將使用者加入組織"""
+    try:
+        now = datetime.now().isoformat()
+        db.reference(f"organizations/{org_id}/members/{user_id}").set({
+            "role": role,
+            "joined_at": now
+        })
+        db.reference(f"user_org_map/{user_id}").set(org_id)
+        return True
+    except Exception as e:
+        print(f"Error adding member: {e}")
+        return False
+
+
+def remove_member(org_id: str, user_id: str) -> bool:
+    """從組織移除使用者並清除 user_org_map"""
+    try:
+        db.reference(f"organizations/{org_id}/members/{user_id}").delete()
+        db.reference(f"user_org_map/{user_id}").delete()
+        return True
+    except Exception as e:
+        print(f"Error removing member: {e}")
+        return False
+
+
+def ensure_user_org(user_id: str) -> str:
+    """確保使用者有所屬組織，若無則自動建立個人組織，回傳 org_id"""
+    org_id = get_user_org_id(user_id)
+    if not org_id:
+        short_id = user_id[-8:] if len(user_id) > 8 else user_id
+        org_id = create_org(user_id, f"{short_id}的團隊")
+    return org_id
+
+
+def require_admin(org_id: str, user_id: str) -> bool:
+    """回傳 True 若使用者為組織 admin"""
+    return get_user_role(org_id, user_id) == "admin"
+
+
+# ---------------------------------------------------------------------------
+# Invite code helpers
+# ---------------------------------------------------------------------------
+
+def create_invite_code(org_id: str, created_by: str) -> tuple:
+    """產生 6 字元大寫英數邀請碼，有效期 7 天，儲存至 Firebase。回傳 (code, expires_at) 或 (None, None)"""
+    code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+    expires_at = (datetime.now() + timedelta(days=7)).isoformat()
+    try:
+        db.reference(f"invite_codes/{code}").set({
+            "org_id": org_id,
+            "created_by": created_by,
+            "expires_at": expires_at
+        })
+        return code, expires_at
+    except Exception as e:
+        print(f"Error creating invite code: {e}")
+        return None, None
+
+
+def get_invite_code(code: str) -> dict:
+    """取得邀請碼資料，不存在則回傳 None"""
+    try:
+        ref = db.reference(f"invite_codes/{code}")
+        return ref.get()
+    except Exception as e:
+        print(f"Error getting invite code: {e}")
+        return None
+
+
+def delete_invite_code(code: str) -> None:
+    """刪除邀請碼"""
+    try:
+        db.reference(f"invite_codes/{code}").delete()
+    except Exception as e:
+        print(f"Error deleting invite code: {e}")
+
+
+# ---------------------------------------------------------------------------
+# Namecard CRUD (Phase 2: path = namecard/{org_id}/{card_id})
+# ---------------------------------------------------------------------------
+
+def get_all_cards(org_id: str) -> dict:
+    """取得組織所有名片資料"""
+    try:
+        ref = db.reference(f"{config.NAMECARD_PATH}/{org_id}")
         namecard_data = ref.get()
         return namecard_data or {}
     except Exception as e:
@@ -17,31 +169,41 @@ def get_all_cards(u_id: str) -> dict:
         return {}
 
 
-def add_namecard(namecard_obj: dict, u_id: str) -> str:
+def add_namecard(namecard_obj: dict, org_id: str, added_by: str) -> str:
     """新增名片資料到 Firebase 並回傳 card_id"""
     try:
-        # 加入建立時間戳記
         namecard_obj['created_at'] = datetime.now().isoformat()
+        namecard_obj['added_by'] = added_by
 
-        ref = db.reference(f"{config.NAMECARD_PATH}/{u_id}")
+        ref = db.reference(f"{config.NAMECARD_PATH}/{org_id}")
         new_card_ref = ref.push(namecard_obj)
         card_id = new_card_ref.key
-        trigger_sync(u_id, card_id, namecard_obj)
-        return card_id  # 回傳新資料的唯一 ID
+        trigger_sync(org_id, card_id, namecard_obj)
+        return card_id
     except Exception as e:
         print(f"Error adding namecard: {e}")
         return None
 
 
-def update_namecard_memo(card_id: str, u_id: str, memo: str) -> bool:
+def delete_namecard(org_id: str, card_id: str) -> bool:
+    """刪除指定名片"""
+    try:
+        db.reference(f"{config.NAMECARD_PATH}/{org_id}/{card_id}").delete()
+        return True
+    except Exception as e:
+        print(f"Error deleting namecard: {e}")
+        return False
+
+
+def update_namecard_memo(card_id: str, org_id: str, memo: str) -> bool:
     """更新指定名片的備忘錄"""
     try:
-        ref = db.reference(f"{config.NAMECARD_PATH}/{u_id}/{card_id}")
+        ref = db.reference(f"{config.NAMECARD_PATH}/{org_id}/{card_id}")
         ref.update({"memo": memo})
         try:
             card_data = ref.get()
             if card_data:
-                trigger_sync(u_id, card_id, card_data)
+                trigger_sync(org_id, card_id, card_data)
         except Exception as e_sync:
             print(f"Error triggering sync on memo update: {e_sync}")
         return True
@@ -50,10 +212,10 @@ def update_namecard_memo(card_id: str, u_id: str, memo: str) -> bool:
         return False
 
 
-def remove_redundant_data(u_id: str) -> None:
+def remove_redundant_data(org_id: str) -> None:
     """移除重複 email 的名片資料"""
     try:
-        ref = db.reference(f"{config.NAMECARD_PATH}/{u_id}")
+        ref = db.reference(f"{config.NAMECARD_PATH}/{org_id}")
         namecard_data = ref.get()
         if namecard_data:
             email_map = {}
@@ -68,28 +230,28 @@ def remove_redundant_data(u_id: str) -> None:
         print(f"Error removing redundant data: {e}")
 
 
-def check_if_card_exists(namecard_obj: dict, u_id: str) -> str:
+def check_if_card_exists(namecard_obj: dict, org_id: str) -> str:
     """檢查名片是否已存在 (以 email 為主鍵)，若存在則回傳 card_id"""
     try:
         email = namecard_obj.get("email")
         if not email:
             return None
-        ref = db.reference(f"{config.NAMECARD_PATH}/{u_id}")
+        ref = db.reference(f"{config.NAMECARD_PATH}/{org_id}")
         namecard_data = ref.get()
         if namecard_data:
             for card_id, value in namecard_data.items():
                 if value.get("email") == email:
-                    return card_id  # 回傳已存在名片的 ID
+                    return card_id
         return None
     except Exception as e:
         print(f"Error checking if namecard exists: {e}")
         return None
 
 
-def get_name_from_card(u_id: str, card_id: str) -> str:
+def get_name_from_card(org_id: str, card_id: str) -> str:
     """從 Firebase 取得名片主人的名字"""
     try:
-        ref = db.reference(f"{config.NAMECARD_PATH}/{u_id}/{card_id}")
+        ref = db.reference(f"{config.NAMECARD_PATH}/{org_id}/{card_id}")
         card_doc = ref.get()
         if not card_doc:
             return None
@@ -99,26 +261,32 @@ def get_name_from_card(u_id: str, card_id: str) -> str:
         return None
 
 
-def get_card_by_id(u_id: str, card_id: str) -> dict:
+def get_card_by_id(org_id: str, card_id: str) -> dict:
     """用 card_id 取得名片"""
     try:
-        ref = db.reference(f"{config.NAMECARD_PATH}/{u_id}/{card_id}")
+        ref = db.reference(f"{config.NAMECARD_PATH}/{org_id}/{card_id}")
         return ref.get()
     except Exception as e:
         print(f"Error getting card by id: {e}")
         return None
 
 
+ALLOWED_EDIT_FIELDS = {"name", "title", "company", "address", "phone", "email"}
+
+
 def update_namecard_field(
-        u_id: str, card_id: str, field: str, value: str) -> bool:
-    """更新指定名片的特定欄位"""
+        org_id: str, card_id: str, field: str, value: str) -> bool:
+    """更新指定名片的特定欄位（僅允許白名單欄位）"""
+    if field not in ALLOWED_EDIT_FIELDS:
+        print(f"Rejected update for disallowed field: {field}")
+        return False
     try:
-        ref = db.reference(f"{config.NAMECARD_PATH}/{u_id}/{card_id}")
+        ref = db.reference(f"{config.NAMECARD_PATH}/{org_id}/{card_id}")
         ref.update({field: value})
         try:
             card_data = ref.get()
             if card_data:
-                trigger_sync(u_id, card_id, card_data)
+                trigger_sync(org_id, card_id, card_data)
         except Exception as e_sync:
             print(f"Error triggering sync on field update: {e_sync}")
         return True
@@ -127,41 +295,36 @@ def update_namecard_field(
         return False
 
 
+# ---------------------------------------------------------------------------
+# Storage
+# ---------------------------------------------------------------------------
+
 def upload_qrcode_to_storage(
         image_bytes: BytesIO, user_id: str, card_id: str) -> str:
     """
     上傳 QR Code 圖片到 Firebase Storage 並回傳公開 URL
-
-    Args:
-        image_bytes: QR Code 圖片的 BytesIO 物件
-        user_id: 使用者 ID
-        card_id: 名片 ID
-
-    Returns:
-        圖片的公開 URL，若失敗則回傳 None
     """
     try:
         bucket = storage.bucket()
         blob_name = f"qrcodes/{user_id}/{card_id}.png"
         blob = bucket.blob(blob_name)
 
-        # 上傳圖片
-        image_bytes.seek(0)  # 重置指標到開頭
+        image_bytes.seek(0)
         blob.upload_from_file(image_bytes, content_type='image/png')
-
-        # 設定為公開可讀取
         blob.make_public()
-
-        # 回傳公開 URL
         return blob.public_url
     except Exception as e:
         print(f"Error uploading QR code to storage: {e}")
         return None
 
 
-def get_namecard_statistics(u_id: str) -> dict:
+# ---------------------------------------------------------------------------
+# Statistics
+# ---------------------------------------------------------------------------
+
+def get_namecard_statistics(org_id: str) -> dict:
     """
-    取得名片統計資訊
+    取得組織名片統計資訊
 
     Returns:
         {
@@ -171,7 +334,7 @@ def get_namecard_statistics(u_id: str) -> dict:
         }
     """
     try:
-        all_cards = get_all_cards(u_id)
+        all_cards = get_all_cards(org_id)
         if not all_cards:
             return {
                 "total": 0,
@@ -179,25 +342,22 @@ def get_namecard_statistics(u_id: str) -> dict:
                 "top_company": "無"
             }
 
-        # 1. 計算總數
         total = len(all_cards)
 
-        # 2. 計算本月新增
         now = datetime.now()
         this_month_count = 0
 
         for card in all_cards.values():
             created_at = card.get('created_at')
-            if created_at:  # 只計算有時間戳的名片
+            if created_at:
                 try:
                     created_date = datetime.fromisoformat(created_at)
                     if (created_date.year == now.year
                             and created_date.month == now.month):
                         this_month_count += 1
                 except ValueError:
-                    continue  # 忽略格式錯誤的時間戳
+                    continue
 
-        # 3. 找出最常聯絡公司（名片數量最多的公司）
         companies = [
             card.get('company', '').strip()
             for card in all_cards.values()
