@@ -20,6 +20,7 @@ SHEET_HEADERS = [
     "phone",
     "address",
     "memo",
+    "role_tags",
     "created_at",
     "added_by",
     "photo_url",
@@ -104,6 +105,7 @@ def sync_card_to_sheet_sync(org_id: str, card_id: str, card_data: dict):
 
     try:
         # 準備資料列並確保所有值都是字串或基本可被寫入的型別，且不會是 None
+        role_tags = card_data.get("role_tags") or []
         raw_data = [
             org_id,
             card_id,
@@ -114,6 +116,7 @@ def sync_card_to_sheet_sync(org_id: str, card_id: str, card_data: dict):
             card_data.get("phone", ""),
             card_data.get("address", ""),
             card_data.get("memo", ""),
+            ",".join(role_tags),
             card_data.get("created_at", ""),
             card_data.get("added_by", ""),
             card_data.get("photo_url", ""),

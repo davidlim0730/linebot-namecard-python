@@ -2,6 +2,93 @@ from urllib.parse import quote
 from linebot.models import FlexSendMessage
 
 
+def get_compact_namecard_bubble(card_data: dict, card_id: str) -> dict:
+    """精簡版名片 bubble dict（用於 carousel），kilo size"""
+    name = card_data.get("name", "N/A")
+    title = card_data.get("title", "N/A")
+    company = card_data.get("company", "N/A")
+    phone = card_data.get("phone", "N/A")
+    email = card_data.get("email", "N/A")
+
+    footer_buttons = []
+    if phone and phone != "N/A":
+        footer_buttons.append({
+            "type": "button", "style": "link", "height": "sm",
+            "action": {
+                "type": "clipboard",
+                "label": "📞 複製電話",
+                "clipboardText": phone
+            }
+        })
+    if email and email != "N/A":
+        footer_buttons.append({
+            "type": "button", "style": "link", "height": "sm",
+            "action": {
+                "type": "clipboard",
+                "label": "📧 複製 Email",
+                "clipboardText": email
+            }
+        })
+    footer_buttons.append({
+        "type": "button", "style": "primary", "height": "sm",
+        "margin": "sm",
+        "action": {
+            "type": "postback",
+            "label": "查看完整名片",
+            "data": f"action=view_card&card_id={card_id}"
+        }
+    })
+
+    return {
+        "type": "bubble",
+        "size": "kilo",
+        "header": {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+                {"type": "text", "text": company,
+                 "color": "#ffffff", "size": "sm", "wrap": True}
+            ],
+            "paddingAll": "15px",
+            "backgroundColor": "#0367D3"
+        },
+        "body": {
+            "type": "box",
+            "layout": "vertical",
+            "paddingAll": "15px",
+            "contents": [
+                {"type": "text", "text": name,
+                 "size": "xxl", "weight": "bold", "wrap": True},
+                {"type": "text", "text": title,
+                 "size": "md", "color": "#555555",
+                 "wrap": True, "margin": "sm"}
+            ]
+        },
+        "footer": {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": footer_buttons
+        }
+    }
+
+
+def get_namecard_carousel_msg(
+        cards: list) -> FlexSendMessage:
+    """將多張名片包成 carousel，最多 10 張
+    cards: list of (card_id, card_data) tuples
+    """
+    bubbles = [
+        get_compact_namecard_bubble(card_data, card_id)
+        for card_id, card_data in cards[:10]
+    ]
+    carousel = {
+        "type": "carousel",
+        "contents": bubbles
+    }
+    return FlexSendMessage(alt_text=f"找到 {len(bubbles)} 張名片", contents=carousel)
+
+
 def get_namecard_flex_msg(card_data: dict, card_id: str) -> FlexSendMessage:
     # 確保基本資料存在
     name = card_data.get("name", "N/A")
@@ -13,6 +100,8 @@ def get_namecard_flex_msg(card_data: dict, card_id: str) -> FlexSendMessage:
     memo = card_data.get("memo", "")
     added_by = card_data.get("added_by", "")
     added_by_label = added_by[-8:] if added_by else "—"
+    role_tags = card_data.get("role_tags") or []
+    role_tags_text = ", ".join(role_tags) if role_tags else None
 
     flex_msg = {
         "type": "bubble",
@@ -86,7 +175,16 @@ def get_namecard_flex_msg(card_data: dict, card_id: str) -> FlexSendMessage:
                       "wrap": True,
                       "margin": "md"}
                  ]}
-            ]
+            ] + ([{
+                "type": "box", "layout": "horizontal", "margin": "md",
+                "contents": [
+                    {"type": "text", "text": "🏷", "size": "sm",
+                     "color": "#555555", "flex": 0},
+                    {"type": "text", "text": role_tags_text,
+                     "size": "sm", "color": "#0367D3",
+                     "wrap": True, "margin": "sm", "flex": 1}
+                ]
+            }] if role_tags_text else [])
         },
         "footer": {
             "type": "box",
@@ -119,6 +217,18 @@ def get_namecard_flex_msg(card_data: dict, card_id: str) -> FlexSendMessage:
                                 "label": "編輯資料",
                                 "data": f"action=edit_card&card_id={card_id}",
                                 "displayText": f"我想編輯 {name} 的名片"
+                            },
+                            "flex": 1
+                        },
+                        {
+                            "type": "button",
+                            "style": "link",
+                            "height": "sm",
+                            "action": {
+                                "type": "postback",
+                                "label": "🏷 標籤",
+                                "data": f"action=tag_card&card_id={card_id}",
+                                "displayText": f"設定 {name} 的標籤"
                             },
                             "flex": 1
                         }
@@ -364,3 +474,306 @@ def get_edit_options_flex_msg(card_id: str, card_name: str) -> FlexSendMessage:
         alt_text=f"編輯 {card_name} 的資料",
         contents=flex_msg
     )
+
+
+def tag_list_flex(
+        role_tags: list, tag_counts: dict,
+        is_admin: bool = False) -> FlexSendMessage:
+    """標籤清單 Flex Message，每列顯示標籤名稱 + 名片數量，可點擊查看名片
+    role_tags: list of tag name strings
+    tag_counts: dict {tag_name: count}
+    is_admin: 管理員可見「⚙️ 管理標籤」按鈕
+    """
+    rows = []
+    for tag in role_tags:
+        count = tag_counts.get(tag, 0)
+        rows.append({
+            "type": "box",
+            "layout": "horizontal",
+            "margin": "sm",
+            "action": {
+                "type": "postback",
+                "label": tag,
+                "data": f"action=list_by_tag&tag_name={quote(tag)}"
+            },
+            "contents": [
+                {"type": "text", "text": f"🏷 {tag}", "size": "sm",
+                 "color": "#0367D3", "flex": 3},
+                {"type": "text", "text": f"{count} 張",
+                 "size": "sm", "color": "#888888",
+                 "align": "end", "flex": 1}
+            ]
+        })
+
+    if not rows:
+        rows = [{"type": "text", "text": "尚無標籤，請管理員新增",
+                 "size": "sm", "color": "#888888"}]
+
+    flex_msg = {
+        "type": "bubble",
+        "size": "kilo",
+        "header": {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+                {"type": "text", "text": "🏷 角色標籤",
+                 "color": "#ffffff", "size": "sm", "weight": "bold"}
+            ],
+            "paddingAll": "15px",
+            "backgroundColor": "#0367D3"
+        },
+        "body": {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": [
+                {"type": "text",
+                 "text": "點擊標籤可查看該分類的名片",
+                 "size": "xs", "color": "#888888", "margin": "none"},
+                {"type": "separator", "margin": "md"}
+            ] + rows
+        }
+    }
+
+    if is_admin:
+        flex_msg["footer"] = {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+                {
+                    "type": "button",
+                    "style": "secondary",
+                    "height": "sm",
+                    "action": {
+                        "type": "postback",
+                        "label": "⚙️ 管理標籤",
+                        "data": "action=manage_tags"
+                    }
+                }
+            ]
+        }
+
+    return FlexSendMessage(alt_text="角色標籤清單", contents=flex_msg)
+
+
+def tag_management_flex(tags: list) -> FlexSendMessage:
+    """管理員用標籤管理介面：列出所有標籤 + 刪除按鈕 + 新增按鈕"""
+    rows = []
+    for tag in tags:
+        rows.append({
+            "type": "box",
+            "layout": "horizontal",
+            "margin": "md",
+            "paddingAll": "10px",
+            "contents": [
+                {"type": "text", "text": f"🏷 {tag}",
+                 "size": "md", "color": "#333333", "flex": 3,
+                 "gravity": "center"},
+                {
+                    "type": "button",
+                    "style": "secondary",
+                    "height": "sm",
+                    "flex": 1,
+                    "action": {
+                        "type": "postback",
+                        "label": "🗑️",
+                        "data": (f"action=confirm_delete_tag"
+                                 f"&tag_name={quote(tag)}")
+                    }
+                }
+            ]
+        })
+
+    if not rows:
+        rows = [{"type": "text", "text": "尚無標籤",
+                 "size": "sm", "color": "#888888", "align": "center"}]
+
+    flex_msg = {
+        "type": "bubble",
+        "size": "mega",
+        "header": {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+                {"type": "text", "text": "⚙️ 標籤管理",
+                 "color": "#ffffff", "size": "md", "weight": "bold"}
+            ],
+            "paddingAll": "20px",
+            "backgroundColor": "#0367D3"
+        },
+        "body": {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "none",
+            "paddingAll": "16px",
+            "contents": [
+                {"type": "text",
+                 "text": "點擊 🗑️ 刪除標籤",
+                 "size": "xs", "color": "#888888"},
+                {"type": "separator", "margin": "md"}
+            ] + rows
+        },
+        "footer": {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "sm",
+            "contents": [
+                {
+                    "type": "button",
+                    "style": "primary",
+                    "height": "sm",
+                    "action": {
+                        "type": "postback",
+                        "label": "➕ 新增標籤",
+                        "data": "action=add_tag_input"
+                    }
+                },
+                {
+                    "type": "button",
+                    "style": "link",
+                    "height": "sm",
+                    "action": {
+                        "type": "postback",
+                        "label": "↩️ 返回標籤清單",
+                        "data": "action=show_tags"
+                    }
+                }
+            ]
+        }
+    }
+    return FlexSendMessage(alt_text="標籤管理", contents=flex_msg)
+
+
+def confirm_delete_tag_flex(tag_name: str) -> FlexSendMessage:
+    """刪除標籤的確認 Flex Message"""
+    flex_msg = {
+        "type": "bubble",
+        "size": "kilo",
+        "body": {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "md",
+            "paddingAll": "20px",
+            "contents": [
+                {"type": "text", "text": "確認刪除標籤",
+                 "weight": "bold", "size": "lg"},
+                {"type": "text",
+                 "text": f"確定要刪除標籤「{tag_name}」嗎？",
+                 "wrap": True, "size": "md", "margin": "md"},
+                {"type": "text",
+                 "text": "已貼上此標籤的名片不受影響。",
+                 "wrap": True, "size": "sm",
+                 "color": "#888888", "margin": "sm"}
+            ]
+        },
+        "footer": {
+            "type": "box",
+            "layout": "horizontal",
+            "spacing": "sm",
+            "contents": [
+                {
+                    "type": "button",
+                    "style": "secondary",
+                    "height": "sm",
+                    "action": {
+                        "type": "postback",
+                        "label": "取消",
+                        "data": "action=manage_tags"
+                    }
+                },
+                {
+                    "type": "button",
+                    "style": "primary",
+                    "height": "sm",
+                    "color": "#E53E3E",
+                    "action": {
+                        "type": "postback",
+                        "label": "確認刪除",
+                        "data": (f"action=exec_delete_tag"
+                                 f"&tag_name={quote(tag_name)}")
+                    }
+                }
+            ]
+        }
+    }
+    return FlexSendMessage(
+        alt_text=f"確認刪除標籤「{tag_name}」", contents=flex_msg)
+
+
+def role_tag_select_flex(
+        card_id: str, tags: list, current_tags: list) -> FlexSendMessage:
+    """角色標籤 toggle 選單，已選標示 ✓，大尺寸方便點擊
+    tags: all available role tags
+    current_tags: tags already on this card
+    """
+    rows = []
+    for tag in tags:
+        selected = tag in (current_tags or [])
+        prefix = "✅" if selected else "⬜"
+        bg = "#E8F0FE" if selected else "#ffffff"
+        color = "#0367D3" if selected else "#333333"
+        rows.append({
+            "type": "box",
+            "layout": "horizontal",
+            "margin": "md",
+            "paddingAll": "12px",
+            "cornerRadius": "8px",
+            "backgroundColor": bg,
+            "action": {
+                "type": "postback",
+                "label": f"{prefix} {tag}",
+                "data": (f"action=toggle_role&card_id={card_id}"
+                         f"&tag_name={quote(tag)}")
+            },
+            "contents": [
+                {"type": "text", "text": f"{prefix}  {tag}",
+                 "size": "lg", "color": color, "flex": 1,
+                 "weight": "bold" if selected else "regular"}
+            ]
+        })
+
+    flex_msg = {
+        "type": "bubble",
+        "size": "mega",
+        "header": {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+                {"type": "text", "text": "🏷 設定角色標籤",
+                 "color": "#ffffff", "size": "md", "weight": "bold"}
+            ],
+            "paddingAll": "20px",
+            "backgroundColor": "#0367D3"
+        },
+        "body": {
+            "type": "box",
+            "layout": "vertical",
+            "spacing": "none",
+            "paddingAll": "16px",
+            "contents": [
+                {"type": "text",
+                 "text": "點擊選取標籤，完成後按下方按鈕",
+                 "size": "sm", "color": "#888888",
+                 "margin": "none"},
+                {"type": "separator", "margin": "lg"}
+            ] + rows
+        },
+        "footer": {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+                {
+                    "type": "button",
+                    "style": "primary",
+                    "height": "md",
+                    "action": {
+                        "type": "postback",
+                        "label": "✅ 完成選取",
+                        "data": f"action=finish_tag&card_id={card_id}",
+                        "displayText": "標籤設定完成"
+                    }
+                }
+            ]
+        }
+    }
+    return FlexSendMessage(alt_text="設定角色標籤", contents=flex_msg)

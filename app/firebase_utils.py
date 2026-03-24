@@ -117,6 +117,158 @@ def require_admin(org_id: str, user_id: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# User profile cache
+# ---------------------------------------------------------------------------
+
+def get_cached_display_name(user_id: str):
+    """讀取快取的 LINE 顯示名稱，有值回傳字串，無值回傳 None"""
+    try:
+        ref = db.reference(f"user_profiles/{user_id}/display_name")
+        return ref.get()
+    except Exception as e:
+        print(f"Error getting cached display name: {e}")
+        return None
+
+
+def cache_display_name(user_id: str, display_name: str) -> None:
+    """快取 LINE 顯示名稱到 user_profiles/{user_id}/display_name"""
+    try:
+        db.reference(f"user_profiles/{user_id}/display_name").set(display_name)
+    except Exception as e:
+        print(f"Error caching display name: {e}")
+
+
+# ---------------------------------------------------------------------------
+# Tag helpers
+# ---------------------------------------------------------------------------
+
+DEFAULT_ROLE_TAGS = ["預設", "合作夥伴", "供應商", "客戶", "同業", "媒體/KOL"]
+
+
+def ensure_default_role_tags(org_id: str) -> None:
+    """若組織尚無角色標籤，自動建立預設角色標籤並為無標籤名片貼上「預設」"""
+    try:
+        ref = db.reference(f"organizations/{org_id}/tags/roles")
+        existing = ref.get()
+        if not existing:
+            tags = {
+                f"tag_{i}": name
+                for i, name in enumerate(DEFAULT_ROLE_TAGS)
+            }
+            ref.set(tags)
+            # 為所有無標籤名片貼上「預設」
+            _assign_default_tag_to_cards(org_id)
+    except Exception as e:
+        print(f"Error ensuring default role tags: {e}")
+
+
+def _assign_default_tag_to_cards(org_id: str) -> None:
+    """為沒有 role_tags 的名片自動加上「預設」標籤"""
+    try:
+        all_cards = get_all_cards(org_id)
+        for card_id, card_data in all_cards.items():
+            if not card_data.get("role_tags"):
+                db.reference(
+                    f"{config.NAMECARD_PATH}/{org_id}/{card_id}/role_tags"
+                ).set(["預設"])
+    except Exception as e:
+        print(f"Error assigning default tags: {e}")
+
+
+def get_all_role_tags(org_id: str) -> list:
+    """回傳組織所有角色標籤名稱的 list"""
+    try:
+        ref = db.reference(f"organizations/{org_id}/tags/roles")
+        data = ref.get()
+        if not data:
+            return []
+        return list(data.values())
+    except Exception as e:
+        print(f"Error getting role tags: {e}")
+        return []
+
+
+def add_role_tag(org_id: str, tag_name: str) -> bool:
+    """新增角色標籤，重複時回傳 False"""
+    try:
+        existing = get_all_role_tags(org_id)
+        if tag_name in existing:
+            return False
+        ref = db.reference(f"organizations/{org_id}/tags/roles")
+        ref.push(tag_name)
+        return True
+    except Exception as e:
+        print(f"Error adding role tag: {e}")
+        return False
+
+
+def delete_role_tag(org_id: str, tag_name: str) -> bool:
+    """刪除角色標籤，找不到時回傳 False"""
+    try:
+        ref = db.reference(f"organizations/{org_id}/tags/roles")
+        data = ref.get()
+        if not data:
+            return False
+        for key, value in data.items():
+            if value == tag_name:
+                ref.child(key).delete()
+                return True
+        return False
+    except Exception as e:
+        print(f"Error deleting role tag: {e}")
+        return False
+
+
+def add_card_role_tag(org_id: str, card_id: str, tag_name: str) -> bool:
+    """將角色標籤加入名片的 role_tags 陣列"""
+    try:
+        ref = db.reference(f"{config.NAMECARD_PATH}/{org_id}/{card_id}/role_tags")
+        current = ref.get() or []
+        if tag_name not in current:
+            current.append(tag_name)
+            ref.set(current)
+        return True
+    except Exception as e:
+        print(f"Error adding card role tag: {e}")
+        return False
+
+
+def remove_card_role_tag(org_id: str, card_id: str, tag_name: str) -> bool:
+    """從名片的 role_tags 陣列移除指定標籤"""
+    try:
+        ref = db.reference(f"{config.NAMECARD_PATH}/{org_id}/{card_id}/role_tags")
+        current = ref.get() or []
+        if tag_name in current:
+            current.remove(tag_name)
+            ref.set(current)
+        return True
+    except Exception as e:
+        print(f"Error removing card role tag: {e}")
+        return False
+
+
+def get_cards_by_role_tag(org_id: str, tag_name: str) -> dict:
+    """回傳包含指定角色標籤的名片 {card_id: card_data}，按 created_at 降序"""
+    try:
+        all_cards = get_all_cards(org_id)
+        matched = {
+            card_id: card_data
+            for card_id, card_data in all_cards.items()
+            if tag_name in (card_data.get("role_tags") or [])
+        }
+        # 按 created_at 降序排列（最新的排前面）
+        sorted_items = sorted(
+            matched.items(),
+            key=lambda x: x[1].get("created_at", ""),
+            reverse=True
+        )
+        return dict(sorted_items)
+    except Exception as e:
+        print(f"Error getting cards by role tag: {e}")
+        return {}
+
+
+# ---------------------------------------------------------------------------
 # Invite code helpers
 # ---------------------------------------------------------------------------
 

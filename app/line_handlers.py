@@ -1,7 +1,7 @@
 from urllib.parse import parse_qsl
 from linebot.models import (
     PostbackEvent, MessageEvent, TextSendMessage, ImageSendMessage,
-    QuickReply, QuickReplyButton, PostbackAction
+    QuickReply, QuickReplyButton, PostbackAction, MessageAction
 )
 from io import BytesIO
 import PIL.Image
@@ -17,32 +17,38 @@ FIELD_LABELS = {
 
 
 def get_quick_reply_items():
-    """建立常用功能的 Quick Reply 按鈕"""
+    """建立常用功能的 Quick Reply 按鈕（名片 + 團隊 + 標籤 + 匯出，共 10 顆）"""
     return QuickReply(items=[
         QuickReplyButton(
-            action=PostbackAction(
-                label="📊 統計",
-                data="action=show_stats"
-            )
+            action=PostbackAction(label="📊 統計", data="action=show_stats")
         ),
         QuickReplyButton(
-            action=PostbackAction(
-                label="📋 列表",
-                data="action=show_list"
-            )
+            action=PostbackAction(label="📋 列表", data="action=show_list")
         ),
         QuickReplyButton(
-            action=PostbackAction(
-                label="🧪 測試",
-                data="action=show_test"
-            )
+            action=PostbackAction(label="🏷 標籤", data="action=show_tags")
         ),
         QuickReplyButton(
-            action=PostbackAction(
-                label="ℹ️ 說明",
-                data="action=show_help"
-            )
-        )
+            action=PostbackAction(label="📤 匯出", data="action=show_export")
+        ),
+        QuickReplyButton(
+            action=PostbackAction(label="👥 團隊", data="action=show_team")
+        ),
+        QuickReplyButton(
+            action=PostbackAction(label="👤 成員", data="action=show_members")
+        ),
+        QuickReplyButton(
+            action=PostbackAction(label="📨 邀請", data="action=show_invite")
+        ),
+        QuickReplyButton(
+            action=PostbackAction(label="🧪 測試", data="action=show_test")
+        ),
+        QuickReplyButton(
+            action=PostbackAction(label="ℹ️ 說明", data="action=show_help")
+        ),
+        QuickReplyButton(
+            action=MessageAction(label="➕ 加入", text="加入 ")
+        ),
     ])
 
 
@@ -102,6 +108,75 @@ async def handle_postback_event(event: PostbackEvent, user_id: str):
             event.reply_token,
             TextSendMessage(text=help_text, quick_reply=get_quick_reply_items())
         )
+        return
+
+    elif action == 'show_team':
+        await handle_team_info(event, user_id, org_id)
+        return
+
+    elif action == 'show_members':
+        await handle_member_list(event, org_id)
+        return
+
+    elif action == 'show_invite':
+        await handle_invite(event, user_id, org_id)
+        return
+
+    elif action == 'show_tags':
+        await handle_show_tags(event, user_id, org_id)
+        return
+
+    elif action == 'manage_tags':
+        await handle_manage_tags(event, user_id, org_id)
+        return
+
+    elif action == 'add_tag_input':
+        await handle_add_tag_input(event, user_id, org_id)
+        return
+
+    elif action == 'confirm_delete_tag':
+        tag_name = postback_data.get('tag_name', '')
+        await handle_confirm_delete_tag(event, user_id, org_id, tag_name)
+        return
+
+    elif action == 'exec_delete_tag':
+        tag_name = postback_data.get('tag_name', '')
+        await handle_exec_delete_tag(event, user_id, org_id, tag_name)
+        return
+
+    elif action == 'show_export':
+        await handle_export(event, user_id, org_id)
+        return
+
+    elif action == 'list_by_tag':
+        tag_name = postback_data.get('tag_name', '')
+        await handle_list_by_tag(event, org_id, tag_name)
+        return
+
+    elif action == 'tag_card':
+        await handle_tag_card(event, org_id, card_id)
+        return
+
+    elif action == 'toggle_role':
+        tag_name = postback_data.get('tag_name', '')
+        await handle_toggle_role(event, org_id, card_id, tag_name)
+        return
+
+    elif action == 'finish_tag':
+        await handle_finish_tag(event, org_id, card_id)
+        return
+
+    elif action == 'view_card':
+        card = firebase_utils.get_card_by_id(org_id, card_id)
+        if card:
+            await line_bot_api.reply_message(
+                event.reply_token,
+                [flex_messages.get_namecard_flex_msg(card, card_id)])
+        else:
+            await line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text='此名片已不存在。',
+                                quick_reply=get_quick_reply_items()))
         return
 
     # 處理需要 card_id 的 action
@@ -228,6 +303,10 @@ async def handle_text_event(event: MessageEvent, user_id: str) -> None:
         await handle_add_memo_state(event, user_id, org_id, msg)
     elif user_action == 'editing_field':
         await handle_edit_field_state(event, user_id, org_id, msg)
+    elif user_action == 'exporting_csv':
+        await handle_export_email_state(event, user_id, org_id, msg)
+    elif user_action == 'adding_tag':
+        await handle_adding_tag_state(event, user_id, org_id, msg)
     elif msg == "remove":
         firebase_utils.remove_redundant_data(org_id)
         await line_bot_api.reply_message(
@@ -245,6 +324,10 @@ async def handle_text_event(event: MessageEvent, user_id: str) -> None:
         await handle_invite(event, user_id, org_id)
     elif msg.startswith("設定團隊名稱 "):
         await handle_set_team_name(event, user_id, org_id, msg)
+    elif msg in ("標籤", "tags"):
+        await handle_show_tags(event, user_id, org_id)
+    elif msg in ("匯出", "export"):
+        await handle_export(event, user_id, org_id)
     else:
         await handle_smart_query(event, org_id, msg)
 
@@ -263,18 +346,25 @@ async def handle_team_info(
 
 
 async def handle_member_list(event: MessageEvent, org_id: str):
-    """回傳成員清單 Flex Message"""
+    """回傳成員清單 Flex Message，以 LINE 真實暱稱顯示"""
     org = firebase_utils.get_org(org_id)
     org_name = org.get("name", "未命名團隊")
     raw_members = org.get("members", {})
 
-    members = [
-        {
-            "display_name": uid[-8:],
+    members = []
+    for uid, info in raw_members.items():
+        display_name = firebase_utils.get_cached_display_name(uid)
+        if not display_name:
+            try:
+                profile = await line_bot_api.get_profile(uid)
+                display_name = profile.display_name
+                firebase_utils.cache_display_name(uid, display_name)
+            except Exception:
+                display_name = uid[-8:]
+        members.append({
+            "display_name": display_name,
             "role": info.get("role", "member")
-        }
-        for uid, info in raw_members.items()
-    ]
+        })
 
     reply_msg = flex_messages.member_list_flex(org_name, members)
     await line_bot_api.reply_message(event.reply_token, [reply_msg])
@@ -365,6 +455,262 @@ async def handle_set_team_name(
             text=f'團隊名稱已更新為「{new_name}」。',
             quick_reply=get_quick_reply_items()
         ))
+
+
+async def handle_manage_tags(
+        event: PostbackEvent, user_id: str, org_id: str):
+    """顯示標籤管理介面（管理員限定）"""
+    if not firebase_utils.require_admin(org_id, user_id):
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text='此功能僅限管理員使用。',
+                            quick_reply=get_quick_reply_items()))
+        return
+    firebase_utils.ensure_default_role_tags(org_id)
+    tags = firebase_utils.get_all_role_tags(org_id)
+    reply_msg = flex_messages.tag_management_flex(tags)
+    await line_bot_api.reply_message(event.reply_token, [reply_msg])
+
+
+async def handle_add_tag_input(
+        event: PostbackEvent, user_id: str, org_id: str):
+    """進入新增標籤的文字輸入狀態（管理員限定）"""
+    if not firebase_utils.require_admin(org_id, user_id):
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text='此功能僅限管理員使用。',
+                            quick_reply=get_quick_reply_items()))
+        return
+    user_states[user_id] = {'action': 'adding_tag', 'org_id': org_id}
+    await line_bot_api.reply_message(
+        event.reply_token,
+        TextSendMessage(text='請輸入新標籤名稱：'))
+
+
+async def handle_confirm_delete_tag(
+        event: PostbackEvent, user_id: str, org_id: str, tag_name: str):
+    """顯示刪除標籤確認訊息（管理員限定）"""
+    if not firebase_utils.require_admin(org_id, user_id):
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text='此功能僅限管理員使用。',
+                            quick_reply=get_quick_reply_items()))
+        return
+    reply_msg = flex_messages.confirm_delete_tag_flex(tag_name)
+    await line_bot_api.reply_message(event.reply_token, [reply_msg])
+
+
+async def handle_exec_delete_tag(
+        event: PostbackEvent, user_id: str, org_id: str, tag_name: str):
+    """執行刪除標籤（管理員限定）"""
+    if not firebase_utils.require_admin(org_id, user_id):
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text='此功能僅限管理員使用。',
+                            quick_reply=get_quick_reply_items()))
+        return
+    firebase_utils.delete_role_tag(org_id, tag_name)
+    tags = firebase_utils.get_all_role_tags(org_id)
+    reply_msg = flex_messages.tag_management_flex(tags)
+    await line_bot_api.reply_message(
+        event.reply_token,
+        [TextSendMessage(text=f'已刪除標籤「{tag_name}」。'),
+         reply_msg])
+
+
+async def handle_adding_tag_state(
+        event: MessageEvent, user_id: str, org_id: str, msg: str):
+    """處理新增標籤的文字輸入"""
+    tag_name = msg.strip()
+    del user_states[user_id]
+    if not tag_name:
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text='請輸入有效的標籤名稱。',
+                            quick_reply=get_quick_reply_items()))
+        return
+    result = firebase_utils.add_role_tag(org_id, tag_name)
+    tags = firebase_utils.get_all_role_tags(org_id)
+    reply_msg = flex_messages.tag_management_flex(tags)
+    if result:
+        text = f'已新增標籤「{tag_name}」。'
+    else:
+        text = f'標籤「{tag_name}」已存在。'
+    await line_bot_api.reply_message(
+        event.reply_token,
+        [TextSendMessage(text=text), reply_msg])
+
+
+async def handle_show_tags(event: MessageEvent, user_id: str, org_id: str):
+    """顯示組織角色標籤清單（管理員可見管理按鈕）"""
+    firebase_utils.ensure_default_role_tags(org_id)
+    tags = firebase_utils.get_all_role_tags(org_id)
+    all_cards = firebase_utils.get_all_cards(org_id)
+
+    tag_counts = {}
+    for tag in tags:
+        tag_counts[tag] = sum(
+            1 for card in all_cards.values()
+            if tag in (card.get("role_tags") or [])
+        )
+
+    is_admin = firebase_utils.require_admin(org_id, user_id)
+    reply_msg = flex_messages.tag_list_flex(tags, tag_counts, is_admin=is_admin)
+    await line_bot_api.reply_message(event.reply_token, [reply_msg])
+
+
+
+
+async def handle_tag_card(
+        event: PostbackEvent, org_id: str, card_id: str):
+    """顯示名片的角色標籤 toggle 選單"""
+    if not card_id:
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text='找不到名片資料。'))
+        return
+
+    firebase_utils.ensure_default_role_tags(org_id)
+    tags = firebase_utils.get_all_role_tags(org_id)
+    card = firebase_utils.get_card_by_id(org_id, card_id)
+    current_tags = (card or {}).get("role_tags") or []
+
+    reply_msg = flex_messages.role_tag_select_flex(card_id, tags, current_tags)
+    await line_bot_api.reply_message(event.reply_token, [reply_msg])
+
+
+async def handle_toggle_role(
+        event: PostbackEvent, org_id: str, card_id: str, tag_name: str):
+    """Toggle 名片上的角色標籤，完成後重新顯示選單"""
+    if not card_id or not tag_name:
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text='操作失敗，請稍後再試。'))
+        return
+
+    card = firebase_utils.get_card_by_id(org_id, card_id)
+    current_tags = (card or {}).get("role_tags") or []
+
+    if tag_name in current_tags:
+        firebase_utils.remove_card_role_tag(org_id, card_id, tag_name)
+    else:
+        firebase_utils.add_card_role_tag(org_id, card_id, tag_name)
+
+    # 重新讀取並顯示更新後的選單
+    tags = firebase_utils.get_all_role_tags(org_id)
+    updated_card = firebase_utils.get_card_by_id(org_id, card_id)
+    updated_tags = (updated_card or {}).get("role_tags") or []
+
+    reply_msg = flex_messages.role_tag_select_flex(card_id, tags, updated_tags)
+    await line_bot_api.reply_message(event.reply_token, [reply_msg])
+
+
+async def handle_finish_tag(
+        event: PostbackEvent, org_id: str, card_id: str):
+    """標籤選取完成，顯示更新後的名片"""
+    card = firebase_utils.get_card_by_id(org_id, card_id)
+    if card:
+        reply_msg = flex_messages.get_namecard_flex_msg(card, card_id)
+        tags = (card.get("role_tags") or [])
+        tag_text = "、".join(tags) if tags else "無"
+        await line_bot_api.reply_message(
+            event.reply_token,
+            [TextSendMessage(
+                text=f'標籤已更新：{tag_text}',
+                quick_reply=get_quick_reply_items()),
+             reply_msg])
+    else:
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text='找不到名片資料。',
+                            quick_reply=get_quick_reply_items()))
+
+
+async def handle_list_by_tag(
+        event: PostbackEvent, org_id: str, tag_name: str):
+    """顯示指定標籤下的名片列表（最多 10 張）"""
+    try:
+        matched = firebase_utils.get_cards_by_role_tag(org_id, tag_name)
+        if not matched:
+            await line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(
+                    text=f'「{tag_name}」標籤下尚無名片。',
+                    quick_reply=get_quick_reply_items()))
+            return
+
+        total = len(matched)
+        items = list(matched.items())[:10]
+        if len(items) == 1:
+            card_id, card_data = items[0]
+            msgs = [flex_messages.get_namecard_flex_msg(card_data, card_id)]
+        else:
+            msgs = [flex_messages.get_namecard_carousel_msg(items)]
+            if total > 10:
+                msgs.append(TextSendMessage(
+                    text=f'共 {total} 張名片，顯示前 10 張。',
+                    quick_reply=get_quick_reply_items()))
+        await line_bot_api.reply_message(event.reply_token, msgs)
+    except Exception as e:
+        print(f"Error in handle_list_by_tag: {e}")
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(
+                text='載入名片時發生錯誤，請稍後再試。',
+                quick_reply=get_quick_reply_items()))
+
+
+async def handle_export(
+        event: MessageEvent, user_id: str, org_id: str):
+    """啟動 CSV 匯出流程"""
+    from . import config as cfg
+    if not cfg.SMTP_USER or not cfg.SMTP_PASSWORD:
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(
+                text='匯出功能尚未設定，請聯繫管理員。',
+                quick_reply=get_quick_reply_items()))
+        return
+
+    user_states[user_id] = {'action': 'exporting_csv', 'org_id': org_id}
+    await line_bot_api.reply_message(
+        event.reply_token,
+        TextSendMessage(text='請輸入您的 email 地址，CSV 將寄送至該信箱：'))
+
+
+async def handle_export_email_state(
+        event: MessageEvent, user_id: str, org_id: str, msg: str):
+    """處理匯出流程中的 email 輸入"""
+    import re
+    if not re.match(r'^[^@]+@[^@]+\.[^@]+$', msg.strip()):
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(
+                text='email 格式不正確，請重新輸入。'))
+        return
+
+    to_email = msg.strip()
+    del user_states[user_id]
+
+    try:
+        from .csv_export import generate_csv, send_csv_email
+        all_cards = firebase_utils.get_all_cards(org_id)
+        org = firebase_utils.get_org(org_id)
+        org_name = org.get("name", "團隊")
+        csv_bytes = generate_csv(all_cards, org_name)
+        send_csv_email(csv_bytes, to_email, org_name)
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(
+                text=f'CSV 已寄送至 {to_email}，請查收信箱。',
+                quick_reply=get_quick_reply_items()))
+    except Exception as e:
+        print(f"Error in CSV export: {e}")
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(
+                text='CSV 寄送失敗，請稍後再試或確認 email 地址。',
+                quick_reply=get_quick_reply_items()))
 
 
 async def handle_add_memo_state(
@@ -458,25 +804,33 @@ async def handle_smart_query(
         if isinstance(card_objs, dict):
             card_objs = [card_objs]
 
-        reply_msgs = []
+        valid_cards = []
         if card_objs:
-            for card_obj in card_objs[:5]:
-                card_id = card_obj.get("card_id")
-                if card_id:
-                    reply_msgs.append(
-                        flex_messages.get_namecard_flex_msg(
-                            card_obj, card_id))
+            for card_obj in card_objs[:10]:
+                cid = card_obj.get("card_id")
+                if cid:
+                    valid_cards.append((cid, card_obj))
 
-        if reply_msgs:
-            await line_bot_api.reply_message(event.reply_token, reply_msgs)
-        else:
+        if not valid_cards:
             await line_bot_api.reply_message(
                 event.reply_token,
                 [TextSendMessage(
                     text="查無相關名片資料。",
                     quick_reply=get_quick_reply_items()
-                )],
-            )
+                )])
+        elif len(valid_cards) == 1:
+            cid, card_obj = valid_cards[0]
+            await line_bot_api.reply_message(
+                event.reply_token,
+                [flex_messages.get_namecard_flex_msg(card_obj, cid)])
+        else:
+            total = len(card_objs) if card_objs else len(valid_cards)
+            msgs = [flex_messages.get_namecard_carousel_msg(valid_cards)]
+            if total > 10:
+                msgs.append(TextSendMessage(
+                    text=f'共 {total} 筆，顯示前 10 筆，請縮小搜尋範圍。',
+                    quick_reply=get_quick_reply_items()))
+            await line_bot_api.reply_message(event.reply_token, msgs)
 
     except Exception as e:
         print(f"Error processing LLM response: {e}")

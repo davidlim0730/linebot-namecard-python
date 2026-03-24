@@ -22,6 +22,12 @@ GOOGLE_SHEET_ID = os.environ.get("GOOGLE_SHEET_ID")
 DEFAULT_ORG_ID = os.environ.get("DEFAULT_ORG_ID", "org_default")
 
 # =====================
+# Email 設定（CSV 匯出，可選）
+# =====================
+SMTP_USER = os.environ.get("SMTP_USER")
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD")
+
+# =====================
 # Gemini Prompt 設定
 # =====================
 IMGAGE_PROMPT = """
