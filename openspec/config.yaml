@@ -1,0 +1,58 @@
+schema: spec-driven
+
+context: |
+  ## Project
+  LINE Bot for business card management, targeting Taiwan enterprise sales teams.
+  Users scan business cards via LINE chat — no separate app required.
+
+  ## Tech Stack
+  - **Runtime**: Python 3.11, FastAPI, Uvicorn
+  - **Deployment**: Google Cloud Run (region: asia-east1), Docker
+  - **AI/OCR**: Google Gemini Pro Vision (image OCR), Gemini Pro (smart search/NLP)
+  - **Database**: Firebase Realtime Database (namecard/{user_id}/{card_id}/)
+  - **Storage**: Firebase Storage (qrcodes/{user_id}/{card_id}.png)
+  - **Messaging**: LINE Messaging API (Webhook, Flex Messages, Postback events)
+  - **Integrations**: Google Sheets sync (gspread v6)
+
+  ## Code Structure
+  - app/main.py — FastAPI entry point, webhook handler
+  - app/line_handlers.py — LINE message type handlers (text, image, postback)
+  - app/gemini_utils.py — Gemini API calls (OCR + NLP search)
+  - app/firebase_utils.py — Firebase RTDB + Storage operations
+  - app/flex_messages.py — LINE Flex Message templates
+  - app/qrcode_utils.py — vCard 3.0 generation + QR Code (PNG)
+  - app/gsheets_utils.py — Google Sheets sync
+  - app/config.py — env var validation
+  - app/bot_instance.py — LINE Bot API client
+
+  ## Data Model
+  Firebase RTDB schema:
+    namecard/{user_id}/{card_id}/
+      name, title, company, address, phone, email, memo?
+
+  ## Conventions
+  - Business logic lives in service-style utils (firebase_utils, gemini_utils), not in handlers
+  - LINE SDK must not leak into core logic — keep platform decoupled
+  - Prefer synchronous Firebase calls (avoid async to prevent Cloud Run CPU throttle)
+  - All sheet values must be cast to string before writing to gspread
+  - Use conventional commits (feat, fix, chore, refactor)
+
+  ## Current Phase
+  Phase 1 MVP — single-user namecard CRUD, OCR, smart search, vCard QR Code export, Google Sheets sync.
+  Phase 2 will introduce organizations, teams, and role-based access.
+
+  ## Domain Language
+  - 名片 (namecard) — a scanned business card record
+  - 業務 (sales rep) — primary end user persona
+  - 備註 (memo) — free-text note attached to a namecard
+  - 匯出 (export) — vCard QR Code or CSV export
+
+rules:
+  proposal:
+    - Include a "Non-goals" section to keep scope tight
+    - Reference which Roadmap Phase the change belongs to
+    - Note any Firebase schema changes explicitly
+  tasks:
+    - Each task should be independently implementable
+    - Tasks that touch LINE Flex Messages must include an expected message preview description
+    - Flag tasks that require Firebase index changes
