@@ -851,34 +851,44 @@ async def handle_smart_query(
             )])
         return
 
-    query = msg.strip().lower()
-    matched = []
-    for card_id, card_data in all_cards_dict.items():
-        name = (card_data.get("name") or "").lower()
-        company = (card_data.get("company") or "").lower()
-        if query in name or query in company:
-            matched.append((card_id, card_data))
+    try:
+        query = msg.strip().lower()
+        matched = []
+        for card_id, card_data in all_cards_dict.items():
+            name = (card_data.get("name") or "").lower()
+            company = (card_data.get("company") or "").lower()
+            if query in name or query in company:
+                matched.append((card_id, card_data))
 
-    if not matched:
+        if not matched:
+            await line_bot_api.reply_message(
+                event.reply_token,
+                [TextSendMessage(
+                    text=f"查無「{msg}」相關名片。",
+                    quick_reply=get_quick_reply_items()
+                )])
+        elif len(matched) == 1:
+            cid, card_obj = matched[0]
+            await line_bot_api.reply_message(
+                event.reply_token,
+                [flex_messages.get_namecard_flex_msg(card_obj, cid)])
+        else:
+            display = matched[:10]
+            msgs = [flex_messages.get_namecard_carousel_msg(display)]
+            if len(matched) > 10:
+                msgs.append(TextSendMessage(
+                    text=f"共 {len(matched)} 筆，顯示前 10 筆，請縮小搜尋範圍。",
+                    quick_reply=get_quick_reply_items()))
+            await line_bot_api.reply_message(event.reply_token, msgs)
+    except Exception as e:
+        print(f"Error in handle_smart_query: {e}")
         await line_bot_api.reply_message(
             event.reply_token,
             [TextSendMessage(
-                text=f"查無「{msg}」相關名片。",
+                text="搜尋時發生錯誤，請稍後再試。",
                 quick_reply=get_quick_reply_items()
-            )])
-    elif len(matched) == 1:
-        cid, card_obj = matched[0]
-        await line_bot_api.reply_message(
-            event.reply_token,
-            [flex_messages.get_namecard_flex_msg(card_obj, cid)])
-    else:
-        display = matched[:10]
-        msgs = [flex_messages.get_namecard_carousel_msg(display)]
-        if len(matched) > 10:
-            msgs.append(TextSendMessage(
-                text=f"共 {len(matched)} 筆，顯示前 10 筆，請縮小搜尋範圍。",
-                quick_reply=get_quick_reply_items()))
-        await line_bot_api.reply_message(event.reply_token, msgs)
+            )]
+        )
 
 
 async def _save_and_reply_namecard(event, user_id: str, org_id: str, card_obj: dict):
