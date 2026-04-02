@@ -882,13 +882,18 @@ async def handle_smart_query(
             await line_bot_api.reply_message(event.reply_token, msgs)
     except Exception as e:
         print(f"Error in handle_smart_query: {e}")
-        await line_bot_api.reply_message(
-            event.reply_token,
-            [TextSendMessage(
-                text="搜尋時發生錯誤，請稍後再試。",
-                quick_reply=get_quick_reply_items()
-            )]
-        )
+        import traceback
+        traceback.print_exc()
+        try:
+            await line_bot_api.reply_message(
+                event.reply_token,
+                [TextSendMessage(
+                    text="搜尋時發生錯誤，請稍後再試。",
+                    quick_reply=get_quick_reply_items()
+                )]
+            )
+        except Exception as reply_err:
+            print(f"Error sending error reply: {reply_err}")
 
 
 async def _save_and_reply_namecard(event, user_id: str, org_id: str, card_obj: dict):
