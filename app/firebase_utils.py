@@ -423,7 +423,7 @@ def get_card_by_id(org_id: str, card_id: str) -> dict:
         return None
 
 
-ALLOWED_EDIT_FIELDS = {"name", "title", "company", "address", "phone", "email"}
+ALLOWED_EDIT_FIELDS = {"name", "title", "company", "address", "phone", "mobile", "email", "line_id"}
 
 
 def update_namecard_field(
