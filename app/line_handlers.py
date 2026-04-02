@@ -215,6 +215,29 @@ async def handle_postback_event(event: PostbackEvent, user_id: str):
     elif action == 'delete_card':
         await handle_delete_card(event, user_id, org_id, card_id, card_name)
 
+    elif action == "start_search":
+        user_states[user_id] = {'action': 'searching'}
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(
+                text="🔍 請輸入姓名、公司或職稱關鍵字：",
+                quick_reply=QuickReply(items=[
+                    QuickReplyButton(
+                        action=PostbackAction(label="❌ 取消", data="action=cancel_search")
+                    )
+                ])
+            )
+        )
+    elif action == "cancel_search":
+        user_states.pop(user_id, None)
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(
+                text="已取消搜尋。",
+                quick_reply=get_quick_reply_items()
+            )
+        )
+
 
 async def handle_delete_card(
         event: PostbackEvent, user_id: str, org_id: str,
@@ -327,10 +350,19 @@ async def handle_text_event(event: MessageEvent, user_id: str) -> None:
         await handle_set_team_name(event, user_id, org_id, msg)
     elif msg in ("標籤", "tags"):
         await handle_show_tags(event, user_id, org_id)
+    elif user_action == 'searching':
+        user_states.pop(user_id, None)
+        await handle_smart_query(event, org_id, msg)
     elif msg in ("匯出", "export"):
         await handle_export(event, user_id, org_id)
     else:
-        await handle_smart_query(event, org_id, msg)
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(
+                text="找不到對應指令，請點下方按鈕操作。",
+                quick_reply=get_quick_reply_items()
+            )
+        )
 
 
 async def handle_team_info(
