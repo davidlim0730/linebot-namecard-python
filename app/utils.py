@@ -1,4 +1,5 @@
 import json
+import re
 
 
 def load_json_string_to_object(json_str: str) -> dict:
@@ -31,3 +32,32 @@ def generate_sample_namecard() -> dict:
         "company": "LINE Taiwan",
         "memo": "This is a test memo."
     }
+
+
+def validate_namecard_fields(card: dict) -> dict:
+    result = card.copy()
+
+    def _clean(val):
+        return re.sub(r'[\s\-\(\)]', '', val) if val else val
+
+    phone = result.get("phone")
+    if phone and phone != "N/A":
+        if not re.match(r'^(\+?886|0)[2-9]\d{6,8}(#\d+)?$', _clean(phone)):
+            result["phone"] = "N/A"
+
+    mobile = result.get("mobile")
+    if mobile and mobile != "N/A":
+        if not re.match(r'^(\+?886|0)9\d{8}$', _clean(mobile)):
+            result["mobile"] = "N/A"
+
+    email = result.get("email")
+    if email and email != "N/A":
+        if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
+            result["email"] = "N/A"
+
+    line_id = result.get("line_id")
+    if line_id and line_id != "N/A":
+        if not re.match(r'^[a-zA-Z0-9._]{4,20}$', line_id):
+            result["line_id"] = "N/A"
+
+    return result
