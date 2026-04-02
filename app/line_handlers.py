@@ -237,6 +237,35 @@ async def handle_postback_event(event: PostbackEvent, user_id: str):
                 quick_reply=get_quick_reply_items()
             )
         )
+    elif action == "scan_back":
+        if user_states.get(user_id, {}).get('action') == 'scanning_back':
+            await line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text="請傳送名片背面照片 📷")
+            )
+        else:
+            await line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(
+                    text="找不到正面名片資料，請重新掃描。",
+                    quick_reply=get_quick_reply_items()
+                )
+            )
+    elif action == "save_front":
+        state = user_states.get(user_id, {})
+        if state.get('action') == 'scanning_back':
+            front_data = state['front_data']
+            front_data = utils.validate_namecard_fields(front_data)
+            user_states.pop(user_id, None)
+            await _save_and_reply_namecard(event, user_id, org_id, front_data)
+        else:
+            await line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(
+                    text="找不到待儲存的名片資料，請重新掃描。",
+                    quick_reply=get_quick_reply_items()
+                )
+            )
 
 
 async def handle_delete_card(
@@ -873,42 +902,12 @@ async def handle_smart_query(
         )
 
 
-async def handle_image_event(event: MessageEvent, user_id: str) -> None:
-    org_id = firebase_utils.ensure_user_org(user_id)
-
-    message_content = await line_bot_api.get_message_content(event.message.id)
-    image_content = b""
-    async for s in message_content.iter_content():
-        image_content += s
-    img = PIL.Image.open(BytesIO(image_content))
-    result = gemini_utils.generate_json_from_image(img, config.IMGAGE_PROMPT)
-    card_obj = utils.parse_gemini_result_to_json(result.text)
-    if not card_obj:
-        error_msg = f"無法解析這張名片，請再試一次。 錯誤資訊: {result.text}"
-        await line_bot_api.reply_message(
-            event.reply_token,
-            [TextSendMessage(text=error_msg)]
-        )
-        return
-
-    if isinstance(card_obj, list):
-        if not card_obj:
-            error_msg = f"無法解析這張名片，Gemini 回傳了空的資料。 資訊: {result.text}"
-            await line_bot_api.reply_message(
-                event.reply_token,
-                [TextSendMessage(text=error_msg)]
-            )
-            return
-        card_obj = card_obj[0]
-
-    card_obj = {k.lower(): v for k, v in card_obj.items()}
-
+async def _save_and_reply_namecard(event, user_id: str, org_id: str, card_obj: dict):
+    """去重、儲存、回覆名片 Flex Message。供正面直接儲存與雙面合併共用。"""
     existing_card_id = firebase_utils.check_if_card_exists(card_obj, org_id)
     if existing_card_id:
-        existing_card_data = firebase_utils.get_card_by_id(
-            org_id, existing_card_id)
-        reply_msg = flex_messages.get_namecard_flex_msg(
-            existing_card_data, existing_card_id)
+        existing_card_data = firebase_utils.get_card_by_id(org_id, existing_card_id)
+        reply_msg = flex_messages.get_namecard_flex_msg(existing_card_data, existing_card_id)
         await line_bot_api.reply_message(
             event.reply_token,
             [TextSendMessage(
@@ -921,16 +920,76 @@ async def handle_image_event(event: MessageEvent, user_id: str) -> None:
     card_id = firebase_utils.add_namecard(card_obj, org_id, user_id)
     if card_id:
         reply_msg = flex_messages.get_namecard_flex_msg(card_obj, card_id)
-        chinese_reply_msg = TextSendMessage(
-            text="名片資料已經成功加入資料庫。",
-            quick_reply=get_quick_reply_items()
-        )
         await line_bot_api.reply_message(
-            event.reply_token, [reply_msg, chinese_reply_msg])
+            event.reply_token,
+            [reply_msg, TextSendMessage(
+                text="名片資料已經成功加入資料庫。",
+                quick_reply=get_quick_reply_items()
+            )]
+        )
     else:
         await line_bot_api.reply_message(
             event.reply_token,
             [TextSendMessage(
                 text="儲存名片時發生錯誤。",
                 quick_reply=get_quick_reply_items()
-            )])
+            )]
+        )
+
+
+async def handle_image_event(event: MessageEvent, user_id: str) -> None:
+    org_id = firebase_utils.ensure_user_org(user_id)
+
+    message_content = await line_bot_api.get_message_content(event.message.id)
+    image_content = b""
+    async for s in message_content.iter_content():
+        image_content += s
+    img = PIL.Image.open(BytesIO(image_content))
+    result = gemini_utils.generate_json_from_image(img, config.IMGAGE_PROMPT)
+    card_obj = utils.parse_gemini_result_to_json(result.text)
+
+    if not card_obj:
+        await line_bot_api.reply_message(
+            event.reply_token,
+            [TextSendMessage(text=f"無法解析這張名片，請再試一次。 錯誤資訊: {result.text}")]
+        )
+        return
+
+    if isinstance(card_obj, list):
+        if not card_obj:
+            await line_bot_api.reply_message(
+                event.reply_token,
+                [TextSendMessage(text=f"無法解析這張名片，Gemini 回傳了空的資料。 資訊: {result.text}")]
+            )
+            return
+        card_obj = card_obj[0]
+
+    card_obj = {k.lower(): v for k, v in card_obj.items()}
+
+    # 背面掃描狀態：合併正背面後儲存
+    if user_states.get(user_id, {}).get('action') == 'scanning_back':
+        front_data = user_states[user_id]['front_data']
+        merged = utils.merge_namecard_data(front_data, card_obj)
+        merged = utils.validate_namecard_fields(merged)
+        user_states.pop(user_id, None)
+        await _save_and_reply_namecard(event, user_id, org_id, merged)
+        return
+
+    # 正面掃描：暫存並詢問是否有背面
+    name = card_obj.get("name", "N/A")
+    company = card_obj.get("company", "N/A")
+    user_states[user_id] = {'action': 'scanning_back', 'front_data': card_obj}
+    await line_bot_api.reply_message(
+        event.reply_token,
+        TextSendMessage(
+            text=f"已辨識：{name}（{company}）\n\n這張名片還有背面嗎？",
+            quick_reply=QuickReply(items=[
+                QuickReplyButton(
+                    action=PostbackAction(label="📷 有背面", data="action=scan_back")
+                ),
+                QuickReplyButton(
+                    action=PostbackAction(label="✅ 直接儲存", data="action=save_front")
+                ),
+            ])
+        )
+    )
