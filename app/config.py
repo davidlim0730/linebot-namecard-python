@@ -32,10 +32,13 @@ SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD")
 # =====================
 IMGAGE_PROMPT = """
 這是一張名片，你是一個名片秘書。請將以下資訊整理成 json 給我。
-如果看不出來的，幫我填寫 N/A
-只好 json 就好:
-name, title, address, email, phone, company.
-其中 phone 的內容格式為 #886-0123-456-789,1234. 沒有分機就忽略 ,1234
+如果看不出來的，幫我填寫 N/A。
+只回傳 json 就好：name, title, address, email, phone, mobile, line_id, company。
+其中：
+- phone 是辦公室電話或市話（02、03、04 等開頭，或 +886 2/3/4 等），格式保持原樣
+- mobile 是行動電話（09 開頭，或 +886 9 開頭），格式保持原樣
+- phone 與 mobile 是不同欄位，請分開填寫，不要混用
+- line_id 是 LINE ID（名片上常見 LINE: 或 ID: 標示的英數字帳號）
 """
 
 # =====================
