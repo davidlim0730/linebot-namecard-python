@@ -7,37 +7,6 @@ def get_compact_namecard_bubble(card_data: dict, card_id: str) -> dict:
     name = card_data.get("name", "N/A")
     title = card_data.get("title", "N/A")
     company = card_data.get("company", "N/A")
-    phone = card_data.get("phone", "N/A")
-    email = card_data.get("email", "N/A")
-
-    footer_buttons = []
-    if phone and phone != "N/A":
-        footer_buttons.append({
-            "type": "button", "style": "link", "height": "sm",
-            "action": {
-                "type": "uri",
-                "label": "📞 撥打電話",
-                "uri": f"tel:{phone}"
-            }
-        })
-    if email and email != "N/A":
-        footer_buttons.append({
-            "type": "button", "style": "link", "height": "sm",
-            "action": {
-                "type": "uri",
-                "label": "📧 寄送 Email",
-                "uri": f"mailto:{email}"
-            }
-        })
-    footer_buttons.append({
-        "type": "button", "style": "primary", "height": "sm",
-        "margin": "sm",
-        "action": {
-            "type": "postback",
-            "label": "查看完整名片",
-            "data": f"action=view_card&card_id={card_id}"
-        }
-    })
 
     return {
         "type": "bubble",
@@ -50,12 +19,22 @@ def get_compact_namecard_bubble(card_data: dict, card_id: str) -> dict:
                  "color": "#ffffff", "size": "sm", "wrap": True}
             ],
             "paddingAll": "15px",
-            "backgroundColor": "#0367D3"
+            "backgroundColor": "#0367D3",
+            "action": {
+                "type": "postback",
+                "label": "查看",
+                "data": f"action=view_card&card_id={card_id}"
+            }
         },
         "body": {
             "type": "box",
             "layout": "vertical",
             "paddingAll": "15px",
+            "action": {
+                "type": "postback",
+                "label": "查看",
+                "data": f"action=view_card&card_id={card_id}"
+            },
             "contents": [
                 {"type": "text", "text": name,
                  "size": "xxl", "weight": "bold", "wrap": True},
@@ -63,12 +42,6 @@ def get_compact_namecard_bubble(card_data: dict, card_id: str) -> dict:
                  "size": "md", "color": "#555555",
                  "wrap": True, "margin": "sm"}
             ]
-        },
-        "footer": {
-            "type": "box",
-            "layout": "vertical",
-            "spacing": "sm",
-            "contents": footer_buttons
         }
     }
 
