@@ -52,3 +52,7 @@ env.yaml
 *-firebase-adminsdk-*.json
 *service-account*.json
 *credentials*.json
+firebase-debug.log
+
+# Git worktrees
+.worktrees/
