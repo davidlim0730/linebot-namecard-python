@@ -4,12 +4,18 @@ from linebot.models import FlexSendMessage
 
 def get_compact_namecard_bubble(card_data: dict, card_id: str) -> dict:
     """精簡版名片 bubble dict（用於 carousel），kilo size"""
-    name = card_data.get("name", "N/A")
-    title = card_data.get("title", "N/A")
-    company = card_data.get("company", "N/A")
-    phone = card_data.get("phone", "N/A")
-    mobile = card_data.get("mobile", "N/A")
-    email = card_data.get("email", "N/A")
+    def _str(val):
+        """Convert to non-empty string or return empty string."""
+        if val is None:
+            return ""
+        return str(val).strip()
+
+    name = _str(card_data.get("name")) or "N/A"
+    title = _str(card_data.get("title")) or "N/A"
+    company = _str(card_data.get("company")) or "N/A"
+    phone = _str(card_data.get("phone"))
+    mobile = _str(card_data.get("mobile"))
+    email = _str(card_data.get("email"))
 
     def info_row(label, value):
         return {
@@ -23,11 +29,11 @@ def get_compact_namecard_bubble(card_data: dict, card_id: str) -> dict:
         }
 
     info_rows = []
-    if phone and phone != "N/A":
+    if phone:
         info_rows.append(info_row("電話", phone))
-    if mobile and mobile != "N/A":
+    if mobile:
         info_rows.append(info_row("手機", mobile))
-    if email and email != "N/A":
+    if email:
         info_rows.append(info_row("Email", email))
 
     return {
@@ -89,17 +95,22 @@ def get_namecard_carousel_msg(
 
 
 def get_namecard_flex_msg(card_data: dict, card_id: str) -> FlexSendMessage:
+    def _s(val, default="N/A"):
+        if val is None:
+            return default
+        return str(val).strip() or default
+
     # 確保基本資料存在
-    name = card_data.get("name", "N/A")
-    title = card_data.get("title", "N/A")
-    company = card_data.get("company", "N/A")
-    address = card_data.get("address", "N/A")
-    phone = card_data.get("phone", "N/A")
-    email = card_data.get("email", "N/A")
-    mobile = card_data.get("mobile", "N/A")
-    line_id = card_data.get("line_id", "N/A")
-    memo = card_data.get("memo", "")
-    added_by = card_data.get("added_by", "")
+    name = _s(card_data.get("name"))
+    title = _s(card_data.get("title"))
+    company = _s(card_data.get("company"))
+    address = _s(card_data.get("address"))
+    phone = _s(card_data.get("phone"))
+    email = _s(card_data.get("email"))
+    mobile = _s(card_data.get("mobile"))
+    line_id = _s(card_data.get("line_id"))
+    memo = _s(card_data.get("memo"), default="")
+    added_by = _s(card_data.get("added_by"), default="")
     added_by_label = added_by[-8:] if added_by else "—"
     role_tags = card_data.get("role_tags") or []
     role_tags_text = ", ".join(role_tags) if role_tags else None
