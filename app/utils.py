@@ -61,3 +61,24 @@ def validate_namecard_fields(card: dict) -> dict:
             result["line_id"] = "N/A"
 
     return result
+
+
+def merge_namecard_data(front: dict, back: dict) -> dict:
+    """Merge two namecard dicts (front + back), where front takes priority.
+
+    For each key in `back`, only copy it to `result` if the corresponding value
+    in `front` is None, "N/A", or "" (empty string).
+
+    Args:
+        front: Primary namecard data (e.g., from card front side)
+        back: Secondary namecard data (e.g., from card back side)
+
+    Returns:
+        Merged dict with front priority and back as fallback for missing/invalid fields
+    """
+    result = front.copy()
+    for key, value in back.items():
+        front_val = result.get(key)
+        if front_val is None or front_val == "N/A" or front_val == "":
+            result[key] = value
+    return result

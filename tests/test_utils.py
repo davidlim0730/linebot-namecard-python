@@ -62,3 +62,34 @@ def test_multiple_fields_validated_independently():
     result = validate_namecard_fields({"phone": "invalid", "email": "valid@example.com"})
     assert result["phone"] == "N/A"
     assert result["email"] == "valid@example.com"
+
+
+from app.utils import merge_namecard_data
+
+
+def test_merge_back_fills_na_field():
+    front = {"name": "John", "email": "N/A"}
+    back = {"name": "Wrong", "email": "john@example.com"}
+    result = merge_namecard_data(front, back)
+    assert result["email"] == "john@example.com"
+
+
+def test_merge_front_field_not_overwritten():
+    front = {"name": "John"}
+    back = {"name": "Wrong Name"}
+    result = merge_namecard_data(front, back)
+    assert result["name"] == "John"
+
+
+def test_merge_back_fills_empty_string():
+    front = {"phone": ""}
+    back = {"phone": "02-12345678"}
+    result = merge_namecard_data(front, back)
+    assert result["phone"] == "02-12345678"
+
+
+def test_merge_back_adds_missing_field():
+    front = {"name": "John"}
+    back = {"mobile": "0912345678"}
+    result = merge_namecard_data(front, back)
+    assert result["mobile"] == "0912345678"
