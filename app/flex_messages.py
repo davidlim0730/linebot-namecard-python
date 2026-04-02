@@ -97,6 +97,8 @@ def get_namecard_flex_msg(card_data: dict, card_id: str) -> FlexSendMessage:
     address = card_data.get("address", "N/A")
     phone = card_data.get("phone", "N/A")
     email = card_data.get("email", "N/A")
+    mobile = card_data.get("mobile", "N/A")
+    line_id = card_data.get("line_id", "N/A")
     memo = card_data.get("memo", "")
     added_by = card_data.get("added_by", "")
     added_by_label = added_by[-8:] if added_by else "—"
@@ -137,6 +139,15 @@ def get_namecard_flex_msg(card_data: dict, card_id: str) -> FlexSendMessage:
                      {"type": "text", "text": phone, "size": "sm",
                       "color": "#111111", "align": "end", "flex": 3}
                  ]},
+            ] + ([
+                {"type": "box", "layout": "horizontal", "margin": "md",
+                 "contents": [
+                     {"type": "text", "text": "Mobile", "size": "sm",
+                      "color": "#555555", "flex": 1},
+                     {"type": "text", "text": mobile, "size": "sm",
+                      "color": "#111111", "align": "end", "flex": 3}
+                 ]}
+            ] if mobile and mobile != "N/A" else []) + [
                 {"type": "box", "layout": "horizontal", "margin": "md",
                  "contents": [
                      {"type": "text", "text": "Email", "size": "sm",
@@ -144,6 +155,15 @@ def get_namecard_flex_msg(card_data: dict, card_id: str) -> FlexSendMessage:
                      {"type": "text", "text": email, "size": "sm",
                       "color": "#111111", "align": "end", "flex": 3}
                  ]},
+            ] + ([
+                {"type": "box", "layout": "horizontal", "margin": "md",
+                 "contents": [
+                     {"type": "text", "text": "LINE ID", "size": "sm",
+                      "color": "#555555", "flex": 1},
+                     {"type": "text", "text": line_id, "size": "sm",
+                      "color": "#111111", "align": "end", "flex": 3}
+                 ]}
+            ] if line_id and line_id != "N/A" else []) + [
                 {"type": "box", "layout": "horizontal", "margin": "md",
                  "contents": [
                      {"type": "text", "text": "Address",
