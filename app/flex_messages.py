@@ -15,18 +15,18 @@ def get_compact_namecard_bubble(card_data: dict, card_id: str) -> dict:
         footer_buttons.append({
             "type": "button", "style": "link", "height": "sm",
             "action": {
-                "type": "clipboard",
-                "label": "📞 複製電話",
-                "clipboardText": phone
+                "type": "uri",
+                "label": "📞 撥打電話",
+                "uri": f"tel:{phone}"
             }
         })
     if email and email != "N/A":
         footer_buttons.append({
             "type": "button", "style": "link", "height": "sm",
             "action": {
-                "type": "clipboard",
-                "label": "📧 複製 Email",
-                "clipboardText": email
+                "type": "uri",
+                "label": "📧 寄送 Email",
+                "uri": f"mailto:{email}"
             }
         })
     footer_buttons.append({
