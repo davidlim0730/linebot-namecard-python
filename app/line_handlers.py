@@ -851,62 +851,34 @@ async def handle_smart_query(
             )])
         return
 
-    all_cards_list = []
+    query = msg.strip().lower()
+    matched = []
     for card_id, card_data in all_cards_dict.items():
-        card_data_with_id = card_data.copy()
-        card_data_with_id['card_id'] = card_id
-        all_cards_list.append(card_data_with_id)
+        name = (card_data.get("name") or "").lower()
+        company = (card_data.get("company") or "").lower()
+        if query in name or query in company:
+            matched.append((card_id, card_data))
 
-    smart_query_prompt = (
-        "你是一個名片助理，以下是所有名片資料（JSON 陣列），"
-        "請根據使用者輸入的查詢，回傳最相關的一或多張名片 JSON"
-        "（只回傳 JSON 陣列，不要多餘說明）。"
-        "每張名片物件中都要包含 'card_id'.\n"
-        f"名片資料: {json.dumps(all_cards_list, ensure_ascii=False)}\n"
-        f"查詢: {msg}"
-    )
-    messages = [{"role": "user", "parts": [smart_query_prompt]}]
-
-    try:
-        response = gemini_utils.generate_gemini_text_complete(messages)
-        card_objs = utils.load_json_string_to_object(response.text)
-        if isinstance(card_objs, dict):
-            card_objs = [card_objs]
-
-        valid_cards = []
-        if card_objs:
-            for card_obj in card_objs[:10]:
-                cid = card_obj.get("card_id")
-                if cid:
-                    valid_cards.append((cid, card_obj))
-
-        if not valid_cards:
-            await line_bot_api.reply_message(
-                event.reply_token,
-                [TextSendMessage(
-                    text="查無相關名片資料。",
-                    quick_reply=get_quick_reply_items()
-                )])
-        elif len(valid_cards) == 1:
-            cid, card_obj = valid_cards[0]
-            await line_bot_api.reply_message(
-                event.reply_token,
-                [flex_messages.get_namecard_flex_msg(card_obj, cid)])
-        else:
-            total = len(card_objs) if card_objs else len(valid_cards)
-            msgs = [flex_messages.get_namecard_carousel_msg(valid_cards)]
-            if total > 10:
-                msgs.append(TextSendMessage(
-                    text=f'共 {total} 筆，顯示前 10 筆，請縮小搜尋範圍。',
-                    quick_reply=get_quick_reply_items()))
-            await line_bot_api.reply_message(event.reply_token, msgs)
-
-    except Exception as e:
-        print(f"Error processing LLM response: {e}")
+    if not matched:
         await line_bot_api.reply_message(
             event.reply_token,
-            [TextSendMessage(text="處理您的查詢時發生錯誤，請稍後再試。")],
-        )
+            [TextSendMessage(
+                text=f"查無「{msg}」相關名片。",
+                quick_reply=get_quick_reply_items()
+            )])
+    elif len(matched) == 1:
+        cid, card_obj = matched[0]
+        await line_bot_api.reply_message(
+            event.reply_token,
+            [flex_messages.get_namecard_flex_msg(card_obj, cid)])
+    else:
+        display = matched[:10]
+        msgs = [flex_messages.get_namecard_carousel_msg(display)]
+        if len(matched) > 10:
+            msgs.append(TextSendMessage(
+                text=f"共 {len(matched)} 筆，顯示前 10 筆，請縮小搜尋範圍。",
+                quick_reply=get_quick_reply_items()))
+        await line_bot_api.reply_message(event.reply_token, msgs)
 
 
 async def _save_and_reply_namecard(event, user_id: str, org_id: str, card_obj: dict):
