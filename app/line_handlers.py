@@ -12,7 +12,8 @@ from .bot_instance import line_bot_api, user_states
 
 FIELD_LABELS = {
     "name": "姓名", "title": "職稱", "company": "公司",
-    "address": "地址", "phone": "電話", "email": "Email"
+    "address": "地址", "phone": "電話", "mobile": "手機",
+    "email": "Email", "line_id": "LINE ID"
 }
 
 
@@ -41,7 +42,7 @@ def get_quick_reply_items():
             action=PostbackAction(label="📨 邀請", data="action=show_invite")
         ),
         QuickReplyButton(
-            action=PostbackAction(label="🧪 測試", data="action=show_test")
+            action=PostbackAction(label="🔍 搜尋名片", data="action=start_search")
         ),
         QuickReplyButton(
             action=PostbackAction(label="ℹ️ 說明", data="action=show_help")
