@@ -7,6 +7,28 @@ def get_compact_namecard_bubble(card_data: dict, card_id: str) -> dict:
     name = card_data.get("name", "N/A")
     title = card_data.get("title", "N/A")
     company = card_data.get("company", "N/A")
+    phone = card_data.get("phone", "N/A")
+    mobile = card_data.get("mobile", "N/A")
+    email = card_data.get("email", "N/A")
+
+    def info_row(label, value):
+        return {
+            "type": "box", "layout": "horizontal", "margin": "sm",
+            "contents": [
+                {"type": "text", "text": label, "size": "xs",
+                 "color": "#555555", "flex": 2},
+                {"type": "text", "text": value, "size": "xs",
+                 "color": "#111111", "align": "end", "flex": 5, "wrap": True}
+            ]
+        }
+
+    info_rows = []
+    if phone and phone != "N/A":
+        info_rows.append(info_row("電話", phone))
+    if mobile and mobile != "N/A":
+        info_rows.append(info_row("手機", mobile))
+    if email and email != "N/A":
+        info_rows.append(info_row("Email", email))
 
     return {
         "type": "bubble",
@@ -19,29 +41,33 @@ def get_compact_namecard_bubble(card_data: dict, card_id: str) -> dict:
                  "color": "#ffffff", "size": "sm", "wrap": True}
             ],
             "paddingAll": "15px",
-            "backgroundColor": "#0367D3",
-            "action": {
-                "type": "postback",
-                "label": "查看",
-                "data": f"action=view_card&card_id={card_id}"
-            }
+            "backgroundColor": "#0367D3"
         },
         "body": {
             "type": "box",
             "layout": "vertical",
             "paddingAll": "15px",
-            "action": {
-                "type": "postback",
-                "label": "查看",
-                "data": f"action=view_card&card_id={card_id}"
-            },
             "contents": [
                 {"type": "text", "text": name,
-                 "size": "xxl", "weight": "bold", "wrap": True},
+                 "size": "xl", "weight": "bold", "wrap": True},
                 {"type": "text", "text": title,
-                 "size": "md", "color": "#555555",
+                 "size": "sm", "color": "#555555",
                  "wrap": True, "margin": "sm"}
-            ]
+            ] + info_rows
+        },
+        "footer": {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [{
+                "type": "button",
+                "style": "primary",
+                "height": "sm",
+                "action": {
+                    "type": "postback",
+                    "label": "查看完整名片",
+                    "data": f"action=view_card&card_id={card_id}"
+                }
+            }]
         }
     }
 
