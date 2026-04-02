@@ -855,6 +855,8 @@ async def handle_smart_query(
         query = msg.strip().lower()
         matched = []
         for card_id, card_data in all_cards_dict.items():
+            if not isinstance(card_data, dict):
+                continue
             name = (card_data.get("name") or "").lower()
             company = (card_data.get("company") or "").lower()
             if query in name or query in company:
