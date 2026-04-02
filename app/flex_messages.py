@@ -139,15 +139,14 @@ def get_namecard_flex_msg(card_data: dict, card_id: str) -> FlexSendMessage:
                      {"type": "text", "text": phone, "size": "sm",
                       "color": "#111111", "align": "end", "flex": 3}
                  ]},
-            ] + ([
+            ] + [
                 {"type": "box", "layout": "horizontal", "margin": "md",
                  "contents": [
                      {"type": "text", "text": "Mobile", "size": "sm",
                       "color": "#555555", "flex": 1},
                      {"type": "text", "text": mobile, "size": "sm",
                       "color": "#111111", "align": "end", "flex": 3}
-                 ]}
-            ] if mobile and mobile != "N/A" else []) + [
+                 ]},
                 {"type": "box", "layout": "horizontal", "margin": "md",
                  "contents": [
                      {"type": "text", "text": "Email", "size": "sm",
@@ -155,15 +154,14 @@ def get_namecard_flex_msg(card_data: dict, card_id: str) -> FlexSendMessage:
                      {"type": "text", "text": email, "size": "sm",
                       "color": "#111111", "align": "end", "flex": 3}
                  ]},
-            ] + ([
                 {"type": "box", "layout": "horizontal", "margin": "md",
                  "contents": [
                      {"type": "text", "text": "LINE ID", "size": "sm",
                       "color": "#555555", "flex": 1},
                      {"type": "text", "text": line_id, "size": "sm",
                       "color": "#111111", "align": "end", "flex": 3}
-                 ]}
-            ] if line_id and line_id != "N/A" else []) + [
+                 ]},
+            ] + [
                 {"type": "box", "layout": "horizontal", "margin": "md",
                  "contents": [
                      {"type": "text", "text": "Address",
@@ -448,7 +446,8 @@ def get_edit_options_flex_msg(card_id: str, card_name: str) -> FlexSendMessage:
     """產生一個包含所有可編輯欄位的 Flex Message"""
     fields = [
         ("姓名", "name"), ("職稱", "title"), ("公司", "company"),
-        ("地址", "address"), ("電話", "phone"), ("Email", "email")
+        ("地址", "address"), ("電話", "phone"), ("手機", "mobile"),
+        ("Email", "email"), ("LINE ID", "line_id")
     ]
     buttons = []
     for label, field_key in fields:

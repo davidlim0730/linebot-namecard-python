@@ -158,6 +158,65 @@ async def handle_postback_event(event: PostbackEvent, user_id: str):
         await handle_tag_card(event, org_id, card_id)
         return
 
+    elif action == "start_search":
+        user_states[user_id] = {'action': 'searching'}
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(
+                text="🔍 請輸入姓名、公司或職稱關鍵字：",
+                quick_reply=QuickReply(items=[
+                    QuickReplyButton(
+                        action=PostbackAction(label="❌ 取消", data="action=cancel_search")
+                    )
+                ])
+            )
+        )
+        return
+
+    elif action == "cancel_search":
+        user_states.pop(user_id, None)
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(
+                text="已取消搜尋。",
+                quick_reply=get_quick_reply_items()
+            )
+        )
+        return
+
+    elif action == "scan_back":
+        if user_states.get(user_id, {}).get('action') == 'scanning_back':
+            await line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text="請傳送名片背面照片 📷")
+            )
+        else:
+            await line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(
+                    text="找不到正面名片資料，請重新掃描。",
+                    quick_reply=get_quick_reply_items()
+                )
+            )
+        return
+
+    elif action == "save_front":
+        state = user_states.get(user_id, {})
+        if state.get('action') == 'scanning_back':
+            front_data = state['front_data']
+            front_data = utils.validate_namecard_fields(front_data)
+            user_states.pop(user_id, None)
+            await _save_and_reply_namecard(event, user_id, org_id, front_data)
+        else:
+            await line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(
+                    text="找不到待儲存的名片資料，請重新掃描。",
+                    quick_reply=get_quick_reply_items()
+                )
+            )
+        return
+
     elif action == 'toggle_role':
         tag_name = postback_data.get('tag_name', '')
         await handle_toggle_role(event, org_id, card_id, tag_name)
@@ -214,58 +273,6 @@ async def handle_postback_event(event: PostbackEvent, user_id: str):
 
     elif action == 'delete_card':
         await handle_delete_card(event, user_id, org_id, card_id, card_name)
-
-    elif action == "start_search":
-        user_states[user_id] = {'action': 'searching'}
-        await line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(
-                text="🔍 請輸入姓名、公司或職稱關鍵字：",
-                quick_reply=QuickReply(items=[
-                    QuickReplyButton(
-                        action=PostbackAction(label="❌ 取消", data="action=cancel_search")
-                    )
-                ])
-            )
-        )
-    elif action == "cancel_search":
-        user_states.pop(user_id, None)
-        await line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(
-                text="已取消搜尋。",
-                quick_reply=get_quick_reply_items()
-            )
-        )
-    elif action == "scan_back":
-        if user_states.get(user_id, {}).get('action') == 'scanning_back':
-            await line_bot_api.reply_message(
-                event.reply_token,
-                TextSendMessage(text="請傳送名片背面照片 📷")
-            )
-        else:
-            await line_bot_api.reply_message(
-                event.reply_token,
-                TextSendMessage(
-                    text="找不到正面名片資料，請重新掃描。",
-                    quick_reply=get_quick_reply_items()
-                )
-            )
-    elif action == "save_front":
-        state = user_states.get(user_id, {})
-        if state.get('action') == 'scanning_back':
-            front_data = state['front_data']
-            front_data = utils.validate_namecard_fields(front_data)
-            user_states.pop(user_id, None)
-            await _save_and_reply_namecard(event, user_id, org_id, front_data)
-        else:
-            await line_bot_api.reply_message(
-                event.reply_token,
-                TextSendMessage(
-                    text="找不到待儲存的名片資料，請重新掃描。",
-                    quick_reply=get_quick_reply_items()
-                )
-            )
 
 
 async def handle_delete_card(
