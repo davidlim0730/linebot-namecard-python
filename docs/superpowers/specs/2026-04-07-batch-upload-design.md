@@ -77,10 +77,30 @@ raw_images/{org_id}/{user_id}/{uuid}.jpg   ← 暫存用，OCR 完成後刪除
 
 ---
 
-## 背景處理邏輯（BackgroundTask）
+## 背景處理架構：Google Cloud Tasks
+
+**為何不用 FastAPI BackgroundTasks：**
+Cloud Run 預設模式（CPU allocated only during request processing）在 HTTP response 送出後立即 throttle CPU。BackgroundTask 會凍結，行為不可靠。
+
+**Cloud Tasks 流程：**
 
 ```
-for each image in pending_images:
+用戶輸入「完成」
+  → 程式呼叫 Cloud Tasks API，建立一個 Task：
+      POST /internal/process-batch
+      body: { user_id, org_id, image_paths: [...] }
+  → 立刻回覆 LINE「已排程 N 張名片，辨識中請稍候...」+ 200 OK
+  → 清除 user_states
+
+Cloud Tasks 在背景發送 HTTP POST 到 /internal/process-batch
+  → 這是全新的 HTTP 請求，Cloud Run 正常分配 CPU
+  → timeout 最長可設 60 分鐘，足夠處理 30 張圖
+```
+
+**Worker endpoint `/internal/process-batch`：**
+
+```
+for each image_path in image_paths:
     1. 從 Firebase Storage 下載圖片
     2. 呼叫現有 gemini_utils OCR（response_mime_type: application/json）
     3. 走現有去重檢查（email 比對）
@@ -92,7 +112,8 @@ for each image in pending_images:
 ```
 
 - **循序處理**（非並發），天然避開 Gemini rate limit
-- 試用版 scan_count 檢查：若中途達上限，停止處理剩餘圖片並在摘要中說明
+- Cloud Tasks 每月前 100 萬次免費，成本為零
+- 安全：`/internal/process-batch` 只接受來自 Cloud Tasks 的請求（驗證 `X-CloudTasks-QueueName` header）
 
 ---
 
@@ -100,15 +121,22 @@ for each image in pending_images:
 
 | 檔案 | 修改內容 |
 |------|---------|
-| `app/line_handlers.py` | 新增 batch_uploading state 處理、「批量上傳」「完成」「取消」指令判斷 |
+| `app/line_handlers.py` | 新增 batch_uploading state 處理、「批量上傳」「完成」「取消」指令判斷、呼叫 Cloud Tasks API |
 | `app/firebase_utils.py` | 新增 `upload_raw_image_to_storage()`、`delete_raw_image()` |
+| `app/main.py` | 新增 `/internal/process-batch` endpoint |
+| `app/batch_processor.py` | 新增（Worker 邏輯：循序 OCR、Push API 推播） |
 | `app/gemini_utils.py` | 無修改（沿用現有 OCR 函式） |
 | `app/bot_instance.py` | 無修改（user_states 結構已支援任意 dict） |
+
+**新增環境變數：**
+- `CLOUD_TASKS_QUEUE` — Cloud Tasks queue 名稱
+- `CLOUD_RUN_URL` — 自己的 Cloud Run 服務 URL（給 Cloud Tasks 回呼用）
+- `CLOUD_TASKS_LOCATION` — GCP region（e.g. `asia-east1`）
 
 ---
 
 ## 不在此次範圍內
 
-- Cloud Tasks / Pub/Sub（MVP 用 BackgroundTasks 即可）
 - 試用版掃描上限整合（待試用版功能設計後再一併實作）
 - 批量上傳進度條或中間狀態通知
+- Cloud Tasks retry 策略細化（使用預設即可）
