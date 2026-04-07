@@ -1,6 +1,7 @@
 from urllib.parse import quote
 from linebot.models import (
-    FlexSendMessage, TextSendMessage, QuickReply, QuickReplyButton, PostbackAction
+    FlexSendMessage, TextSendMessage, QuickReply, QuickReplyButton, PostbackAction,
+    URIAction
 )
 from . import config
 
@@ -833,4 +834,103 @@ def build_add_namecard_quick_reply() -> TextSendMessage:
     return TextSendMessage(
         text="請選擇新增名片的方式：",
         quick_reply=QuickReply(items=buttons)
+    )
+
+
+# ---------------------------------------------------------------------------
+# Trial / Paywall messages
+# ---------------------------------------------------------------------------
+
+def get_trial_welcome_message() -> TextSendMessage:
+    """歡迎試用推播訊息（onboarding push）"""
+    return TextSendMessage(
+        text=(
+            "🎉 歡迎使用智慧名片管家！\n\n"
+            "已為您開通 7 天免費專業版試用：\n"
+            "• 可掃描最多 50 張名片\n"
+            "• 邀請最多 2 位同事加入團隊\n"
+            "• 完整 OCR 掃描、智慧搜尋、CSV 匯出功能\n\n"
+            "傳送第一張名片試試看吧！📸"
+        )
+    )
+
+
+def get_paywall_flex(reason: str) -> FlexSendMessage:
+    """
+    付費牆 Flex Message。
+    reason: 'trial_expired' | 'scan_limit_reached' | 'member_limit_reached'
+    """
+    if reason == 'trial_expired':
+        title = "試用期已結束"
+        body_text = "您的 7 天免費試用已結束。\n升級後即可繼續新增名片，現有資料完整保留。"
+    elif reason == 'scan_limit_reached':
+        title = "已達試用上限"
+        body_text = "您的團隊已掃描 50 張名片 🎉\n升級為 Pro 方案，解鎖無限掃描與更多成員席位。"
+    else:  # member_limit_reached
+        title = "成員人數已達上限"
+        body_text = "試用方案最多支援 3 位團隊成員。\n升級為 Pro 方案即可邀請整個公司加入。"
+
+    if config.LINE_OA_ID:
+        upgrade_action = {
+            "type": "uri",
+            "label": "了解升級方案",
+            "uri": f"https://line.me/R/ti/p/{config.LINE_OA_ID}"
+        }
+    else:
+        upgrade_action = {
+            "type": "message",
+            "label": "了解升級方案",
+            "text": "我想了解升級方案"
+        }
+
+    bubble = {
+        "type": "bubble",
+        "size": "kilo",
+        "header": {
+            "type": "box",
+            "layout": "vertical",
+            "backgroundColor": "#F5A623",
+            "paddingAll": "15px",
+            "contents": [
+                {
+                    "type": "text",
+                    "text": title,
+                    "color": "#ffffff",
+                    "size": "md",
+                    "weight": "bold"
+                }
+            ]
+        },
+        "body": {
+            "type": "box",
+            "layout": "vertical",
+            "paddingAll": "15px",
+            "contents": [
+                {
+                    "type": "text",
+                    "text": body_text,
+                    "wrap": True,
+                    "size": "sm",
+                    "color": "#333333"
+                }
+            ]
+        },
+        "footer": {
+            "type": "box",
+            "layout": "vertical",
+            "paddingAll": "10px",
+            "contents": [
+                {
+                    "type": "button",
+                    "style": "primary",
+                    "color": "#F5A623",
+                    "action": upgrade_action
+                }
+            ]
+        }
+    }
+
+    return FlexSendMessage(
+        alt_text=title,
+        contents=bubble
     )

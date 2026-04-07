@@ -55,7 +55,7 @@ def get_quick_reply_items():
 
 
 async def handle_postback_event(event: PostbackEvent, user_id: str):
-    org_id = firebase_utils.ensure_user_org(user_id)
+    org_id, _ = firebase_utils.ensure_user_org(user_id)
     postback_data = dict(parse_qsl(event.postback.data))
     action = postback_data.get('action')
     card_id = postback_data.get('card_id')
@@ -377,7 +377,11 @@ async def handle_text_event(event: MessageEvent, user_id: str) -> None:
         await handle_join(event, user_id, msg)
         return
 
-    org_id = firebase_utils.ensure_user_org(user_id)
+    org_id, is_new_org = firebase_utils.ensure_user_org(user_id)
+    if is_new_org:
+        await line_bot_api.push_message(
+            user_id, flex_messages.get_trial_welcome_message()
+        )
     user_action = user_states.get(user_id, {}).get('action')
 
     if user_action == 'adding_memo':
@@ -518,6 +522,18 @@ async def handle_join(event: MessageEvent, user_id: str, msg: str):
         return
 
     target_org_id = invite['org_id']
+
+    # 成員上限檢查
+    perm = firebase_utils.check_org_permission(target_org_id, 'add_member')
+    if not perm['allowed']:
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(
+                text='該團隊成員人數已達試用上限（3 人），需升級方案才能繼續邀請。'
+            )
+        )
+        return
+
     firebase_utils.add_member(target_org_id, user_id)
 
     org = firebase_utils.get_org(target_org_id)
@@ -1030,7 +1046,20 @@ async def _save_and_reply_namecard(event, user_id: str, org_id: str, card_obj: d
 
 
 async def handle_image_event(event: MessageEvent, user_id: str) -> None:
-    org_id = firebase_utils.ensure_user_org(user_id)
+    org_id, is_new_org = firebase_utils.ensure_user_org(user_id)
+    if is_new_org:
+        await line_bot_api.push_message(
+            user_id, flex_messages.get_trial_welcome_message()
+        )
+
+    # 權限檢查：試用期或用量上限
+    permission = firebase_utils.check_org_permission(org_id, 'scan')
+    if not permission['allowed']:
+        await line_bot_api.reply_message(
+            event.reply_token,
+            flex_messages.get_paywall_flex(permission['reason'])
+        )
+        return
 
     # 批量模式：靜默收集圖片到 Firebase Storage
     batch_state = firebase_utils.get_batch_state(user_id)
@@ -1127,12 +1156,16 @@ async def send_batch_summary_push(user_id: str, summary: dict) -> None:
         f"✅ 批次處理完成！共 {total} 張，"
         f"成功 {summary['success']} 張，失敗 {summary['failed']} 張。"
     )
-    if summary["failures"]:
+    if summary.get("quota_hit"):
+        text += "\n\n⚠️ 已達用量上限，後續圖片未處理。請升級方案以繼續使用。"
+    elif summary["failures"]:
         details = "；".join(
             f"第 {f['index']} 張 — {f['reason']}"
             for f in summary["failures"]
+            if not f["reason"].startswith("quota_exceeded")
         )
-        text += f"\n\n失敗原因：{details}"
+        if details:
+            text += f"\n\n失敗原因：{details}"
     try:
         await line_bot_api.push_message(user_id, TextSendMessage(text=text))
     except Exception as e:

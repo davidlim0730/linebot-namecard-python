@@ -4,7 +4,7 @@ import uuid
 from firebase_admin import db, storage
 from . import config
 from io import BytesIO
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, timezone
 from collections import Counter
 from .gsheets_utils import trigger_sync
 
@@ -24,14 +24,20 @@ def get_user_org_id(user_id: str) -> str:
 
 
 def create_org(user_id: str, org_name: str) -> str:
-    """建立新組織，指定使用者為 admin，回傳 org_id"""
+    """建立新組織，指定使用者為 admin，自動啟動 7 天試用，回傳 org_id"""
     org_id = f"org_{uuid.uuid4().hex[:8]}"
     now = datetime.now().isoformat()
+    trial_ends_at = (
+        datetime.now(timezone.utc) + timedelta(days=7)
+    ).strftime('%Y-%m-%dT%H:%M:%SZ')
     try:
         db.reference(f"organizations/{org_id}").set({
             "name": org_name,
             "created_by": user_id,
             "created_at": now,
+            "plan_type": "trial",
+            "trial_ends_at": trial_ends_at,
+            "usage": {"scan_count": 0},
             "members": {
                 user_id: {
                     "role": "admin",
@@ -102,18 +108,74 @@ def remove_member(org_id: str, user_id: str) -> bool:
         return False
 
 
-def ensure_user_org(user_id: str) -> str:
-    """確保使用者有所屬組織，若無則自動建立個人組織，回傳 org_id"""
+def ensure_user_org(user_id: str) -> tuple:
+    """確保使用者有所屬組織，若無則自動建立個人組織。
+    回傳 (org_id, is_new: bool)，is_new=True 表示剛建立的新組織。
+    """
     org_id = get_user_org_id(user_id)
     if not org_id:
         short_id = user_id[-8:] if len(user_id) > 8 else user_id
         org_id = create_org(user_id, f"{short_id}的團隊")
-    return org_id
+        return org_id, True
+    return org_id, False
 
 
 def require_admin(org_id: str, user_id: str) -> bool:
     """回傳 True 若使用者為組織 admin"""
     return get_user_role(org_id, user_id) == "admin"
+
+
+TRIAL_SCAN_LIMIT = 50
+TRIAL_MEMBER_LIMIT = 3
+
+
+def check_org_permission(org_id: str, action_type: str) -> dict:
+    """
+    檢查組織是否允許執行指定動作。
+    action_type: 'scan' | 'add_member'
+    回傳 {'allowed': bool, 'reason': str}
+    reason: 'ok' | 'trial_expired' | 'scan_limit_reached' | 'member_limit_reached'
+    """
+    org = get_org(org_id)
+    plan_type = org.get('plan_type')
+
+    # 祖父條款：舊組織無 plan_type → 預設 pro（無限制）
+    if plan_type is None:
+        return {'allowed': True, 'reason': 'ok'}
+
+    if plan_type == 'pro':
+        return {'allowed': True, 'reason': 'ok'}
+
+    # trial 檢查
+    if action_type == 'scan':
+        trial_ends_at = org.get('trial_ends_at')
+        if trial_ends_at:
+            ends_dt = datetime.fromisoformat(
+                trial_ends_at.replace('Z', '+00:00')
+            )
+            if datetime.now(timezone.utc) > ends_dt:
+                return {'allowed': False, 'reason': 'trial_expired'}
+        scan_count = org.get('usage', {}).get('scan_count', 0)
+        if scan_count >= TRIAL_SCAN_LIMIT:
+            return {'allowed': False, 'reason': 'scan_limit_reached'}
+
+    if action_type == 'add_member':
+        member_count = len(org.get('members', {}))
+        if member_count >= TRIAL_MEMBER_LIMIT:
+            return {'allowed': False, 'reason': 'member_limit_reached'}
+
+    return {'allowed': True, 'reason': 'ok'}
+
+
+def increment_scan_count(org_id: str) -> int:
+    """Firebase Transaction 原子遞增 scan_count，回傳新的計數值"""
+    try:
+        ref = db.reference(f'organizations/{org_id}/usage/scan_count')
+        result = ref.transaction(lambda current: (current or 0) + 1)
+        return result
+    except Exception as e:
+        print(f"Error incrementing scan count: {e}")
+        return 0
 
 
 # ---------------------------------------------------------------------------
@@ -353,6 +415,7 @@ def add_namecard(namecard_obj: dict, org_id: str, added_by: str) -> str:
         new_card_ref = ref.push(namecard_obj)
         card_id = new_card_ref.key
         trigger_sync(org_id, card_id, namecard_obj)
+        increment_scan_count(org_id)
         return card_id
     except Exception as e:
         print(f"Error adding namecard: {e}")

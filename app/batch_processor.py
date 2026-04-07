@@ -14,7 +14,18 @@ async def process_batch(user_id: str, org_id: str, image_paths: list) -> dict:
     failed = 0
     failures = []
 
+    quota_hit = False
+    quota_reason = None
+
     for idx, storage_path in enumerate(image_paths):
+        # 額度檢查：每張圖片前先確認組織還有剩餘額度
+        permission = firebase_utils.check_org_permission(org_id, 'scan')
+        if not permission['allowed']:
+            quota_hit = True
+            quota_reason = permission['reason']
+            failures.append({"index": idx + 1, "reason": f"quota_exceeded:{permission['reason']}"})
+            break
+
         # idempotency：若 storage 檔案不存在，代表已被處理過，跳過
         image_bytes = firebase_utils.download_raw_image(storage_path)
         if image_bytes is None:
@@ -60,4 +71,8 @@ async def process_batch(user_id: str, org_id: str, image_paths: list) -> dict:
             # 無論成功或失敗都刪除暫存圖
             firebase_utils.delete_raw_image(storage_path)
 
-    return {"success": success, "failed": failed, "failures": failures}
+    result = {"success": success, "failed": failed, "failures": failures}
+    if quota_hit:
+        result["quota_hit"] = True
+        result["quota_reason"] = quota_reason
+    return result

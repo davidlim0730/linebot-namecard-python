@@ -20,6 +20,7 @@ FIREBASE_STORAGE_BUCKET = os.environ.get("FIREBASE_STORAGE_BUCKET")
 NAMECARD_PATH = "namecard"
 GOOGLE_SHEET_ID = os.environ.get("GOOGLE_SHEET_ID")
 DEFAULT_ORG_ID = os.environ.get("DEFAULT_ORG_ID", "org_default")
+LINE_OA_ID = os.environ.get("LINE_OA_ID")  # e.g. "@abc123", used for upgrade button
 
 # =====================
 # Cloud Tasks 設定（批量上傳，可選）
