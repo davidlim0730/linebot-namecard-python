@@ -9,9 +9,11 @@ import json
 
 from . import config
 from .line_handlers import (
-    handle_text_event, handle_image_event, handle_postback_event)
+    handle_text_event, handle_image_event, handle_postback_event,
+    send_batch_summary_push)
 from .bot_instance import close_session, parser
 from .firebase_utils import get_all_cards
+from .batch_processor import process_batch
 
 # =====================
 # 初始化區塊
@@ -95,6 +97,29 @@ async def export_user_contacts(user_id: str):
             contact_list.append(card_data)
         
     return {"user_id": user_id, "total": len(contact_list), "contacts": contact_list}
+
+
+@app.post("/internal/process-batch")
+async def internal_process_batch(request: Request):
+    """
+    Cloud Tasks worker endpoint for batch namecard OCR.
+    Security: verifies X-CloudTasks-QueueName header matches configured queue.
+    """
+    queue_name = request.headers.get("X-CloudTasks-QueueName", "")
+    if queue_name != config.CLOUD_TASKS_QUEUE:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    body = await request.json()
+    user_id = body.get("user_id")
+    org_id = body.get("org_id")
+    image_paths = body.get("image_paths", [])
+
+    if not user_id or not org_id or not image_paths:
+        raise HTTPException(status_code=400, detail="Missing required fields")
+
+    summary = await process_batch(user_id, org_id, image_paths)
+    await send_batch_summary_push(user_id, summary)
+    return {"status": "ok", "summary": summary}
 
 
 @app.on_event("shutdown")

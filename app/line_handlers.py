@@ -9,6 +9,7 @@ import json
 
 from . import firebase_utils, gemini_utils, utils, flex_messages, config, qrcode_utils
 from .bot_instance import line_bot_api, user_states
+from .cloud_tasks_utils import create_process_batch_task
 
 FIELD_LABELS = {
     "name": "姓名", "title": "職稱", "company": "公司",
@@ -180,6 +181,26 @@ async def handle_postback_event(event: PostbackEvent, user_id: str):
             TextSendMessage(
                 text="已取消搜尋。",
                 quick_reply=get_quick_reply_items()
+            )
+        )
+        return
+
+    elif action == "single_add":
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(
+                text="請傳送名片照片 📷",
+                quick_reply=get_quick_reply_items()
+            )
+        )
+        return
+
+    elif action == "batch_start":
+        firebase_utils.init_batch_state(user_id, org_id)
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(
+                text="已進入批量上傳模式，請開始傳送名片照片，全部傳送完畢後請輸入『完成』"
             )
         )
         return
@@ -391,6 +412,15 @@ async def handle_text_event(event: MessageEvent, user_id: str) -> None:
         await handle_smart_query(event, org_id, msg)
     elif msg in ("匯出", "export"):
         await handle_export(event, user_id, org_id)
+    elif msg == "新增":
+        await line_bot_api.reply_message(
+            event.reply_token,
+            flex_messages.build_add_namecard_quick_reply()
+        )
+    elif msg == "完成":
+        await handle_batch_done(event, user_id, org_id)
+    elif msg == "取消":
+        await handle_batch_cancel(event, user_id, org_id)
     else:
         await line_bot_api.reply_message(
             event.reply_token,
@@ -852,15 +882,7 @@ async def handle_smart_query(
         return
 
     try:
-        query = msg.strip().lower()
-        matched = []
-        for card_id, card_data in all_cards_dict.items():
-            if not isinstance(card_data, dict):
-                continue
-            name = (card_data.get("name") or "").lower()
-            company = (card_data.get("company") or "").lower()
-            if query in name or query in company:
-                matched.append((card_id, card_data))
+        matched = firebase_utils.search_cards(org_id, msg)
 
         if not matched:
             await line_bot_api.reply_message(
@@ -896,6 +918,80 @@ async def handle_smart_query(
             )
         except Exception as reply_err:
             print(f"Error sending error reply: {reply_err}")
+
+
+async def handle_batch_done(
+        event: MessageEvent, user_id: str, org_id: str):
+    """處理批量上傳「完成」指令：建立 Cloud Task 排程處理"""
+    batch_state = firebase_utils.get_batch_state(user_id)
+    if not batch_state:
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(
+                text="您目前不在批量上傳模式中。輸入『新增』開始。",
+                quick_reply=get_quick_reply_items()
+            )
+        )
+        return
+
+    # pending_images 為 Map {push_id: storage_path}，取 values 得路徑 list
+    pending_map = batch_state.get("pending_images") or {}
+    image_paths = list(pending_map.values()) if isinstance(pending_map, dict) else pending_map
+    if not image_paths:
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text="尚未收到任何圖片，請先傳送名片照片。")
+        )
+        return
+
+    task_name = create_process_batch_task(user_id, org_id, image_paths)
+    firebase_utils.clear_batch_state(user_id)
+
+    if task_name:
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(
+                text=f"✅ 已排程 {len(image_paths)} 張名片，辨識中請稍候...",
+                quick_reply=get_quick_reply_items()
+            )
+        )
+    else:
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(
+                text="建立排程時發生錯誤，請稍後再試。",
+                quick_reply=get_quick_reply_items()
+            )
+        )
+
+
+async def handle_batch_cancel(
+        event: MessageEvent, user_id: str, org_id: str):
+    """處理批量上傳「取消」指令：刪除暫存圖並清除狀態"""
+    batch_state = firebase_utils.get_batch_state(user_id)
+    if not batch_state:
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(
+                text="您目前不在批量上傳模式中。",
+                quick_reply=get_quick_reply_items()
+            )
+        )
+        return
+
+    pending_map = batch_state.get("pending_images") or {}
+    image_paths = list(pending_map.values()) if isinstance(pending_map, dict) else pending_map
+    for storage_path in image_paths:
+        firebase_utils.delete_raw_image(storage_path)
+    firebase_utils.clear_batch_state(user_id)
+
+    await line_bot_api.reply_message(
+        event.reply_token,
+        TextSendMessage(
+            text=f"已取消，共丟棄 {len(image_paths)} 張圖片。",
+            quick_reply=get_quick_reply_items()
+        )
+    )
 
 
 async def _save_and_reply_namecard(event, user_id: str, org_id: str, card_obj: dict):
@@ -935,6 +1031,39 @@ async def _save_and_reply_namecard(event, user_id: str, org_id: str, card_obj: d
 
 async def handle_image_event(event: MessageEvent, user_id: str) -> None:
     org_id = firebase_utils.ensure_user_org(user_id)
+
+    # 批量模式：靜默收集圖片到 Firebase Storage
+    batch_state = firebase_utils.get_batch_state(user_id)
+    if batch_state:
+        pending_map = batch_state.get("pending_images") or {}
+        pending_count = len(pending_map) if isinstance(pending_map, dict) else len(pending_map)
+        if pending_count >= 30:
+            await line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(
+                    text="已達批次上限 30 張，請輸入『完成』送出辨識，或輸入『取消』放棄"
+                )
+            )
+            return
+        message_content = await line_bot_api.get_message_content(event.message.id)
+        image_bytes = b""
+        async for s in message_content.iter_content():
+            image_bytes += s
+        storage_path = firebase_utils.upload_raw_image_to_storage(
+            org_id, user_id, image_bytes)
+        if storage_path:
+            count = firebase_utils.append_batch_image(user_id, storage_path)
+            # 無訊息回應（靜默收集）
+            await line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text=f"已收到第 {count} 張，繼續傳送或輸入『完成』送出辨識")
+            )
+        else:
+            await line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text="上傳圖片時發生錯誤，請稍後再試。")
+            )
+        return
 
     message_content = await line_bot_api.get_message_content(event.message.id)
     image_content = b""
@@ -989,3 +1118,22 @@ async def handle_image_event(event: MessageEvent, user_id: str) -> None:
             ])
         )
     )
+
+
+async def send_batch_summary_push(user_id: str, summary: dict) -> None:
+    """推送批次處理結果摘要給用戶"""
+    total = summary["success"] + summary["failed"]
+    text = (
+        f"✅ 批次處理完成！共 {total} 張，"
+        f"成功 {summary['success']} 張，失敗 {summary['failed']} 張。"
+    )
+    if summary["failures"]:
+        details = "；".join(
+            f"第 {f['index']} 張 — {f['reason']}"
+            for f in summary["failures"]
+        )
+        text += f"\n\n失敗原因：{details}"
+    try:
+        await line_bot_api.push_message(user_id, TextSendMessage(text=text))
+    except Exception as e:
+        print(f"Batch: failed to send push summary to {user_id}: {e}")
