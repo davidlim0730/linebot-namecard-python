@@ -16,6 +16,7 @@
 1. **統一入口（防呆與分流）**
    - 用戶輸入「新增」或點擊圖文選單的「📷 新增名片」
    - bot 回傳 Quick Reply 選單：「📷 單張即時辨識」或「🗂️ 批量排程上傳 (最多30張)」
+   - Quick Reply 採 **PostbackAction**（非 MessageAction），點擊後送出 `data="action=start_batch_upload"` 由 `handle_postback_event` 乾淨攔截，不污染 `handle_text_event` 的字串比對邏輯
 
 2. **進入批量模式**
    - 用戶點擊「🗂️ 批量排程上傳」
@@ -72,7 +73,7 @@
 
 | 事件 | 從 | 到 |
 |------|----|----|
-| 輸入「批量上傳」 | 無 state | batch_uploading |
+| 點擊 Quick Reply「🗂️ 批量排程上傳」（PostbackAction） | 無 state | batch_uploading |
 | 收到圖片 | batch_uploading | batch_uploading（append） |
 | 輸入「完成」 | batch_uploading | 清除 state，建立 Cloud Task |
 | 輸入「取消」 | batch_uploading | 清除 state |
@@ -101,7 +102,7 @@ Cloud Run 預設模式（CPU allocated only during request processing）在 HTTP
       POST /internal/process-batch
       body: { user_id, org_id, image_paths: [...] }
   → 立刻回覆 LINE「已排程 N 張名片，辨識中請稍候...」+ 200 OK
-  → 清除 user_states
+  → 清除 Firebase RTDB batch_states/{user_id}
 
 Cloud Tasks 在背景發送 HTTP POST 到 /internal/process-batch
   → 這是全新的 HTTP 請求，Cloud Run 正常分配 CPU
@@ -132,12 +133,12 @@ for each image_path in image_paths:
 
 | 檔案 | 修改內容 |
 |------|---------|
-| `app/line_handlers.py` | 新增 batch_uploading state 處理、「批量上傳」「完成」「取消」指令判斷、呼叫 Cloud Tasks API |
-| `app/firebase_utils.py` | 新增 `upload_raw_image_to_storage()`、`delete_raw_image()` |
+| `app/line_handlers.py` | 新增 batch_uploading state 處理（從 Firebase RTDB 讀取）、PostbackAction `start_batch_upload` handler、「完成」「取消」文字指令判斷、呼叫 Cloud Tasks API |
+| `app/firebase_utils.py` | 新增 `upload_raw_image_to_storage()`、`delete_raw_image()`、`batch_states` CRUD（`init_batch_state`、`get_batch_state`、`append_batch_image`、`clear_batch_state`） |
 | `app/main.py` | 新增 `/internal/process-batch` endpoint |
 | `app/batch_processor.py` | 新增（Worker 邏輯：循序 OCR、Push API 推播） |
 | `app/gemini_utils.py` | 無修改（沿用現有 OCR 函式） |
-| `app/bot_instance.py` | 無修改（user_states 結構已支援任意 dict） |
+| `app/bot_instance.py` | 無修改（不使用 `user_states`，狀態統一存 Firebase RTDB） |
 
 **新增環境變數：**
 - `CLOUD_TASKS_QUEUE` — Cloud Tasks queue 名稱
