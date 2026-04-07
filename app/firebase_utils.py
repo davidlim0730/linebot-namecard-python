@@ -247,6 +247,28 @@ def remove_card_role_tag(org_id: str, card_id: str, tag_name: str) -> bool:
         return False
 
 
+def search_cards(org_id: str, query: str) -> list:
+    """關鍵字搜尋名片（姓名、公司、職稱），回傳 [(card_id, card_data), ...]"""
+    try:
+        query = query.strip().lower()
+        all_cards = get_all_cards(org_id)
+        matched = []
+        for card_id, card_data in all_cards.items():
+            if not isinstance(card_data, dict):
+                continue
+            searchable = " ".join([
+                (card_data.get("name") or ""),
+                (card_data.get("company") or ""),
+                (card_data.get("title") or ""),
+            ]).lower()
+            if query in searchable:
+                matched.append((card_id, card_data))
+        return matched
+    except Exception as e:
+        print(f"Error searching cards: {e}")
+        return []
+
+
 def get_cards_by_role_tag(org_id: str, tag_name: str) -> dict:
     """回傳包含指定角色標籤的名片 {card_id: card_data}，按 created_at 降序"""
     try:
@@ -468,6 +490,104 @@ def upload_qrcode_to_storage(
     except Exception as e:
         print(f"Error uploading QR code to storage: {e}")
         return None
+
+
+# ---------------------------------------------------------------------------
+# Batch Upload: Firebase Storage helpers
+# ---------------------------------------------------------------------------
+
+def upload_raw_image_to_storage(org_id: str, user_id: str, image_bytes: bytes) -> str:
+    """上傳名片原圖到 Firebase Storage，回傳 storage path"""
+    try:
+        bucket = storage.bucket()
+        file_uuid = str(uuid.uuid4())
+        blob_name = f"raw_images/{org_id}/{user_id}/{file_uuid}.jpg"
+        blob = bucket.blob(blob_name)
+        blob.upload_from_string(image_bytes, content_type='image/jpeg')
+        return blob_name
+    except Exception as e:
+        print(f"Error uploading raw image to storage: {e}")
+        return None
+
+
+def delete_raw_image(storage_path: str) -> None:
+    """刪除 Firebase Storage 上的原圖，容錯（不存在時不 raise）"""
+    try:
+        bucket = storage.bucket()
+        blob = bucket.blob(storage_path)
+        blob.delete()
+    except Exception as e:
+        print(f"Warning: could not delete raw image {storage_path}: {e}")
+
+
+def download_raw_image(storage_path: str) -> bytes:
+    """從 Firebase Storage 下載原圖 bytes，供 Worker 使用"""
+    try:
+        bucket = storage.bucket()
+        blob = bucket.blob(storage_path)
+        return blob.download_as_bytes()
+    except Exception as e:
+        print(f"Error downloading raw image {storage_path}: {e}")
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Batch Upload: RTDB batch_states CRUD
+# Note: batch_states/{user_id} should be write-protected to admin SDK only
+#       (update Firebase RTDB security rules accordingly)
+# ---------------------------------------------------------------------------
+
+def get_batch_state(user_id: str) -> dict:
+    """取得批量上傳狀態，無狀態時回傳 None"""
+    try:
+        ref = db.reference(f"batch_states/{user_id}")
+        return ref.get()
+    except Exception as e:
+        print(f"Error getting batch state: {e}")
+        return None
+
+
+def init_batch_state(user_id: str, org_id: str) -> None:
+    """初始化批量上傳狀態"""
+    try:
+        now = datetime.now().isoformat()
+        # pending_images 不預設空陣列，使用 push() 原子寫入，避免 race condition
+        db.reference(f"batch_states/{user_id}").set({
+            "org_id": org_id,
+            "created_at": now,
+            "updated_at": now,
+        })
+    except Exception as e:
+        print(f"Error init batch state: {e}")
+
+
+def append_batch_image(user_id: str, storage_path: str) -> int:
+    """
+    原子性新增一張圖到批量狀態，回傳目前 pending_images 數量。
+    使用 Firebase push() 避免高併發（LINE 一次送多張圖）時的 race condition。
+    pending_images 結構為 Map：{ push_id: storage_path }
+    """
+    try:
+        # push() 是原子操作，不需先讀再寫，多個併發請求不會互蓋
+        db.reference(f"batch_states/{user_id}/pending_images").push(storage_path)
+        db.reference(f"batch_states/{user_id}/updated_at").set(
+            datetime.now().isoformat()
+        )
+        # 讀取最新數量（允許短暫不一致，此處僅用於顯示）
+        pending_map = db.reference(
+            f"batch_states/{user_id}/pending_images").get() or {}
+        return len(pending_map)
+    except Exception as e:
+        print(f"Error appending batch image: {e}")
+        return 0
+
+
+def clear_batch_state(user_id: str) -> None:
+    """清除批量上傳狀態"""
+    try:
+        db.reference(f"batch_states/{user_id}").delete()
+    except Exception as e:
+        print(f"Error clearing batch state: {e}")
 
 
 # ---------------------------------------------------------------------------

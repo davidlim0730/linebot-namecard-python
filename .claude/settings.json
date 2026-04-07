@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(brew install:*)",
+      "Bash(export PATH=/opt/homebrew/bin:$PATH)",
+      "Bash(python3 -c \":*)",
+      "Bash(git -C /Users/davidlim/Downloads/linebot-namecard-python status --short)",
+      "Bash(git add:*)",
+      "Bash(git -C:*)",
+      "Bash(git commit:*)",
+      "Bash(openspec status:*)",
+      "Bash(openspec instructions:*)",
+      "Bash(python -m flake8 .)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" https://linebot-namecard-ailyterj5q-de.a.run.app/)",
+      "Bash(gcloud run:*)",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "WebFetch(domain:developers.line.biz)",
+      "mcp__fetch__fetch"
+    ],
+    "defaultMode": "bypassPermissions"
+  },
+  "enabledPlugins": {
+    "frontend-design@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true
+  }
+}

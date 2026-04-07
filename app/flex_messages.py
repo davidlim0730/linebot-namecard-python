@@ -1,5 +1,8 @@
 from urllib.parse import quote
-from linebot.models import FlexSendMessage
+from linebot.models import (
+    FlexSendMessage, TextSendMessage, QuickReply, QuickReplyButton, PostbackAction
+)
+from . import config
 
 
 def get_compact_namecard_bubble(card_data: dict, card_id: str) -> dict:
@@ -806,3 +809,28 @@ def role_tag_select_flex(
         }
     }
     return FlexSendMessage(alt_text="設定角色標籤", contents=flex_msg)
+
+
+def build_add_namecard_quick_reply() -> TextSendMessage:
+    """回傳新增名片的 Quick Reply 選單（PostbackAction 按鈕）"""
+    buttons = [
+        QuickReplyButton(
+            action=PostbackAction(
+                label="📷 單張即時辨識",
+                data="action=single_add"
+            )
+        ),
+    ]
+    if config.BATCH_UPLOAD_ENABLED:
+        buttons.append(
+            QuickReplyButton(
+                action=PostbackAction(
+                    label="🗂️ 批量排程上傳 (最多30張)",
+                    data="action=batch_start"
+                )
+            )
+        )
+    return TextSendMessage(
+        text="請選擇新增名片的方式：",
+        quick_reply=QuickReply(items=buttons)
+    )

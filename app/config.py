@@ -22,6 +22,20 @@ GOOGLE_SHEET_ID = os.environ.get("GOOGLE_SHEET_ID")
 DEFAULT_ORG_ID = os.environ.get("DEFAULT_ORG_ID", "org_default")
 
 # =====================
+# Cloud Tasks 設定（批量上傳，可選）
+# =====================
+CLOUD_TASKS_QUEUE = os.environ.get("CLOUD_TASKS_QUEUE")
+CLOUD_TASKS_LOCATION = os.environ.get("CLOUD_TASKS_LOCATION")
+CLOUD_RUN_URL = os.environ.get("CLOUD_RUN_URL")
+
+if not all([CLOUD_TASKS_QUEUE, CLOUD_TASKS_LOCATION, CLOUD_RUN_URL]):
+    print("Warning: CLOUD_TASKS_QUEUE, CLOUD_TASKS_LOCATION, or CLOUD_RUN_URL not set. "
+          "Batch upload feature is disabled.")
+    BATCH_UPLOAD_ENABLED = False
+else:
+    BATCH_UPLOAD_ENABLED = True
+
+# =====================
 # Email 設定（CSV 匯出，可選）
 # =====================
 SMTP_USER = os.environ.get("SMTP_USER")

@@ -8,3 +8,4 @@ Pillow
 qrcode[pil]
 firebase-admin
 gspread
+google-cloud-tasks

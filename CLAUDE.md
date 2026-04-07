@@ -2,161 +2,171 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Product Strategy
+## Product Vision
 
-### Product Vision
+「用 LINE 就能管名片」——為台灣企業業務團隊打造的共享名片管理工具。以 LINE 為主要介面，無需另裝 App，支援名片掃描、查詢、共享與管理。
 
-「用 LINE 就能管名片」——為台灣企業業務團隊打造的共享名片管理工具。利用 LINE 作為台灣最普及的公務聯繫工具，讓使用者無需額外安裝 App，即可在日常使用的通訊軟體中完成名片掃描、查詢、共享與管理。
+**目標用戶**：企業業務團隊，需要共用名片庫、快速查找聯絡人、協作管理客戶關係。
 
-**目標用戶**：企業業務團隊，需要共用名片庫、快速查找聯絡人、協作管理客戶關係的工作場景。
+**當前進度**：Phase 3 已完成（標籤系統、CSV 匯出、Flex Message 重設計）。Phase 4（follow-up 追蹤）尚未開始。
 
-### Design Principles
+## Design Principles
 
-1. **LINE 優先，但不綁定**：LINE 是現階段的主要介面，但核心邏輯不應與 LINE SDK 耦合。未來可根據客戶情境擴展至 Web UI 或其他通訊平台。
-2. **平台解耦**：業務邏輯應與資料存取層分離（service layer）。Firebase 是 MVP 階段的選擇（開發快速、公司有免費 GCP 資源），但架構上應保持可替換性。
-3. **團隊優先於個人**：功能設計以團隊協作為核心考量，個人使用是團隊場景的子集。資料結構與權限設計應預留組織層級的擴展空間。
-4. **搜尋即核心體驗**：名片量大時仍能快速找人是產品的關鍵體驗，檢索功能的效能與準確度應持續優化。
-
-### Roadmap Phases
-
-**Phase 1 — MVP（現階段）**
-- 名片 OCR 掃描與結構化儲存
-- 自然語言智慧搜尋
-- 名片編輯與備註
-- vCard QR Code 匯出
-- Google Sheets 同步
-
-**Phase 2 — 團隊化**
-- 組織（organization）概念與資料結構重構
-- 名片可見性控制（私人 vs 團隊共享）
-- 角色權限（管理員 vs 一般成員）
-- 加入/邀請機制
-
-**Phase 3 — 管理與整合**
-- 群組與分類標籤系統
-- 匯出功能（CSV 等格式）
-- API 對接企業內部 CRM / 業務管理系統
-- 進階檢索（依公司、職稱、標籤等多維篩選）
-
-**Phase 4 — 自動化與追蹤**
-- 聯絡人 follow-up 提醒
-- 自動化跟進與業務追蹤
-- 互動數據分析
+1. **LINE 優先，但不綁定**：核心邏輯不應與 LINE SDK 耦合，未來可擴展至 Web UI 或其他平台。
+2. **平台解耦**：業務邏輯與資料存取層分離（service layer）。Firebase 是 MVP 選擇，架構保持可替換性。
+3. **團隊優先於個人**：所有名片以 `org_id` 為隔離單位。個人使用 = 單人組織。
+4. **搜尋即核心體驗**：智慧查詢走 Gemini 文字模型，需持續優化準確度。
 
 ## Commands
 
-### Development
-- **Run locally**: `uvicorn app.main:app --host=0.0.0.0 --port=8080`
-- **Lint**: `flake8 .` (configured in GitHub Actions)
-- **Install dependencies**: `pip install -r requirements.txt`
+```bash
+# 本地開發
+uvicorn app.main:app --host=0.0.0.0 --port=8080
 
-### Docker
-- **Build image**: `docker build -t linebot-namecard .`
-- **Run container**: `docker run -p 8080:8080 linebot-namecard`
+# 安裝依賴
+pip install -r requirements.txt
 
-### Google Cloud Platform Deployment
-- **Build and push to GCP**: `gcloud builds submit --tag gcr.io/{PROJECT_ID}/{IMAGE_NAME}`
-- **Deploy to Cloud Run**:
-  ```bash
-  gcloud run deploy {IMAGE_NAME} \
-    --image gcr.io/{PROJECT_ID}/{IMAGE_NAME} \
-    --platform managed \
-    --region asia-east1 \
-    --allow-unauthenticated \
-    --set-env-vars "ChannelSecret=YOUR_CHANNEL_SECRET,ChannelAccessToken=YOUR_CHANNEL_ACCESS_TOKEN,GEMINI_API_KEY=YOUR_GEMINI_API_KEY,FIREBASE_URL=YOUR_FIREBASE_URL,FIREBASE_STORAGE_BUCKET=YOUR_PROJECT_ID.firebasestorage.app,GOOGLE_APPLICATION_CREDENTIALS_JSON=YOUR_FIREBASE_SERVICE_ACCOUNT_JSON"
-  ```
+# Lint
+flake8 .
+
+# Docker
+docker build -t linebot-namecard .
+docker run -p 8080:8080 linebot-namecard
+```
+
+### GCP 部署
+
+```bash
+gcloud builds submit --tag gcr.io/{PROJECT_ID}/{IMAGE_NAME}
+
+gcloud run deploy {IMAGE_NAME} \
+  --image gcr.io/{PROJECT_ID}/{IMAGE_NAME} \
+  --platform managed \
+  --region asia-east1 \
+  --allow-unauthenticated \
+  --set-env-vars "ChannelSecret=...,ChannelAccessToken=...,GEMINI_API_KEY=...,FIREBASE_URL=...,FIREBASE_STORAGE_BUCKET=...,GOOGLE_APPLICATION_CREDENTIALS_JSON=..."
+```
 
 ## Architecture
 
-This is a LINE Bot application that processes business card images using Google's Gemini Pro Vision API and stores extracted data in Firebase Realtime Database.
+FastAPI webhook → `line_handlers.py` → `firebase_utils.py` / `gemini_utils.py`
 
-### Core Components
+### Request Flow
 
-- **app/main.py**: FastAPI entry point with webhook handler for LINE Bot
-- **app/line_handlers.py**: Handles different LINE message types (text, image, postback)
-- **app/gemini_utils.py**: Gemini Pro API integration for image OCR and text processing
-- **app/firebase_utils.py**: Firebase Realtime Database and Storage operations
-- **app/qrcode_utils.py**: vCard QR Code generation utilities
-- **app/flex_messages.py**: LINE Flex Message templates for rich card displays
-- **app/bot_instance.py**: LINE Bot API client and session management
-- **app/config.py**: Environment configuration and validation
+1. LINE webhook POST → `app/main.py` → 依事件型別分派
+2. **Text event** → `handle_text_event`：先檢查 `user_states`（進行中的多步驟操作），否則走文字指令或 `handle_smart_query`
+3. **Image event** → `handle_image_event`：先檢查 batch mode（`get_batch_state`）— 批量模式則靜默上傳到 Storage；一般模式則下載圖片 → Gemini Vision OCR → 去重檢查 → 存 Firebase
+4. **Postback event** → `handle_postback_event`：parse `action=xxx&card_id=yyy` → 對應 handler
+5. **Cloud Tasks callback** → `POST /internal/process-batch`：Worker 循序處理批量圖片 → Gemini OCR → 存 Firebase → Push 摘要
 
-### Data Flow
+### 批量上傳流程（Batch Upload）
 
-1. **Image Processing**: Images → Gemini Pro Vision → JSON extraction
-2. **Data Storage**: Structured namecard data → Firebase Realtime Database under `namecard/{user_id}/`
-3. **Smart Query**: Text queries → Gemini Pro text model → relevant namecard search
-4. **Interactive Editing**: Postback events → field editing states → database updates
-5. **QR Code Generation**: Namecard data → vCard format → QR Code image → Firebase Storage → LINE ImageMessage
+用戶輸入「新增」→ Quick Reply 選擇「批量排程上傳」→ PostbackAction `action=batch_start`
+→ `init_batch_state(user_id, org_id)` 寫入 RTDB
+→ 用戶傳送多張圖片 → 各自 `upload_raw_image_to_storage` → `append_batch_image`
+→ 用戶輸入「完成」→ `create_process_batch_task` 建立 Cloud Task → `clear_batch_state`
+→ Cloud Tasks 呼叫 `/internal/process-batch` → `batch_processor.process_batch` 循序 OCR
+→ `send_batch_summary_push` 推播結果
 
-### Key Features
+**Rollback**：移除 `CLOUD_TASKS_QUEUE` env var 即隱藏批量選項（`BATCH_UPLOAD_ENABLED = False`）
 
-- **Business Card OCR**: Extracts name, title, company, address, phone, email from images
-- **Duplicate Detection**: Checks existing cards by email before adding new ones
-- **Interactive Editing**: Users can edit individual fields through LINE interface
-- **Smart Search**: Natural language queries to find relevant business cards
-- **Memo System**: Add notes to business cards
-- **vCard QR Code Export**: Generate QR Code for direct import to phone contacts (iPhone/Android)
-- **State Management**: Tracks user interaction states for multi-step operations
+### State Machine（多步驟操作）
+
+`user_states` 是 in-memory dict（`bot_instance.py`），格式：
+```python
+user_states[user_id] = {'action': 'editing_field', 'card_id': '...', 'field': 'name'}
+```
+支援的 action：`editing_field`、`adding_memo`、`exporting_csv`、`adding_tag`
+
+**注意**：Cloud Run 重啟後 state 會消失，現為已知限制。
+
+### Data Model（Firebase Realtime DB）
+
+Phase 2 後，所有名片以組織為隔離單位：
+
+```
+batch_states/{user_id}/
+  org_id: string
+  pending_images: [storage_path, ...]
+  created_at, updated_at: ISO8601
+  ← 批量上傳進行中的狀態（Admin SDK 寫入）
+
+namecard/{org_id}/{card_id}/     ← config.NAMECARD_PATH = "namecard"
+  name, title, company, address, phone, email
+  memo?: string
+  added_by: user_id
+  created_at: ISO8601
+
+organizations/{org_id}/
+  name: string
+  created_by: user_id
+  members/{user_id}/role: "admin" | "member"
+  tags/roles/{push_id}/name: string    ← 角色標籤
+
+user_org_map/{user_id}: org_id        ← 使用者 → 組織的索引
+
+invite_codes/{code}/
+  org_id, created_by, created_at, expires_at
+
+namecard_cache/{card_id}/roles: [tag_names]  ← 名片標籤快取
+display_name_cache/{user_id}: string         ← LINE 顯示名稱快取
+```
+
+### Key Behaviors
+
+- **`ensure_user_org(user_id)`**：每次 text/image event 都呼叫，若使用者沒有組織則自動建立個人組織（這是 onboarding 的唯一入口）。
+- **去重邏輯**：`check_if_card_exists` 以 email 為 key 比對，若有重複回傳既有的 `card_id`。
+- **Gemini 模型**：`gemini-2.5-flash`，OCR 和查詢都強制 `response_mime_type: application/json`。
+- **CSV 匯出**：透過 SMTP 將 CSV 以 email 寄出（需設定 `SMTP_USER`、`SMTP_PASSWORD`）。
+- **Google Sheets 同步**：每次新增/更新名片時呼叫 `gsheets_utils.trigger_sync`（需設定 `GOOGLE_SHEET_ID`）。
 
 ### Environment Variables
 
-Required for deployment:
-- `ChannelSecret`: LINE Channel secret
-- `ChannelAccessToken`: LINE Channel access token
-- `GEMINI_API_KEY`: Google Gemini API key
-- `FIREBASE_URL`: Firebase Realtime Database URL
-- `FIREBASE_STORAGE_BUCKET`: Firebase Storage bucket name (e.g., `project-id.firebasestorage.app`)
-- `GOOGLE_APPLICATION_CREDENTIALS_JSON`: Firebase service account JSON (as string)
+必要：
+- `ChannelSecret`, `ChannelAccessToken` — LINE Bot
+- `GEMINI_API_KEY` — Gemini API
+- `FIREBASE_URL` — Firebase Realtime DB URL
+- `GOOGLE_APPLICATION_CREDENTIALS_JSON` — Firebase service account JSON 字串
 
-### Database Structure
+選用：
+- `FIREBASE_STORAGE_BUCKET` — QR Code 圖片儲存 + 批量上傳暫存（e.g. `project-id.firebasestorage.app`）
+- `GOOGLE_SHEET_ID` — Google Sheets 同步
+- `SMTP_USER`, `SMTP_PASSWORD` — CSV 匯出 email
+- `DEFAULT_ORG_ID` — 預設組織 ID（預設 `org_default`）
+- `CLOUD_TASKS_QUEUE` — Cloud Tasks queue name（e.g. `namecard-batch`）；缺失時批量功能關閉
+- `CLOUD_TASKS_LOCATION` — Cloud Tasks 地區（e.g. `asia-east1`）
+- `CLOUD_RUN_URL` — Cloud Run 服務 URL，供 Cloud Tasks 回呼（e.g. `https://xxx.run.app`）
+- `GOOGLE_CLOUD_PROJECT` — GCP 專案 ID（Cloud Tasks client 用）
 
-**Firebase Realtime Database** stores namecard data:
-```
-namecard/
-  {user_id}/
-    {card_id}/
-      name: string
-      title: string
-      company: string
-      address: string
-      phone: string
-      email: string
-      memo?: string
-```
+### Bot 測試指令（LINE 聊天室直接輸入）
 
-**Firebase Storage** stores QR Code images:
+- `remove` — 清理重複名片
+- `加入 {code}` — 加入組織（邀請碼流程）
+- `設定團隊名稱 {name}` — 更新組織名稱
+
+### Firebase Storage
+
 ```
-qrcodes/
-  {user_id}/
-    {card_id}.png
+qrcodes/{user_id}/{card_id}.png            ← QR Code，公開讀取，Admin SDK 寫入
+raw_images/{org_id}/{user_id}/{uuid}.jpg   ← 批量上傳暫存，處理後刪除，Admin SDK 讀寫
 ```
 
-### QR Code Implementation
+### GCP Infrastructure（批量上傳）
 
-**vCard Format** (app/qrcode_utils.py):
-- Generates vCard 3.0 format string from namecard data
-- Handles special character escaping (newlines, commas, semicolons)
-- Includes all fields: name, title, company, phone, email, address, memo
+```bash
+# 建立 Cloud Tasks queue（部署前執行一次）
+gcloud tasks queues create namecard-batch --location=asia-east1
 
-**QR Code Generation**:
-- Uses `qrcode` Python library
-- Parameters: `version=None` (auto), `error_correction=L`, `box_size=10`, `border=2`
-- Returns BytesIO object containing PNG image
-
-**Firebase Storage Upload** (app/firebase_utils.py):
-- Uploads QR Code to `qrcodes/{user_id}/{card_id}.png`
-- Sets image as publicly readable via `blob.make_public()`
-- Returns public URL for LINE ImageMessage
-
-**Storage Rules**:
-```javascript
-allow read: if true;   // Public read for QR Code images
-allow write: if false; // Only Admin SDK can write
+# 授予 Cloud Run SA enqueuer 權限
+gcloud projects add-iam-policy-binding {PROJECT_ID} \
+  --member="serviceAccount:{SA_EMAIL}" \
+  --role="roles/cloudtasks.enqueuer"
 ```
 
-### Testing Commands
-
-- `test`: Generates sample namecard for UI testing
-- `list`: Shows total number of stored namecards
-- `remove`: Removes duplicate entries by email
+**gcloud run deploy** 需加入環境變數：
+```
+CLOUD_TASKS_QUEUE=namecard-batch
+CLOUD_TASKS_LOCATION=asia-east1
+CLOUD_RUN_URL=https://{SERVICE}-{HASH}.{REGION}.run.app
+GOOGLE_CLOUD_PROJECT={PROJECT_ID}
+```
