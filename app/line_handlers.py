@@ -18,47 +18,53 @@ FIELD_LABELS = {
 }
 
 
-def get_quick_reply_items():
-    """建立常用功能的 Quick Reply 按鈕（名片 + 團隊 + 標籤 + 匯出，共 10 顆）"""
-    return QuickReply(items=[
-        QuickReplyButton(
-            action=PostbackAction(label="📊 統計", data="action=show_stats")
-        ),
-        QuickReplyButton(
-            action=PostbackAction(label="📋 列表", data="action=show_list")
-        ),
-        QuickReplyButton(
-            action=PostbackAction(label="🏷 標籤", data="action=show_tags")
-        ),
-        QuickReplyButton(
-            action=PostbackAction(label="📤 匯出", data="action=show_export")
-        ),
-        QuickReplyButton(
-            action=PostbackAction(label="👥 團隊", data="action=show_team")
-        ),
-        QuickReplyButton(
-            action=PostbackAction(label="👤 成員", data="action=show_members")
-        ),
-        QuickReplyButton(
-            action=PostbackAction(label="📨 邀請", data="action=show_invite")
-        ),
-        QuickReplyButton(
-            action=PostbackAction(label="🔍 搜尋名片", data="action=start_search")
-        ),
-        QuickReplyButton(
-            action=PostbackAction(label="ℹ️ 說明", data="action=show_help")
-        ),
-        QuickReplyButton(
-            action=MessageAction(label="➕ 加入", text="加入 ")
-        ),
-    ])
+async def check_onboarding(user_id: str, reply_token: str) -> bool:
+    """若用戶無 org，回覆 onboarding 選擇訊息並回傳 True（表示已攔截）。"""
+    if firebase_utils.get_user_org_id(user_id):
+        return False
+    await line_bot_api.reply_message(
+        reply_token,
+        TextSendMessage(
+            text='歡迎使用名片管理機器人 👋\n請先選擇「建立團隊」或是「加入既有團隊」',
+            quick_reply=QuickReply(items=[
+                QuickReplyButton(action=PostbackAction(
+                    label='🏢 建立團隊',
+                    data='action=create_org',
+                    display_text='建立團隊'
+                )),
+                QuickReplyButton(action=MessageAction(
+                    label='🔗 加入既有團隊',
+                    text='加入 '
+                )),
+            ])
+        )
+    )
+    return True
 
 
 async def handle_postback_event(event: PostbackEvent, user_id: str):
-    org_id, _ = firebase_utils.ensure_user_org(user_id)
     postback_data = dict(parse_qsl(event.postback.data))
     action = postback_data.get('action')
     card_id = postback_data.get('card_id')
+
+    # create_org：onboarding 選擇「建立團隊」（在 onboarding 攔截前處理，避免死鎖）
+    if action == 'create_org':
+        org_id, is_new_org = firebase_utils.ensure_user_org(user_id)
+        if is_new_org:
+            await line_bot_api.push_message(
+                user_id, flex_messages.get_trial_welcome_message()
+            )
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text='您的團隊已建立！現在可以開始掃描名片了。📇')
+        )
+        return
+
+    # Onboarding 攔截：新用戶尚未選擇組織
+    if await check_onboarding(user_id, event.reply_token):
+        return
+
+    org_id, _ = firebase_utils.ensure_user_org(user_id)
 
     # 處理功能性 action（不需要 card_id）
     if action == 'show_stats':
@@ -70,7 +76,7 @@ async def handle_postback_event(event: PostbackEvent, user_id: str):
 🏢 最常合作公司：{stats['top_company']}"""
         await line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text=stats_text, quick_reply=get_quick_reply_items())
+            TextSendMessage(text=stats_text)
         )
         return
 
@@ -79,7 +85,7 @@ async def handle_postback_event(event: PostbackEvent, user_id: str):
         list_text = f"📋 總共有 {len(all_cards)} 張名片資料。"
         await line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text=list_text, quick_reply=get_quick_reply_items())
+            TextSendMessage(text=list_text)
         )
         return
 
@@ -108,7 +114,7 @@ async def handle_postback_event(event: PostbackEvent, user_id: str):
 • 使用「加入通訊錄」可下載 QR Code"""
         await line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text=help_text, quick_reply=get_quick_reply_items())
+            TextSendMessage(text=help_text)
         )
         return
 
@@ -179,8 +185,7 @@ async def handle_postback_event(event: PostbackEvent, user_id: str):
         await line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(
-                text="已取消搜尋。",
-                quick_reply=get_quick_reply_items()
+                text="已取消搜尋。"
             )
         )
         return
@@ -189,8 +194,7 @@ async def handle_postback_event(event: PostbackEvent, user_id: str):
         await line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(
-                text="請傳送名片照片 📷",
-                quick_reply=get_quick_reply_items()
+                text="請傳送名片照片 📷"
             )
         )
         return
@@ -215,8 +219,7 @@ async def handle_postback_event(event: PostbackEvent, user_id: str):
             await line_bot_api.reply_message(
                 event.reply_token,
                 TextSendMessage(
-                    text="找不到正面名片資料，請重新掃描。",
-                    quick_reply=get_quick_reply_items()
+                    text="找不到正面名片資料，請重新掃描。"
                 )
             )
         return
@@ -232,8 +235,7 @@ async def handle_postback_event(event: PostbackEvent, user_id: str):
             await line_bot_api.reply_message(
                 event.reply_token,
                 TextSendMessage(
-                    text="找不到待儲存的名片資料，請重新掃描。",
-                    quick_reply=get_quick_reply_items()
+                    text="找不到待儲存的名片資料，請重新掃描。"
                 )
             )
         return
@@ -256,9 +258,52 @@ async def handle_postback_event(event: PostbackEvent, user_id: str):
         else:
             await line_bot_api.reply_message(
                 event.reply_token,
-                TextSendMessage(text='此名片已不存在。',
-                                quick_reply=get_quick_reply_items()))
+                TextSendMessage(text='此名片已不存在。'))
         return
+
+    # ── Rich Menu 主選單 actions ────────────────────────────────────────────
+    elif action == 'menu_card':
+        await handle_menu_card(event.reply_token)
+        return
+
+    elif action == 'menu_team':
+        await handle_menu_team(event.reply_token)
+        return
+
+    elif action == 'menu_data':
+        await handle_menu_data(event.reply_token)
+        return
+
+    elif action == 'menu_search_prompt':
+        user_states[user_id] = {'action': 'searching'}
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(
+                text="🔍 請輸入關鍵字搜尋名片，例如：王小明、ABC 公司"
+            )
+        )
+        return
+
+    elif action == 'menu_join_prompt':
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(
+                text="請輸入邀請碼，格式：加入 <邀請碼>"
+            )
+        )
+        return
+
+    elif action == 'menu_sheets_status':
+        if config.GOOGLE_SHEET_ID:
+            status_text = f"✅ Google Sheets 同步已啟用\nSheet ID: {config.GOOGLE_SHEET_ID}"
+        else:
+            status_text = "❌ Google Sheets 同步未設定（請聯絡管理員設定 GOOGLE_SHEET_ID）"
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text=status_text)
+        )
+        return
+    # ── end Rich Menu actions ───────────────────────────────────────────────
 
     # 處理需要 card_id 的 action
     card_name = firebase_utils.get_name_from_card(org_id, card_id)
@@ -313,8 +358,7 @@ async def handle_delete_card(
         await line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(
-                text='此名片非您新增，無法刪除。',
-                quick_reply=get_quick_reply_items()
+                text='此名片非您新增，無法刪除。'
             ))
         return
 
@@ -322,8 +366,7 @@ async def handle_delete_card(
     await line_bot_api.reply_message(
         event.reply_token,
         TextSendMessage(
-            text=f'已刪除「{card_name}」的名片。',
-            quick_reply=get_quick_reply_items()
+            text=f'已刪除「{card_name}」的名片。'
         ))
 
 
@@ -369,12 +412,59 @@ async def handle_download_contact(
             TextSendMessage(text='處理您的請求時發生錯誤，請稍後再試。'))
 
 
+async def handle_menu_card(reply_token: str) -> None:
+    """名片操作主選單 Quick Reply"""
+    quick_reply = flex_messages.build_quick_reply([
+        {"label": "➕ 新增名片", "action_type": "message", "text": "新增"},
+        {"label": "🔍 智慧搜尋", "action_type": "postback",
+         "data": "action=menu_search_prompt"},
+        {"label": "🏷 標籤管理", "action_type": "postback",
+         "data": "action=show_tags"},
+        {"label": "🧹 清理重複", "action_type": "message", "text": "remove"},
+    ])
+    await line_bot_api.reply_message(
+        reply_token,
+        TextSendMessage(text="請選擇名片操作 👇", quick_reply=quick_reply)
+    )
+
+
+async def handle_menu_team(reply_token: str) -> None:
+    """團隊功能主選單 Quick Reply"""
+    quick_reply = flex_messages.build_quick_reply([
+        {"label": "👥 查看團隊資訊", "action_type": "message", "text": "team"},
+        {"label": "👤 查看成員", "action_type": "message", "text": "members"},
+        {"label": "📨 邀請成員", "action_type": "message", "text": "invite"},
+        {"label": "🔗 加入團隊", "action_type": "postback",
+         "data": "action=menu_join_prompt"},
+    ])
+    await line_bot_api.reply_message(
+        reply_token,
+        TextSendMessage(text="請選擇團隊功能 👇", quick_reply=quick_reply)
+    )
+
+
+async def handle_menu_data(reply_token: str) -> None:
+    """資料與設定主選單 Quick Reply"""
+    quick_reply = flex_messages.build_quick_reply([
+        {"label": "📊 統計", "action_type": "postback", "data": "action=show_stats"},
+        {"label": "📤 匯出 CSV", "action_type": "message", "text": "匯出"},
+    ])
+    await line_bot_api.reply_message(
+        reply_token,
+        TextSendMessage(text="請選擇資料功能 👇", quick_reply=quick_reply)
+    )
+
+
 async def handle_text_event(event: MessageEvent, user_id: str) -> None:
     msg = event.message.text
 
     # 加入流程優先處理（加入前 user 可能沒有 org）
     if msg.upper().startswith("加入 "):
         await handle_join(event, user_id, msg)
+        return
+
+    # Onboarding 攔截：新用戶尚未選擇組織
+    if await check_onboarding(user_id, event.reply_token):
         return
 
     org_id, is_new_org = firebase_utils.ensure_user_org(user_id)
@@ -397,8 +487,7 @@ async def handle_text_event(event: MessageEvent, user_id: str) -> None:
         await line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(
-                text="重複名片清理完成。",
-                quick_reply=get_quick_reply_items()
+                text="重複名片清理完成。"
             ),
         )
     elif msg in ("團隊", "team"):
@@ -417,10 +506,40 @@ async def handle_text_event(event: MessageEvent, user_id: str) -> None:
     elif msg in ("匯出", "export"):
         await handle_export(event, user_id, org_id)
     elif msg == "新增":
+        add_items = [
+            {"label": "📸 單張上傳", "action_type": "message", "text": "單張上傳"},
+        ]
+        if config.BATCH_UPLOAD_ENABLED:
+            add_items.append(
+                {"label": "🗂️ 批量上傳", "action_type": "postback",
+                 "data": "action=batch_start", "display_text": "批量排程上傳"}
+            )
         await line_bot_api.reply_message(
             event.reply_token,
-            flex_messages.build_add_namecard_quick_reply()
+            TextSendMessage(
+                text="請選擇上傳方式 👇",
+                quick_reply=flex_messages.build_quick_reply(add_items)
+            )
         )
+    elif msg == "單張上傳":
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text="請直接傳送名片照片，Bot 將自動辨識並儲存。")
+        )
+    elif msg == "管理":
+        manage_items = [
+            {"label": "🏷 群組管理", "action_type": "message", "text": "群組"},
+            {"label": "🧹 清理重複名片", "action_type": "message", "text": "remove"},
+        ]
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(
+                text="請選擇管理操作 👇",
+                quick_reply=flex_messages.build_quick_reply(manage_items)
+            )
+        )
+    elif msg == "群組":
+        await handle_show_tags(event, user_id, org_id)
     elif msg == "完成":
         await handle_batch_done(event, user_id, org_id)
     elif msg == "取消":
@@ -429,8 +548,7 @@ async def handle_text_event(event: MessageEvent, user_id: str) -> None:
         await line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(
-                text="找不到對應指令，請點下方按鈕操作。",
-                quick_reply=get_quick_reply_items()
+                text="找不到對應指令，請點下方選單操作。"
             )
         )
 
@@ -542,8 +660,7 @@ async def handle_join(event: MessageEvent, user_id: str, msg: str):
     await line_bot_api.reply_message(
         event.reply_token,
         TextSendMessage(
-            text=f'歡迎加入「{org_name}」！您現在可以存取團隊的名片庫了。',
-            quick_reply=get_quick_reply_items()
+            text=f'歡迎加入「{org_name}」！您現在可以存取團隊的名片庫了。'
         ))
 
 
@@ -567,8 +684,7 @@ async def handle_set_team_name(
     await line_bot_api.reply_message(
         event.reply_token,
         TextSendMessage(
-            text=f'團隊名稱已更新為「{new_name}」。',
-            quick_reply=get_quick_reply_items()
+            text=f'團隊名稱已更新為「{new_name}」。'
         ))
 
 
@@ -578,8 +694,7 @@ async def handle_manage_tags(
     if not firebase_utils.require_admin(org_id, user_id):
         await line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text='此功能僅限管理員使用。',
-                            quick_reply=get_quick_reply_items()))
+            TextSendMessage(text='此功能僅限管理員使用。'))
         return
     firebase_utils.ensure_default_role_tags(org_id)
     tags = firebase_utils.get_all_role_tags(org_id)
@@ -593,13 +708,12 @@ async def handle_add_tag_input(
     if not firebase_utils.require_admin(org_id, user_id):
         await line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text='此功能僅限管理員使用。',
-                            quick_reply=get_quick_reply_items()))
+            TextSendMessage(text='此功能僅限管理員使用。'))
         return
     user_states[user_id] = {'action': 'adding_tag', 'org_id': org_id}
     await line_bot_api.reply_message(
         event.reply_token,
-        TextSendMessage(text='請輸入新標籤名稱：'))
+        TextSendMessage(text='請輸入新群組名稱：'))
 
 
 async def handle_confirm_delete_tag(
@@ -608,8 +722,7 @@ async def handle_confirm_delete_tag(
     if not firebase_utils.require_admin(org_id, user_id):
         await line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text='此功能僅限管理員使用。',
-                            quick_reply=get_quick_reply_items()))
+            TextSendMessage(text='此功能僅限管理員使用。'))
         return
     reply_msg = flex_messages.confirm_delete_tag_flex(tag_name)
     await line_bot_api.reply_message(event.reply_token, [reply_msg])
@@ -621,8 +734,7 @@ async def handle_exec_delete_tag(
     if not firebase_utils.require_admin(org_id, user_id):
         await line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text='此功能僅限管理員使用。',
-                            quick_reply=get_quick_reply_items()))
+            TextSendMessage(text='此功能僅限管理員使用。'))
         return
     firebase_utils.delete_role_tag(org_id, tag_name)
     tags = firebase_utils.get_all_role_tags(org_id)
@@ -641,8 +753,7 @@ async def handle_adding_tag_state(
     if not tag_name:
         await line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text='請輸入有效的標籤名稱。',
-                            quick_reply=get_quick_reply_items()))
+            TextSendMessage(text='請輸入有效的標籤名稱。'))
         return
     result = firebase_utils.add_role_tag(org_id, tag_name)
     tags = firebase_utils.get_all_role_tags(org_id)
@@ -731,14 +842,12 @@ async def handle_finish_tag(
         await line_bot_api.reply_message(
             event.reply_token,
             [TextSendMessage(
-                text=f'標籤已更新：{tag_text}',
-                quick_reply=get_quick_reply_items()),
+                text=f'標籤已更新：{tag_text}'),
              reply_msg])
     else:
         await line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text='找不到名片資料。',
-                            quick_reply=get_quick_reply_items()))
+            TextSendMessage(text='找不到名片資料。'))
 
 
 async def handle_list_by_tag(
@@ -750,8 +859,7 @@ async def handle_list_by_tag(
             await line_bot_api.reply_message(
                 event.reply_token,
                 TextSendMessage(
-                    text=f'「{tag_name}」標籤下尚無名片。',
-                    quick_reply=get_quick_reply_items()))
+                    text=f'「{tag_name}」標籤下尚無名片。'))
             return
 
         total = len(matched)
@@ -763,16 +871,14 @@ async def handle_list_by_tag(
             msgs = [flex_messages.get_namecard_carousel_msg(items)]
             if total > 10:
                 msgs.append(TextSendMessage(
-                    text=f'共 {total} 張名片，顯示前 10 張。',
-                    quick_reply=get_quick_reply_items()))
+                    text=f'共 {total} 張名片，顯示前 10 張。'))
         await line_bot_api.reply_message(event.reply_token, msgs)
     except Exception as e:
         print(f"Error in handle_list_by_tag: {e}")
         await line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(
-                text='載入名片時發生錯誤，請稍後再試。',
-                quick_reply=get_quick_reply_items()))
+                text='載入名片時發生錯誤，請稍後再試。'))
 
 
 async def handle_export(
@@ -783,8 +889,7 @@ async def handle_export(
         await line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(
-                text='匯出功能尚未設定，請聯繫管理員。',
-                quick_reply=get_quick_reply_items()))
+                text='匯出功能尚未設定，請聯繫管理員。'))
         return
 
     user_states[user_id] = {'action': 'exporting_csv', 'org_id': org_id}
@@ -817,15 +922,13 @@ async def handle_export_email_state(
         await line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(
-                text=f'CSV 已寄送至 {to_email}，請查收信箱。',
-                quick_reply=get_quick_reply_items()))
+                text=f'CSV 已寄送至 {to_email}，請查收信箱。'))
     except Exception as e:
         print(f"Error in CSV export: {e}")
         await line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(
-                text='CSV 寄送失敗，請稍後再試或確認 email 地址。',
-                quick_reply=get_quick_reply_items()))
+                text='CSV 寄送失敗，請稍後再試或確認 email 地址。'))
 
 
 async def handle_add_memo_state(
@@ -837,15 +940,13 @@ async def handle_add_memo_state(
         await line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(
-                text='備忘錄已成功更新！',
-                quick_reply=get_quick_reply_items()
+                text='備忘錄已成功更新！'
             ))
     else:
         await line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(
-                text='新增備忘錄時發生錯誤，請稍後再試。',
-                quick_reply=get_quick_reply_items()
+                text='新增備忘錄時發生錯誤，請稍後再試。'
             ))
     del user_states[user_id]
 
@@ -864,23 +965,20 @@ async def handle_edit_field_state(
             await line_bot_api.reply_message(
                 event.reply_token,
                 [TextSendMessage(
-                    text='資料已成功更新！',
-                    quick_reply=get_quick_reply_items()
+                    text='資料已成功更新！'
                 ), reply_msg]
             )
         else:
             await line_bot_api.reply_message(
                 event.reply_token,
                 TextSendMessage(
-                    text='資料更新成功，但無法立即顯示。',
-                    quick_reply=get_quick_reply_items()
+                    text='資料更新成功，但無法立即顯示。'
                 ))
     else:
         await line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(
-                text='更新資料時發生錯誤，請稍後再試。',
-                quick_reply=get_quick_reply_items()
+                text='更新資料時發生錯誤，請稍後再試。'
             ))
     del user_states[user_id]
 
@@ -892,8 +990,7 @@ async def handle_smart_query(
         await line_bot_api.reply_message(
             event.reply_token,
             [TextSendMessage(
-                text="目前團隊尚未建立任何名片。",
-                quick_reply=get_quick_reply_items()
+                text="目前團隊尚未建立任何名片。"
             )])
         return
 
@@ -904,8 +1001,7 @@ async def handle_smart_query(
             await line_bot_api.reply_message(
                 event.reply_token,
                 [TextSendMessage(
-                    text=f"查無「{msg}」相關名片。",
-                    quick_reply=get_quick_reply_items()
+                    text=f"查無「{msg}」相關名片。"
                 )])
         elif len(matched) == 1:
             cid, card_obj = matched[0]
@@ -917,8 +1013,7 @@ async def handle_smart_query(
             msgs = [flex_messages.get_namecard_carousel_msg(display)]
             if len(matched) > 10:
                 msgs.append(TextSendMessage(
-                    text=f"共 {len(matched)} 筆，顯示前 10 筆，請縮小搜尋範圍。",
-                    quick_reply=get_quick_reply_items()))
+                    text=f"共 {len(matched)} 筆，顯示前 10 筆，請縮小搜尋範圍。"))
             await line_bot_api.reply_message(event.reply_token, msgs)
     except Exception as e:
         print(f"Error in handle_smart_query: {e}")
@@ -928,8 +1023,7 @@ async def handle_smart_query(
             await line_bot_api.reply_message(
                 event.reply_token,
                 [TextSendMessage(
-                    text="搜尋時發生錯誤，請稍後再試。",
-                    quick_reply=get_quick_reply_items()
+                    text="搜尋時發生錯誤，請稍後再試。"
                 )]
             )
         except Exception as reply_err:
@@ -944,8 +1038,7 @@ async def handle_batch_done(
         await line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(
-                text="您目前不在批量上傳模式中。輸入『新增』開始。",
-                quick_reply=get_quick_reply_items()
+                text="您目前不在批量上傳模式中。輸入『新增』開始。"
             )
         )
         return
@@ -967,16 +1060,14 @@ async def handle_batch_done(
         await line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(
-                text=f"✅ 已排程 {len(image_paths)} 張名片，辨識中請稍候...",
-                quick_reply=get_quick_reply_items()
+                text=f"✅ 已排程 {len(image_paths)} 張名片，辨識中請稍候..."
             )
         )
     else:
         await line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(
-                text="建立排程時發生錯誤，請稍後再試。",
-                quick_reply=get_quick_reply_items()
+                text="建立排程時發生錯誤，請稍後再試。"
             )
         )
 
@@ -989,8 +1080,7 @@ async def handle_batch_cancel(
         await line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(
-                text="您目前不在批量上傳模式中。",
-                quick_reply=get_quick_reply_items()
+                text="您目前不在批量上傳模式中。"
             )
         )
         return
@@ -1004,8 +1094,7 @@ async def handle_batch_cancel(
     await line_bot_api.reply_message(
         event.reply_token,
         TextSendMessage(
-            text=f"已取消，共丟棄 {len(image_paths)} 張圖片。",
-            quick_reply=get_quick_reply_items()
+            text=f"已取消，共丟棄 {len(image_paths)} 張圖片。"
         )
     )
 
@@ -1019,8 +1108,7 @@ async def _save_and_reply_namecard(event, user_id: str, org_id: str, card_obj: d
         await line_bot_api.reply_message(
             event.reply_token,
             [TextSendMessage(
-                text="這個名片已經存在資料庫中。",
-                quick_reply=get_quick_reply_items()
+                text="這個名片已經存在資料庫中。"
             ), reply_msg],
         )
         return
@@ -1031,21 +1119,23 @@ async def _save_and_reply_namecard(event, user_id: str, org_id: str, card_obj: d
         await line_bot_api.reply_message(
             event.reply_token,
             [reply_msg, TextSendMessage(
-                text="名片資料已經成功加入資料庫。",
-                quick_reply=get_quick_reply_items()
+                text="名片資料已經成功加入資料庫。"
             )]
         )
     else:
         await line_bot_api.reply_message(
             event.reply_token,
             [TextSendMessage(
-                text="儲存名片時發生錯誤。",
-                quick_reply=get_quick_reply_items()
+                text="儲存名片時發生錯誤。"
             )]
         )
 
 
 async def handle_image_event(event: MessageEvent, user_id: str) -> None:
+    # Onboarding 攔截：新用戶尚未選擇組織
+    if await check_onboarding(user_id, event.reply_token):
+        return
+
     org_id, is_new_org = firebase_utils.ensure_user_org(user_id)
     if is_new_org:
         await line_bot_api.push_message(
