@@ -10,12 +10,15 @@
 
 ### 名片管理
 - **智慧名片辨識**：傳送名片圖片，Bot 使用 Gemini Pro Vision API 自動解析姓名、職稱、公司、電話、Email 等資訊
+- **批量上傳**：一次傳送多張名片圖片，排程非同步 OCR 處理後推播摘要結果
 - **互動式編輯**：辨識有誤時，直接在 LINE 中點擊按鈕修改欄位
 - **備忘錄**：為每張名片添加備忘錄
+- **標籤系統**：為名片套用角色標籤（如「客戶」、「合作夥伴」），支援依標籤篩選
 - **智慧搜尋**：輸入關鍵字（姓名、公司等）快速找到相關名片
 - **📥 一鍵加入通訊錄**：生成 vCard QR Code，掃描後直接匯入手機聯絡人（支援 iPhone/Android）
+- **CSV 匯出**：將名片資料匯出為 CSV，以 Email 寄送
 
-### 團隊協作（Phase 2）
+### 團隊協作
 - **共享名片庫**：團隊成員共用同一個名片資料庫
 - **邀請機制**：管理員產生邀請碼，成員輸入「加入 XXXXXX」加入團隊；附 LINE URI Scheme 一鍵分享按鈕
 - **角色權限**：管理員可刪除任何名片；一般成員只能刪除自己新增的名片
@@ -25,8 +28,11 @@
 
 | 指令 | 說明 | 權限 |
 |------|------|------|
-| 傳送名片圖片 | 自動辨識並儲存 | 所有人 |
+| 傳送名片圖片 | 自動辨識並儲存（或進入批量模式） | 所有人 |
 | 輸入任意文字 | 智慧搜尋名片 | 所有人 |
+| `新增` | 選擇單張或批量排程上傳 | 所有人 |
+| `完成` | 結束批量上傳、送出排程處理 | 所有人 |
+| `匯出` / `export` | 將名片 CSV 以 Email 寄送 | 所有人 |
 | `團隊` / `team` | 查看團隊資訊與自己的身份 | 所有人 |
 | `成員` / `members` | 查看團隊成員清單 | 所有人 |
 | `邀請` / `invite` | 產生邀請碼 | 管理員 |
@@ -45,6 +51,7 @@ organizations/
       {user_id}/
         role: "admin" | "member"
         joined_at: string
+    tags/roles/{push_id}/name: string   ← 角色標籤
 
 user_org_map/
   {user_id}: org_id
@@ -57,9 +64,16 @@ namecard/
       created_at: string
       memo?: string
 
+namecard_cache/
+  {card_id}/roles: [tag_names]          ← 名片標籤快取
+
 invite_codes/
   {code}/
     org_id, created_by, expires_at
+
+batch_states/
+  {user_id}/
+    org_id, pending_images: [...], created_at, updated_at
 ```
 
 ## 📱 vCard QR Code 功能
@@ -124,6 +138,12 @@ https://{your-cloud-run-url}/
 | `FIREBASE_STORAGE_BUCKET` | ✅ | Firebase Storage bucket 名稱 |
 | `GOOGLE_APPLICATION_CREDENTIALS_JSON` | ✅ | Firebase service account JSON 字串 |
 | `GOOGLE_SHEET_ID` | 選填 | Google Sheet ID（啟用自動同步） |
+| `SMTP_USER` | 選填 | SMTP 帳號（啟用 CSV Email 匯出） |
+| `SMTP_PASSWORD` | 選填 | SMTP 密碼 |
+| `CLOUD_TASKS_QUEUE` | 選填 | Cloud Tasks queue 名稱（啟用批量上傳） |
+| `CLOUD_TASKS_LOCATION` | 選填 | Cloud Tasks 地區（預設 `asia-east1`） |
+| `CLOUD_RUN_URL` | 選填 | Cloud Run 服務 URL（批量上傳回呼用） |
+| `GOOGLE_CLOUD_PROJECT` | 選填 | GCP 專案 ID（Cloud Tasks 用） |
 | `DEFAULT_ORG_ID` | 選填 | 預設 org_id，預設為 `org_default` |
 
 ### Firebase Storage Rules
