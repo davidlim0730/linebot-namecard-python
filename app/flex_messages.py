@@ -1,7 +1,7 @@
 from urllib.parse import quote
 from linebot.models import (
     FlexSendMessage, TextSendMessage, QuickReply, QuickReplyButton, PostbackAction,
-    URIAction
+    MessageAction, URIAction
 )
 from . import config
 
@@ -258,9 +258,9 @@ def get_namecard_flex_msg(card_data: dict, card_id: str) -> FlexSendMessage:
                             "height": "sm",
                             "action": {
                                 "type": "postback",
-                                "label": "🏷 標籤",
+                                "label": "🏷 群組",
                                 "data": f"action=tag_card&card_id={card_id}",
-                                "displayText": f"設定 {name} 的標籤"
+                                "displayText": f"設定 {name} 的群組"
                             },
                             "flex": 1
                         }
@@ -539,7 +539,7 @@ def tag_list_flex(
         })
 
     if not rows:
-        rows = [{"type": "text", "text": "尚無標籤，請管理員新增",
+        rows = [{"type": "text", "text": "尚無群組，請管理員新增",
                  "size": "sm", "color": "#888888"}]
 
     flex_msg = {
@@ -549,7 +549,7 @@ def tag_list_flex(
             "type": "box",
             "layout": "vertical",
             "contents": [
-                {"type": "text", "text": "🏷 角色標籤",
+                {"type": "text", "text": "🏷 群組分類",
                  "color": "#ffffff", "size": "sm", "weight": "bold"}
             ],
             "paddingAll": "15px",
@@ -561,7 +561,7 @@ def tag_list_flex(
             "spacing": "sm",
             "contents": [
                 {"type": "text",
-                 "text": "點擊標籤可查看該分類的名片",
+                 "text": "點擊群組可查看該分類的名片",
                  "size": "xs", "color": "#888888", "margin": "none"},
                 {"type": "separator", "margin": "md"}
             ] + rows
@@ -579,14 +579,14 @@ def tag_list_flex(
                     "height": "sm",
                     "action": {
                         "type": "postback",
-                        "label": "⚙️ 管理標籤",
+                        "label": "⚙️ 管理群組",
                         "data": "action=manage_tags"
                     }
                 }
             ]
         }
 
-    return FlexSendMessage(alt_text="角色標籤清單", contents=flex_msg)
+    return FlexSendMessage(alt_text="群組分類清單", contents=flex_msg)
 
 
 def tag_management_flex(tags: list) -> FlexSendMessage:
@@ -810,6 +810,47 @@ def role_tag_select_flex(
         }
     }
     return FlexSendMessage(alt_text="設定角色標籤", contents=flex_msg)
+
+
+def build_quick_reply(items: list) -> QuickReply:
+    """建立 QuickReply 物件。
+
+    items: list of dicts, each with:
+      - label: str
+      - action_type: 'postback' | 'message'
+      - data: str  (postback data, used when action_type='postback')
+      - text: str  (message text, used when action_type='message')
+    """
+    buttons = []
+    for item in items:
+        if item["action_type"] == "postback":
+            action = PostbackAction(
+                label=item["label"],
+                data=item["data"],
+                display_text=item.get("display_text", item["label"]),
+            )
+        else:
+            action = MessageAction(label=item["label"], text=item["text"])
+        buttons.append(QuickReplyButton(action=action))
+    return QuickReply(items=buttons)
+
+
+def get_onboarding_welcome_message() -> TextSendMessage:
+    """歡迎訊息 + Quick Reply（新用戶 Follow 或 onboarding 攔截時使用）"""
+    return TextSendMessage(
+        text='歡迎使用名片管理機器人 👋\n請先選擇「建立團隊」或是「加入既有團隊」',
+        quick_reply=QuickReply(items=[
+            QuickReplyButton(action=PostbackAction(
+                label='🏢 建立團隊',
+                data='action=create_org',
+                display_text='建立團隊'
+            )),
+            QuickReplyButton(action=MessageAction(
+                label='🔗 加入既有團隊',
+                text='加入 '
+            )),
+        ])
+    )
 
 
 def build_add_namecard_quick_reply() -> TextSendMessage:

@@ -1,5 +1,5 @@
 from fastapi import Request, FastAPI, HTTPException
-from linebot.models import MessageEvent, PostbackEvent
+from linebot.models import MessageEvent, PostbackEvent, FollowEvent
 from linebot.exceptions import InvalidSignatureError
 import google.generativeai as genai
 import firebase_admin
@@ -10,10 +10,11 @@ import json
 from . import config
 from .line_handlers import (
     handle_text_event, handle_image_event, handle_postback_event,
-    send_batch_summary_push)
+    send_batch_summary_push, handle_follow_event)
 from .bot_instance import close_session, parser
 from .firebase_utils import get_all_cards
 from .batch_processor import process_batch
+from .rich_menu_utils import init_rich_menu
 
 # =====================
 # 初始化區塊
@@ -52,6 +53,16 @@ genai.configure(api_key=config.GEMINI_KEY)
 app = FastAPI()
 
 
+@app.on_event("startup")
+async def on_startup():
+    try:
+        await init_rich_menu()
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(
+            "Rich Menu initialization failed: %s", e)
+
+
 # =====================
 # FastAPI 路由 (主入口)
 # =====================
@@ -72,6 +83,8 @@ async def handle_callback(request: Request):
                 await handle_image_event(event, user_id)
         elif isinstance(event, PostbackEvent):
             await handle_postback_event(event, user_id)
+        elif isinstance(event, FollowEvent):
+            await handle_follow_event(event)
     return "OK"
 
 
