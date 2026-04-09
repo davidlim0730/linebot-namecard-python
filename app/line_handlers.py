@@ -1,7 +1,7 @@
 from urllib.parse import parse_qsl
 from linebot.models import (
     PostbackEvent, MessageEvent, TextSendMessage, ImageSendMessage,
-    QuickReply, QuickReplyButton, PostbackAction, MessageAction
+    QuickReply, QuickReplyButton, PostbackAction, MessageAction, FollowEvent
 )
 from io import BytesIO
 import PIL.Image
@@ -24,20 +24,7 @@ async def check_onboarding(user_id: str, reply_token: str) -> bool:
         return False
     await line_bot_api.reply_message(
         reply_token,
-        TextSendMessage(
-            text='歡迎使用名片管理機器人 👋\n請先選擇「建立團隊」或是「加入既有團隊」',
-            quick_reply=QuickReply(items=[
-                QuickReplyButton(action=PostbackAction(
-                    label='🏢 建立團隊',
-                    data='action=create_org',
-                    display_text='建立團隊'
-                )),
-                QuickReplyButton(action=MessageAction(
-                    label='🔗 加入既有團隊',
-                    text='加入 '
-                )),
-            ])
-        )
+        flex_messages.get_onboarding_welcome_message()
     )
     return True
 
@@ -190,6 +177,14 @@ async def handle_postback_event(event: PostbackEvent, user_id: str):
         )
         return
 
+    elif action == "cancel_state":
+        user_states.pop(user_id, None)
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text="已取消目前操作。")
+        )
+        return
+
     elif action == "single_add":
         await line_bot_api.reply_message(
             event.reply_token,
@@ -316,7 +311,12 @@ async def handle_postback_event(event: PostbackEvent, user_id: str):
         user_states[user_id] = {'action': 'adding_memo', 'card_id': card_id}
         reply_text = f"請輸入關於「{card_name}」的備忘錄："
         await line_bot_api.reply_message(
-            event.reply_token, TextSendMessage(text=reply_text))
+            event.reply_token, TextSendMessage(
+                text=reply_text,
+                quick_reply=QuickReply(items=[
+                    QuickReplyButton(action=PostbackAction(label="❌ 取消", data="action=cancel_state"))
+                ])
+            ))
 
     elif action == 'edit_card':
         reply_msg = flex_messages.get_edit_options_flex_msg(card_id, card_name)
@@ -332,7 +332,12 @@ async def handle_postback_event(event: PostbackEvent, user_id: str):
         }
         reply_text = f"請輸入「{card_name}」的新「{field_label}」："
         await line_bot_api.reply_message(
-            event.reply_token, TextSendMessage(text=reply_text))
+            event.reply_token, TextSendMessage(
+                text=reply_text,
+                quick_reply=QuickReply(items=[
+                    QuickReplyButton(action=PostbackAction(label="❌ 取消", data="action=cancel_state"))
+                ])
+            ))
 
     elif action == 'download_contact':
         await handle_download_contact(event, user_id, org_id, card_id, card_name)
@@ -474,6 +479,11 @@ async def handle_text_event(event: MessageEvent, user_id: str) -> None:
         )
     user_action = user_states.get(user_id, {}).get('action')
 
+    # 若在等待背面照片期間收到文字，靜默清除 state，讓指令繼續正常執行
+    if user_action == 'scanning_back':
+        user_states.pop(user_id, None)
+        user_action = None
+
     if user_action == 'adding_memo':
         await handle_add_memo_state(event, user_id, org_id, msg)
     elif user_action == 'editing_field':
@@ -522,6 +532,7 @@ async def handle_text_event(event: MessageEvent, user_id: str) -> None:
             )
         )
     elif msg == "單張上傳":
+        firebase_utils.clear_batch_state(user_id)
         await line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(text="請直接傳送名片照片，Bot 將自動辨識並儲存。")
@@ -713,7 +724,12 @@ async def handle_add_tag_input(
     user_states[user_id] = {'action': 'adding_tag', 'org_id': org_id}
     await line_bot_api.reply_message(
         event.reply_token,
-        TextSendMessage(text='請輸入新群組名稱：'))
+        TextSendMessage(
+            text='請輸入新群組名稱：',
+            quick_reply=QuickReply(items=[
+                QuickReplyButton(action=PostbackAction(label="❌ 取消", data="action=cancel_state"))
+            ])
+        ))
 
 
 async def handle_confirm_delete_tag(
@@ -895,7 +911,12 @@ async def handle_export(
     user_states[user_id] = {'action': 'exporting_csv', 'org_id': org_id}
     await line_bot_api.reply_message(
         event.reply_token,
-        TextSendMessage(text='請輸入您的 email 地址，CSV 將寄送至該信箱：'))
+        TextSendMessage(
+            text='請輸入您的 email 地址，CSV 將寄送至該信箱：',
+            quick_reply=QuickReply(items=[
+                QuickReplyButton(action=PostbackAction(label="❌ 取消", data="action=cancel_state"))
+            ])
+        ))
 
 
 async def handle_export_email_state(
@@ -1226,13 +1247,16 @@ async def handle_image_event(event: MessageEvent, user_id: str) -> None:
     await line_bot_api.reply_message(
         event.reply_token,
         TextSendMessage(
-            text=f"已辨識：{name}（{company}）\n\n這張名片還有背面嗎？",
+            text=f"已辨識：{name}（{company}）\n\n⚠️ 名片建檔尚未完成，請選擇以下動作：",
             quick_reply=QuickReply(items=[
                 QuickReplyButton(
                     action=PostbackAction(label="📷 有背面", data="action=scan_back")
                 ),
                 QuickReplyButton(
                     action=PostbackAction(label="✅ 直接儲存", data="action=save_front")
+                ),
+                QuickReplyButton(
+                    action=PostbackAction(label="❌ 取消", data="action=cancel_state")
                 ),
             ])
         )
@@ -1260,3 +1284,15 @@ async def send_batch_summary_push(user_id: str, summary: dict) -> None:
         await line_bot_api.push_message(user_id, TextSendMessage(text=text))
     except Exception as e:
         print(f"Batch: failed to send push summary to {user_id}: {e}")
+
+
+async def handle_follow_event(event: FollowEvent):
+    """處理 Follow 事件：推播 onboarding 歡迎訊息"""
+    user_id = event.source.user_id
+    try:
+        await line_bot_api.push_message(
+            user_id,
+            flex_messages.get_onboarding_welcome_message()
+        )
+    except Exception as e:
+        print(f"Follow event: failed to send welcome message to {user_id}: {e}")
