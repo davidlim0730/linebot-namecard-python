@@ -10,6 +10,27 @@ from .gsheets_utils import trigger_sync
 
 
 # ---------------------------------------------------------------------------
+# Permission checks
+# ---------------------------------------------------------------------------
+
+def _check_card_access(card_added_by: str, current_user_id: str, user_role: str) -> bool:
+    """
+    檢查使用者是否有權限訪問這張名片。
+
+    Args:
+        card_added_by: 名片建立者的 user_id
+        current_user_id: 當前使用者的 user_id
+        user_role: 當前使用者的角色（"admin" 或 "member"）
+
+    Returns:
+        True 如果使用者有權限，False 否則
+    """
+    if user_role == "admin":
+        return True
+    return card_added_by == current_user_id
+
+
+# ---------------------------------------------------------------------------
 # Organization helpers
 # ---------------------------------------------------------------------------
 
