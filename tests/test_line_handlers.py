@@ -277,3 +277,72 @@ def test_batch_start_message_includes_warning():
 
         assert "批量上傳模式已開啟" in message.text
         assert "系統將依序" in message.text or "請勿輸入其他指令" in message.text
+
+
+def test_handle_reporting_issue_trigger_enters_state():
+    """Verify 'reporting_issue' trigger enters correct state"""
+    from unittest.mock import MagicMock
+    from app.line_handlers import handle_reporting_issue_trigger, user_states
+
+    user_id = "test_user"
+    org_id = "test_org"
+    reply_token = "token"
+
+    mock_line_bot_api = MagicMock()
+    user_states.clear()
+
+    handle_reporting_issue_trigger(user_id, org_id, mock_line_bot_api, reply_token)
+
+    assert user_id in user_states
+    assert user_states[user_id]['action'] == 'reporting_issue'
+    assert user_states[user_id]['org_id'] == org_id
+    mock_line_bot_api.reply_message.assert_called_once()
+    assert '請描述您遇到的問題' in mock_line_bot_api.reply_message.call_args[0][1].text
+
+
+def test_handle_reporting_issue_state_processes_input():
+    """Verify reporting_issue state processes user input"""
+    from unittest.mock import MagicMock, patch
+    from app.line_handlers import handle_reporting_issue_state, user_states
+
+    user_id = "test_user"
+    org_id = "test_org"
+    reply_token = "token"
+    feedback_text = "系統無法掃描名片"
+
+    user_states[user_id] = {'action': 'reporting_issue', 'org_id': org_id}
+
+    mock_line_bot_api = MagicMock()
+
+    with patch('app.line_handlers.firebase_utils.write_feedback') as mock_write:
+        handle_reporting_issue_state(user_id, org_id, feedback_text, mock_line_bot_api, reply_token)
+
+    assert user_id not in user_states
+    mock_line_bot_api.reply_message.assert_called_once()
+    assert '感謝回報' in mock_line_bot_api.reply_message.call_args[0][1].text
+
+
+def test_handle_text_event_triggers_reporting_issue():
+    """Verify '回報問題' text triggers reporting issue flow"""
+    import asyncio
+    from unittest.mock import MagicMock, patch
+    from app.line_handlers import handle_text_event, user_states
+
+    user_id = "test_user"
+    reply_token = "token"
+
+    mock_event = MagicMock()
+    mock_event.source.user_id = user_id
+    mock_event.reply_token = reply_token
+    mock_event.message.text = "回報問題"
+
+    user_states.clear()
+
+    with patch('app.line_handlers.firebase_utils.ensure_user_org', return_value=('test_org', False)), \
+         patch('app.line_handlers.line_bot_api') as mock_line_bot_api:
+
+        mock_line_bot_api.reply_message = MagicMock()
+        asyncio.run(handle_text_event(mock_event, user_id))
+
+    assert user_id in user_states
+    assert user_states[user_id]['action'] == 'reporting_issue'

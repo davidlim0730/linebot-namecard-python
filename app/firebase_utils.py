@@ -1094,3 +1094,25 @@ def get_namecard_statistics(org_id: str) -> dict:
             "this_month": 0,
             "top_company": "無"
         }
+
+
+def write_feedback(org_id: str, user_id: str, timestamp: str, feedback_data: dict) -> bool:
+    """
+    寫入使用者的問題回報至 Firebase。
+
+    Args:
+        org_id: 組織 ID
+        user_id: 回報的使用者 ID
+        timestamp: ISO8601 時間戳記
+        feedback_data: 回報資料（包含 content, type, created_at, user_id）
+
+    Returns:
+        True 如果寫入成功，False 否則
+    """
+    try:
+        ref = db.reference(f"feedback/{org_id}/{timestamp}")
+        ref.set(feedback_data)
+        return True
+    except Exception as e:
+        print(f"Error writing feedback: {e}")
+        return False
