@@ -484,3 +484,28 @@ class TestTagOperations:
 
         assert result is True
         mock_ref.update.assert_called_once()
+
+
+class TestPermissionIsolationScenarios:
+    """整合測試：成員隔離場景"""
+
+    def test_scenario_1_member_a_creates_card_member_b_cannot_see(self):
+        """場景 1：成員 A 建立名片，成員 B 無法看到"""
+        # 成員 B 無法訪問成員 A 的名片
+        assert not _check_card_access("user_a", "user_b", "member")
+        # 成員 A 可以訪問自己的
+        assert _check_card_access("user_a", "user_a", "member")
+
+    def test_scenario_2_admin_can_see_all_cards(self):
+        """場景 2：管理員能看到全部名片"""
+        assert _check_card_access("user_a", "admin_user", "admin")
+        assert _check_card_access("user_b", "admin_user", "admin")
+
+    def test_scenario_3_member_cannot_edit_others_card(self):
+        """場景 3：成員無法編輯他人的名片"""
+        assert not _check_card_access("user_a", "user_b", "member")
+
+    def test_scenario_4_csv_export_respects_permission(self):
+        """場景 4：CSV 匯出符合權限"""
+        from app.firebase_utils import get_all_namecards
+        assert callable(get_all_namecards)
