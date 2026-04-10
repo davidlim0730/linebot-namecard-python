@@ -237,7 +237,7 @@ async def handle_postback_event(event: PostbackEvent, user_id: str):
 
     elif action == 'toggle_role':
         tag_name = postback_data.get('tag_name', '')
-        await handle_toggle_role(event, org_id, card_id, tag_name)
+        await handle_toggle_role(event, user_id, org_id, card_id, tag_name)
         return
 
     elif action == 'finish_tag':
@@ -350,29 +350,33 @@ async def handle_delete_card(
         event: PostbackEvent, user_id: str, org_id: str,
         card_id: str, card_name: str):
     """處理刪除名片，套用角色權限檢查"""
-    card_data = firebase_utils.get_card_by_id(org_id, card_id)
-    if not card_data:
-        await line_bot_api.reply_message(
-            event.reply_token, TextSendMessage(text='找不到該名片資料。'))
-        return
+    # 取得使用者角色
+    user_role = firebase_utils.require_admin(org_id, user_id)
+    user_role = "admin" if user_role else "member"
 
-    is_admin = firebase_utils.require_admin(org_id, user_id)
-    added_by = card_data.get('added_by', '')
+    # 嘗試刪除名片（參數順序：card_id, user_id, org_id, user_role）
+    success = firebase_utils.delete_namecard(card_id, user_id, org_id, user_role)
 
-    if not is_admin and added_by != user_id:
+    if success:
         await line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(
-                text='此名片非您新增，無法刪除。'
+                text=f'已刪除「{card_name}」的名片。'
             ))
-        return
-
-    firebase_utils.delete_namecard(org_id, card_id)
-    await line_bot_api.reply_message(
-        event.reply_token,
-        TextSendMessage(
-            text=f'已刪除「{card_name}」的名片。'
-        ))
+    else:
+        # 檢查名片是否存在
+        if firebase_utils.check_card_exists(org_id, card_id):
+            # 名片存在但無權限
+            await line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(
+                    text='抱歉，您沒有權限刪除此名片。'
+                ))
+        else:
+            # 名片不存在
+            await line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text='找不到該名片資料。'))
 
 
 async def handle_download_contact(
@@ -822,7 +826,7 @@ async def handle_tag_card(
 
 
 async def handle_toggle_role(
-        event: PostbackEvent, org_id: str, card_id: str, tag_name: str):
+        event: PostbackEvent, user_id: str, org_id: str, card_id: str, tag_name: str):
     """Toggle 名片上的角色標籤，完成後重新顯示選單"""
     if not card_id or not tag_name:
         await line_bot_api.reply_message(
@@ -830,13 +834,34 @@ async def handle_toggle_role(
             TextSendMessage(text='操作失敗，請稍後再試。'))
         return
 
+    # 取得使用者角色
+    user_role = firebase_utils.require_admin(org_id, user_id)
+    user_role = "admin" if user_role else "member"
+
     card = firebase_utils.get_card_by_id(org_id, card_id)
     current_tags = (card or {}).get("role_tags") or []
 
+    success = False
     if tag_name in current_tags:
-        firebase_utils.remove_card_role_tag(org_id, card_id, tag_name)
+        success = firebase_utils.remove_card_role_tag(org_id, card_id, tag_name, user_id, user_role)
     else:
-        firebase_utils.add_card_role_tag(org_id, card_id, tag_name)
+        success = firebase_utils.add_card_role_tag(org_id, card_id, tag_name, user_id, user_role)
+
+    if not success:
+        # 檢查名片是否存在
+        if firebase_utils.check_card_exists(org_id, card_id):
+            # 名片存在但無權限
+            await line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(
+                    text='抱歉，您沒有權限給此名片加標籤。'
+                ))
+        else:
+            # 名片不存在
+            await line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text='找不到該名片資料。'))
+        return
 
     # 重新讀取並顯示更新後的選單
     tags = firebase_utils.get_all_role_tags(org_id)
@@ -978,7 +1003,14 @@ async def handle_edit_field_state(
     card_id = state['card_id']
     field = state['field']
 
-    if firebase_utils.update_namecard_field(org_id, card_id, field, msg):
+    # 取得使用者角色
+    user_role = firebase_utils.require_admin(org_id, user_id)
+    user_role = "admin" if user_role else "member"
+
+    # 嘗試更新名片（參數順序：card_id, user_id, org_id, field, value, user_role）
+    success = firebase_utils.update_namecard_field(card_id, user_id, org_id, field, msg, user_role)
+
+    if success:
         updated_card = firebase_utils.get_card_by_id(org_id, card_id)
         if updated_card:
             reply_msg = flex_messages.get_namecard_flex_msg(
@@ -996,11 +1028,21 @@ async def handle_edit_field_state(
                     text='資料更新成功，但無法立即顯示。'
                 ))
     else:
-        await line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(
-                text='更新資料時發生錯誤，請稍後再試。'
-            ))
+        # 檢查名片是否存在
+        if firebase_utils.check_card_exists(org_id, card_id):
+            # 名片存在但無權限
+            await line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(
+                    text='抱歉，您沒有權限訪問或修改此名片。'
+                ))
+        else:
+            # 名片不存在或欄位不允許編輯
+            await line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(
+                    text='更新資料時發生錯誤，請稍後再試。'
+                ))
     del user_states[user_id]
 
 

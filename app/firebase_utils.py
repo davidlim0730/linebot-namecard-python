@@ -34,6 +34,26 @@ def _check_card_access(
     return card_added_by == current_user_id
 
 
+def check_card_exists(org_id: str, card_id: str) -> bool:
+    """
+    檢查名片是否存在（不檢查權限）。
+
+    Args:
+        org_id: 組織 ID
+        card_id: 名片 ID
+
+    Returns:
+        True 如果名片存在，False 否則
+    """
+    try:
+        ref = db.reference(f"{config.NAMECARD_PATH}/{org_id}/{card_id}")
+        card_data = ref.get()
+        return card_data is not None
+    except Exception as e:
+        print(f"Error checking if card exists: {e}")
+        return False
+
+
 # ---------------------------------------------------------------------------
 # Organization helpers
 # ---------------------------------------------------------------------------
@@ -306,9 +326,34 @@ def delete_role_tag(org_id: str, tag_name: str) -> bool:
         return False
 
 
-def add_card_role_tag(org_id: str, card_id: str, tag_name: str) -> bool:
-    """將角色標籤加入名片的 role_tags 陣列"""
+def add_card_role_tag(org_id: str, card_id: str, tag_name: str, user_id: str = None, user_role: str = "member") -> bool:
+    """
+    將角色標籤加入名片的 role_tags 陣列，並檢查權限（如果提供）。
+
+    Args:
+        org_id: 組織 ID
+        card_id: 名片 ID
+        tag_name: 標籤名稱
+        user_id: 當前使用者 ID（可選，若提供則進行權限檢查）
+        user_role: 使用者角色，預設 "member"
+
+    Returns:
+        True 如果成功，False 如果無權限或出現錯誤
+    """
     try:
+        # 如果提供了 user_id，進行權限檢查
+        if user_id is not None:
+            ref = db.reference(f"{config.NAMECARD_PATH}/{org_id}/{card_id}")
+            card_data = ref.get()
+
+            if card_data is None:
+                return False
+
+            card_added_by = card_data.get("added_by")
+            if not _check_card_access(card_added_by, user_id, user_role):
+                return False
+
+        # 將標籤加入
         ref = db.reference(f"{config.NAMECARD_PATH}/{org_id}/{card_id}/role_tags")
         current = ref.get() or []
         if tag_name not in current:
@@ -320,9 +365,34 @@ def add_card_role_tag(org_id: str, card_id: str, tag_name: str) -> bool:
         return False
 
 
-def remove_card_role_tag(org_id: str, card_id: str, tag_name: str) -> bool:
-    """從名片的 role_tags 陣列移除指定標籤"""
+def remove_card_role_tag(org_id: str, card_id: str, tag_name: str, user_id: str = None, user_role: str = "member") -> bool:
+    """
+    從名片的 role_tags 陣列移除指定標籤，並檢查權限（如果提供）。
+
+    Args:
+        org_id: 組織 ID
+        card_id: 名片 ID
+        tag_name: 標籤名稱
+        user_id: 當前使用者 ID（可選，若提供則進行權限檢查）
+        user_role: 使用者角色，預設 "member"
+
+    Returns:
+        True 如果成功，False 如果無權限或出現錯誤
+    """
     try:
+        # 如果提供了 user_id，進行權限檢查
+        if user_id is not None:
+            ref = db.reference(f"{config.NAMECARD_PATH}/{org_id}/{card_id}")
+            card_data = ref.get()
+
+            if card_data is None:
+                return False
+
+            card_added_by = card_data.get("added_by")
+            if not _check_card_access(card_added_by, user_id, user_role):
+                return False
+
+        # 移除標籤
         ref = db.reference(f"{config.NAMECARD_PATH}/{org_id}/{card_id}/role_tags")
         current = ref.get() or []
         if tag_name in current:
