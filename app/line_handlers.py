@@ -960,7 +960,9 @@ async def handle_export_email_state(
 
     try:
         from .csv_export import generate_csv, send_csv_email
-        all_cards = firebase_utils.get_all_cards(org_id)
+        user_role = firebase_utils.get_user_role(org_id, user_id) or "member"
+        all_cards = firebase_utils.get_all_namecards(
+            org_id, user_id, user_role)
         org = firebase_utils.get_org(org_id)
         org_name = org.get("name", "團隊")
         csv_bytes = generate_csv(all_cards, org_name)
