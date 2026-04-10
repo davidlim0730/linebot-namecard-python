@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock, patch
+
 from app.firebase_utils import _check_card_access
 
 
@@ -47,14 +49,62 @@ class TestGetNamecard:
     def test_admin_can_get_any_namecard(self):
         """管理員可以取得任何人的名片"""
         from app.firebase_utils import get_namecard
-        assert callable(get_namecard)
+
+        # Mock Firebase reference
+        mock_card_data = {"name": "Alice", "added_by": "user_a"}
+        mock_ref = MagicMock()
+        mock_ref.get.return_value = mock_card_data
+
+        with patch("app.firebase_utils.db.reference", return_value=mock_ref):
+            # Admin user_b can access card created by user_a
+            result = get_namecard(
+                card_id="card_123",
+                user_id="user_b",
+                org_id="org_1",
+                user_role="admin"
+            )
+
+        assert result == mock_card_data
+        assert result["name"] == "Alice"
 
     def test_member_can_get_own_namecard(self):
         """成員可以取得自己的名片"""
         from app.firebase_utils import get_namecard
-        assert callable(get_namecard)
+
+        # Mock Firebase reference
+        mock_card_data = {"name": "Bob", "added_by": "user_b"}
+        mock_ref = MagicMock()
+        mock_ref.get.return_value = mock_card_data
+
+        with patch("app.firebase_utils.db.reference", return_value=mock_ref):
+            # Member user_b can access own card
+            result = get_namecard(
+                card_id="card_456",
+                user_id="user_b",
+                org_id="org_1",
+                user_role="member"
+            )
+
+        assert result == mock_card_data
+        assert result["name"] == "Bob"
 
     def test_member_cannot_get_others_namecard(self):
         """成員無法取得他人的名片"""
         from app.firebase_utils import get_namecard
-        assert callable(get_namecard)
+
+        # Mock Firebase reference
+        mock_card_data = {"name": "Alice", "added_by": "user_a"}
+        mock_ref = MagicMock()
+        mock_ref.get.return_value = mock_card_data
+
+        with patch("app.firebase_utils.db.reference", return_value=mock_ref):
+            # Member user_b cannot access card created by user_a
+            result = get_namecard(
+                card_id="card_789",
+                user_id="user_b",
+                org_id="org_1",
+                user_role="member"
+            )
+
+        # Permission check should fail and return None
+        assert result is None

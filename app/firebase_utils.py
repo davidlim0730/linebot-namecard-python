@@ -533,7 +533,12 @@ def get_card_by_id(org_id: str, card_id: str) -> dict:
         return None
 
 
-def get_namecard(card_id: str, user_id: str, org_id: str, user_role: str = "member"):
+def get_namecard(
+    card_id: str,
+    user_id: str,
+    org_id: str,
+    user_role: str = "member"
+) -> dict | None:
     """
     取得單張名片。
 
