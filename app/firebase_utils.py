@@ -13,7 +13,11 @@ from .gsheets_utils import trigger_sync
 # Permission checks
 # ---------------------------------------------------------------------------
 
-def _check_card_access(card_added_by: str, current_user_id: str, user_role: str) -> bool:
+def _check_card_access(
+    card_added_by: str,
+    current_user_id: str,
+    user_role: str
+) -> bool:
     """
     檢查使用者是否有權限訪問這張名片。
 

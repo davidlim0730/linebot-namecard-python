@@ -1,4 +1,3 @@
-import pytest
 from app.firebase_utils import _check_card_access
 
 
