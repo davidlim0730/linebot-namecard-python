@@ -1,8 +1,11 @@
+import logging
 from io import BytesIO
 import PIL.Image
 
 from . import firebase_utils, gemini_utils, utils, config
 from .gsheets_utils import trigger_sync
+
+logger = logging.getLogger(__name__)
 
 
 async def process_batch(user_id: str, org_id: str, image_paths: list) -> dict:
@@ -29,7 +32,7 @@ async def process_batch(user_id: str, org_id: str, image_paths: list) -> dict:
         # idempotency：若 storage 檔案不存在，代表已被處理過，跳過
         image_bytes = firebase_utils.download_raw_image(storage_path)
         if image_bytes is None:
-            print(f"Batch: image {idx} not found in storage, skipping (idempotent)")
+            logger.info(f"Batch: image {idx} not found in storage, skipping (idempotent)")
             continue
 
         try:
@@ -59,14 +62,14 @@ async def process_batch(user_id: str, org_id: str, image_paths: list) -> dict:
                     try:
                         trigger_sync(org_id, card_id, card_obj)
                     except Exception as e_sync:
-                        print(f"Batch: gsheets sync failed for card {card_id}: {e_sync}")
+                        logger.warning(f"Batch: gsheets sync failed for card {card_id}: {e_sync}")
                     success += 1
                 else:
                     raise ValueError("寫入 Firebase 失敗")
         except Exception as e:
             failed += 1
             failures.append({"index": idx + 1, "reason": str(e)})
-            print(f"Batch: failed processing image {idx}: {e}")
+            logger.error(f"Batch: failed processing image {idx}: {e}")
         finally:
             # 無論成功或失敗都刪除暫存圖
             firebase_utils.delete_raw_image(storage_path)
