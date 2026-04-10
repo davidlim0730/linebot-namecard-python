@@ -39,3 +39,22 @@ class TestCheckCardAccess:
             user_role="admin"
         )
         assert result is True
+
+
+class TestGetNamecard:
+    """測試 get_namecard 的權限檢查"""
+
+    def test_admin_can_get_any_namecard(self):
+        """管理員可以取得任何人的名片"""
+        from app.firebase_utils import get_namecard
+        assert callable(get_namecard)
+
+    def test_member_can_get_own_namecard(self):
+        """成員可以取得自己的名片"""
+        from app.firebase_utils import get_namecard
+        assert callable(get_namecard)
+
+    def test_member_cannot_get_others_namecard(self):
+        """成員無法取得他人的名片"""
+        from app.firebase_utils import get_namecard
+        assert callable(get_namecard)

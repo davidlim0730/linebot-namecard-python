@@ -533,6 +533,40 @@ def get_card_by_id(org_id: str, card_id: str) -> dict:
         return None
 
 
+def get_namecard(card_id: str, user_id: str, org_id: str, user_role: str = "member"):
+    """
+    取得單張名片。
+
+    改動：加入權限檢查，成員只能訪問自己建立的名片，管理員可訪問全部。
+
+    Args:
+        card_id: 名片 ID
+        user_id: 當前使用者 ID
+        org_id: 組織 ID
+        user_role: 使用者角色，預設 "member"
+
+    Returns:
+        名片資料 dict，或 None 如果無權限或不存在
+    """
+    try:
+        # 從 Firebase 取得名片
+        ref = db.reference(f"{config.NAMECARD_PATH}/{org_id}/{card_id}")
+        card_data = ref.get()
+
+        if card_data is None:
+            return None
+
+        # 權限檢查：檢查 added_by 欄位
+        card_added_by = card_data.get("added_by")
+        if not _check_card_access(card_added_by, user_id, user_role):
+            return None
+
+        return card_data
+    except Exception as e:
+        print(f"Error getting namecard {card_id}: {str(e)}")
+        return None
+
+
 ALLOWED_EDIT_FIELDS = {"name", "title", "company", "address", "phone", "mobile", "email", "line_id"}
 
 
