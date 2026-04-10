@@ -2,13 +2,12 @@ from urllib.parse import parse_qsl
 from typing import Union
 from linebot.models import (
     PostbackEvent, MessageEvent, TextSendMessage, ImageSendMessage,
-    QuickReply, QuickReplyButton, PostbackAction, MessageAction, FollowEvent,
-    FlexMessage
+    QuickReply, QuickReplyButton, PostbackAction, FollowEvent,
+    FlexSendMessage
 )
 from io import BytesIO
-import PIL.Image
-import json
 import os
+import PIL.Image
 import threading
 import smtplib
 from email.mime.text import MIMEText
@@ -24,7 +23,9 @@ FIELD_LABELS = {
 }
 
 
-def attach_cancel_quick_reply(reply_message: Union[TextSendMessage, FlexMessage]) -> Union[TextSendMessage, FlexMessage]:
+def attach_cancel_quick_reply(
+    reply_message: Union[TextSendMessage, FlexSendMessage]
+) -> Union[TextSendMessage, FlexSendMessage]:
     """為訊息附加取消 Quick Reply
 
     Mutates the input message in-place by adding a cancel quick reply button.
@@ -867,8 +868,6 @@ async def handle_show_tags(event: MessageEvent, user_id: str, org_id: str):
     await line_bot_api.reply_message(event.reply_token, [reply_msg])
 
 
-
-
 async def handle_tag_card(
         event: PostbackEvent, org_id: str, card_id: str):
     """顯示名片的角色標籤 toggle 選單"""
@@ -1117,7 +1116,6 @@ def handle_reporting_issue_state(user_id: str, org_id: str, content: str,
                                  line_bot_api, reply_token: str):
     """用戶在 reporting_issue 狀態下輸入內容或傳圖"""
     from datetime import datetime
-    import os
     timestamp = datetime.utcnow().isoformat()
 
     # 寫入 Firebase
