@@ -51,6 +51,25 @@ def attach_cancel_quick_reply(reply_message: Union[TextSendMessage, FlexMessage]
     return reply_message
 
 
+def handle_cancel_state_postback(user_id: str, line_bot_api, reply_token: str):
+    """處理 cancel_state postback
+
+    Flow:
+    1. 清除 user_states[user_id]
+    2. 回覆「已取消」訊息
+
+    Args:
+        user_id: LINE user ID
+        line_bot_api: LINE bot API instance
+        reply_token: LINE reply token
+    """
+    if user_id in user_states:
+        del user_states[user_id]
+
+    reply = TextSendMessage(text="✓ 已取消操作")
+    line_bot_api.reply_message(reply_token, reply)
+
+
 async def check_onboarding(user_id: str, reply_token: str) -> bool:
     """若用戶無 org，回覆 onboarding 選擇訊息並回傳 True（表示已攔截）。"""
     if firebase_utils.get_user_org_id(user_id):
