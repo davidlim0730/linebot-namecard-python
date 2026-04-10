@@ -1,4 +1,6 @@
 import logging
+import json
+import os
 from io import BytesIO
 from datetime import datetime
 import PIL.Image
@@ -111,3 +113,83 @@ def append_batch_image(user_id: str, org_id: str, storage_path: str, db):
 
     batch_ref.update(batch_data)
     logger.info(f"Appended image to batch for {user_id}, total: {len(pending_images)}")
+
+
+def check_batch_idle_and_trigger(user_id: str, org_id: str, db, cloud_tasks_client):
+    """檢查批量上傳是否 idle（5 秒無新圖片）
+
+    由 Cloud Scheduler 每 2 秒呼叫一次
+
+    Args:
+        user_id: LINE user ID
+        org_id: Organization ID
+        db: Firebase database instance
+        cloud_tasks_client: Google Cloud Tasks client
+    """
+    batch_ref = db.reference(f'batch_states/{user_id}')
+    batch_data = batch_ref.get()
+
+    if not batch_data or not batch_data.get('pending_images'):
+        return  # No active batch
+
+    last_image_time_str = batch_data.get('last_image_time')
+    if not last_image_time_str:
+        return
+
+    last_image_time = datetime.fromisoformat(last_image_time_str)
+    elapsed = (datetime.utcnow() - last_image_time).total_seconds()
+
+    if elapsed >= 5:
+        logger.info(f"Batch idle detected for {user_id} ({elapsed:.1f}s), triggering completion")
+        trigger_batch_completion(user_id, org_id, db, cloud_tasks_client)
+    else:
+        logger.info(f"Batch still active for {user_id} ({elapsed:.1f}s), waiting...")
+
+
+def trigger_batch_completion(user_id: str, org_id: str, db, cloud_tasks_client):
+    """觸發批量上傳完成流程
+
+    相當於用戶輸入「完成」，建立 Cloud Task 呼叫 /internal/process-batch
+
+    Args:
+        user_id: LINE user ID
+        org_id: Organization ID
+        db: Firebase database instance
+        cloud_tasks_client: Google Cloud Tasks client
+    """
+    batch_ref = db.reference(f'batch_states/{user_id}')
+    batch_data = batch_ref.get() or {}
+
+    if not batch_data.get('pending_images'):
+        logger.warning(f"No images to process for {user_id}")
+        return
+
+    # 建立 Cloud Task
+    task = {
+        'http_request': {
+            'http_method': 'POST',
+            'url': f"{os.getenv('CLOUD_RUN_URL')}/internal/process-batch",
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({
+                'user_id': user_id,
+                'org_id': org_id
+            }).encode()
+        }
+    }
+
+    request = {
+        'parent': cloud_tasks_client.queue_path(
+            os.getenv('GOOGLE_CLOUD_PROJECT'),
+            os.getenv('CLOUD_TASKS_LOCATION'),
+            os.getenv('CLOUD_TASKS_QUEUE')
+        ),
+        'task': task
+    }
+
+    cloud_tasks_client.create_task(request)
+
+    # 標記為「已排隊」，避免重複觸發
+    batch_data['status'] = 'queued'
+    batch_ref.update(batch_data)
+
+    logger.info(f"Created Cloud Task for batch completion: {user_id}")

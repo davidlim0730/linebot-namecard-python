@@ -4,9 +4,9 @@ Verifies batch processing behavior and notification handling.
 """
 import pytest
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
-from app.batch_processor import process_batch, append_batch_image
+from app.batch_processor import process_batch, append_batch_image, check_batch_idle_and_trigger
 
 
 def test_process_batch_does_not_send_per_image_notifications():
@@ -158,3 +158,59 @@ def test_append_batch_image_updates_last_image_time():
     assert 'last_image_time' in call_args
     recorded_time = datetime.fromisoformat(call_args['last_image_time'])
     assert before <= recorded_time <= after
+
+
+def test_check_batch_idle_triggers_completion_after_5_seconds():
+    """Verify idle detection triggers completion after 5 seconds"""
+    user_id = "test_user"
+    org_id = "test_org"
+
+    # Set last_image_time to 6 seconds ago
+    last_image_time = (datetime.utcnow() - timedelta(seconds=6)).isoformat()
+    batch_data = {
+        'org_id': org_id,
+        'pending_images': ['img1.jpg'],
+        'last_image_time': last_image_time,
+        'status': 'active'
+    }
+
+    mock_db = MagicMock()
+    mock_ref = MagicMock()
+    mock_db.reference.return_value = mock_ref
+    mock_ref.get.return_value = batch_data
+
+    mock_tasks_client = MagicMock()
+
+    with patch('app.batch_processor.trigger_batch_completion') as mock_trigger:
+        check_batch_idle_and_trigger(user_id, org_id, mock_db, mock_tasks_client)
+
+        # Verify trigger_batch_completion was called
+        mock_trigger.assert_called_once_with(user_id, org_id, mock_db, mock_tasks_client)
+
+
+def test_check_batch_idle_does_not_trigger_before_5_seconds():
+    """Verify idle detection doesn't trigger before 5 seconds"""
+    user_id = "test_user"
+    org_id = "test_org"
+
+    # Set last_image_time to 3 seconds ago (not idle yet)
+    last_image_time = (datetime.utcnow() - timedelta(seconds=3)).isoformat()
+    batch_data = {
+        'org_id': org_id,
+        'pending_images': ['img1.jpg'],
+        'last_image_time': last_image_time,
+        'status': 'active'
+    }
+
+    mock_db = MagicMock()
+    mock_ref = MagicMock()
+    mock_db.reference.return_value = mock_ref
+    mock_ref.get.return_value = batch_data
+
+    mock_tasks_client = MagicMock()
+
+    with patch('app.batch_processor.trigger_batch_completion') as mock_trigger:
+        check_batch_idle_and_trigger(user_id, org_id, mock_db, mock_tasks_client)
+
+        # Verify trigger_batch_completion was NOT called
+        mock_trigger.assert_not_called()
