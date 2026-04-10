@@ -116,14 +116,74 @@ class TestGetAllNamecards:
     def test_member_gets_only_own_cards(self):
         """成員只能取得自己建立的名片"""
         from app.firebase_utils import get_all_namecards
-        assert callable(get_all_namecards)
+
+        # Mock Firebase data: 2 cards, one by user_a, one by user_b
+        mock_org_data = {
+            "card_001": {"name": "Alice", "added_by": "user_a"},
+            "card_002": {"name": "Bob", "added_by": "user_b"}
+        }
+
+        with patch("app.firebase_utils.db") as mock_db:
+            mock_ref = MagicMock()
+            mock_ref.get.return_value = mock_org_data
+            mock_db.reference.return_value = mock_ref
+
+            # Member user_a should only get their own card
+            result = get_all_namecards(
+                org_id="org_1",
+                user_id="user_a",
+                user_role="member"
+            )
+
+        # Should return only 1 card (user_a's)
+        assert len(result) == 1
+        assert result[0]["card_id"] == "card_001"
+        assert result[0]["name"] == "Alice"
 
     def test_admin_gets_all_cards(self):
         """管理員可以取得全部名片"""
         from app.firebase_utils import get_all_namecards
-        assert callable(get_all_namecards)
+
+        mock_org_data = {
+            "card_001": {"name": "Alice", "added_by": "user_a"},
+            "card_002": {"name": "Bob", "added_by": "user_b"}
+        }
+
+        with patch("app.firebase_utils.db") as mock_db:
+            mock_ref = MagicMock()
+            mock_ref.get.return_value = mock_org_data
+            mock_db.reference.return_value = mock_ref
+
+            result = get_all_namecards(
+                org_id="org_1",
+                user_id="user_c",  # Different user
+                user_role="admin"
+            )
+
+        # Admin should get all 2 cards
+        assert len(result) == 2
+        assert {r["card_id"] for r in result} == {"card_001", "card_002"}
 
     def test_empty_result_if_no_own_cards(self):
-        """如果成員沒有建立任何名片，應返回空列表"""
+        """成員沒有建立名片時回傳空列表"""
         from app.firebase_utils import get_all_namecards
-        assert callable(get_all_namecards)
+
+        # Cards from other users only
+        mock_org_data = {
+            "card_001": {"name": "Alice", "added_by": "user_a"},
+            "card_002": {"name": "Bob", "added_by": "user_b"}
+        }
+
+        with patch("app.firebase_utils.db") as mock_db:
+            mock_ref = MagicMock()
+            mock_ref.get.return_value = mock_org_data
+            mock_db.reference.return_value = mock_ref
+
+            # user_c (member) never created any cards
+            result = get_all_namecards(
+                org_id="org_1",
+                user_id="user_c",
+                user_role="member"
+            )
+
+        assert result == []  # Empty list
