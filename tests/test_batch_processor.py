@@ -4,8 +4,9 @@ Verifies batch processing behavior and notification handling.
 """
 import pytest
 import asyncio
+from datetime import datetime
 from unittest.mock import MagicMock, patch
-from app.batch_processor import process_batch
+from app.batch_processor import process_batch, append_batch_image
 
 
 def test_process_batch_does_not_send_per_image_notifications():
@@ -134,3 +135,26 @@ def test_process_batch_logs_progress_not_pushes():
 
         assert result["success"] == 2, "Expected 2 successful cards"
         assert result["failed"] == 0, "Expected no failures"
+
+
+def test_append_batch_image_updates_last_image_time():
+    """Verify append_batch_image records the timestamp"""
+    user_id = "test_user"
+    org_id = "test_org"
+    storage_path = "raw_images/test_org/test_user/uuid.jpg"
+
+    mock_db = MagicMock()
+    mock_ref = MagicMock()
+    mock_db.reference.return_value = mock_ref
+    mock_ref.get.return_value = {'pending_images': []}
+
+    before = datetime.utcnow()
+    append_batch_image(user_id, org_id, storage_path, mock_db)
+    after = datetime.utcnow()
+
+    # Get the batch_data that was updated
+    call_args = mock_ref.update.call_args[0][0]
+
+    assert 'last_image_time' in call_args
+    recorded_time = datetime.fromisoformat(call_args['last_image_time'])
+    assert before <= recorded_time <= after

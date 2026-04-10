@@ -1,5 +1,6 @@
 import logging
 from io import BytesIO
+from datetime import datetime
 import PIL.Image
 
 from . import firebase_utils, gemini_utils, utils, config
@@ -79,3 +80,34 @@ async def process_batch(user_id: str, org_id: str, image_paths: list) -> dict:
         result["quota_hit"] = True
         result["quota_reason"] = quota_reason
     return result
+
+
+def append_batch_image(user_id: str, org_id: str, storage_path: str, db):
+    """新增圖片到批量上傳隊列並記錄時間戳
+
+    Args:
+        user_id: LINE user ID
+        org_id: Organization ID
+        storage_path: Firebase Storage path (e.g., raw_images/org/user/uuid.jpg)
+        db: Firebase database instance
+    """
+    batch_ref = db.reference(f'batch_states/{user_id}')
+    batch_data = batch_ref.get() or {}
+
+    # 新增圖片
+    pending_images = batch_data.get('pending_images', [])
+    if isinstance(pending_images, dict):
+        # Firebase push() returns dict, convert to list for appending
+        pending_images = list(pending_images.values())
+    else:
+        pending_images = list(pending_images) if pending_images else []
+
+    pending_images.append(storage_path)
+
+    # 更新 last_image_time（用於 idle detection）
+    batch_data['pending_images'] = pending_images
+    batch_data['last_image_time'] = datetime.utcnow().isoformat()
+    batch_data['updated_at'] = datetime.utcnow().isoformat()
+
+    batch_ref.update(batch_data)
+    logger.info(f"Appended image to batch for {user_id}, total: {len(pending_images)}")
