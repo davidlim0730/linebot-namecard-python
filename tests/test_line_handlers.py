@@ -241,3 +241,39 @@ def test_handle_exporting_csv_state_includes_cancel_quick_reply():
             # Should have cancel quick reply
             assert msg.quick_reply is not None
             assert msg.quick_reply.items[0].action.label == "❌ 取消"
+
+
+def test_batch_start_message_includes_warning():
+    """Verify batch start message includes warning about waiting"""
+    import asyncio
+    from unittest.mock import MagicMock, patch, AsyncMock
+    from app.line_handlers import handle_postback_event
+
+    user_id = "test_user"
+    org_id = "test_org"
+    reply_token = "token"
+
+    # Create mock postback event
+    mock_event = MagicMock()
+    mock_event.source.user_id = user_id
+    mock_event.reply_token = reply_token
+    mock_event.postback.data = "action=batch_start"
+
+    with patch('app.line_handlers.firebase_utils') as mock_firebase, \
+         patch('app.line_handlers.line_bot_api') as mock_line_bot_api:
+
+        mock_firebase.get_user_org_id.return_value = org_id
+        mock_firebase.ensure_user_org.return_value = (org_id, False)
+        mock_firebase.require_admin.return_value = True
+        mock_firebase.init_batch_state = MagicMock()
+        mock_line_bot_api.reply_message = AsyncMock()
+
+        asyncio.run(handle_postback_event(mock_event, user_id))
+
+        # Verify reply was called
+        mock_line_bot_api.reply_message.assert_called_once()
+        call_args = mock_line_bot_api.reply_message.call_args
+        message = call_args[0][1]
+
+        assert "批量上傳模式已開啟" in message.text
+        assert "系統將依序" in message.text or "請勿輸入其他指令" in message.text

@@ -245,11 +245,14 @@ async def handle_postback_event(event: PostbackEvent, user_id: str):
 
     elif action == "batch_start":
         firebase_utils.init_batch_state(user_id, org_id)
+        message_text = """批量上傳模式已開啟！請逐一傳送名片照片。
+傳完所有照片後，輸入「完成」開始處理。
+
+⚠️ 系統將依序辨識並於全部完成後通知結果，
+   完成前請勿輸入其他指令。"""
         await line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(
-                text="已進入批量上傳模式，請開始傳送名片照片，全部傳送完畢後請輸入『完成』"
-            )
+            TextSendMessage(text=message_text)
         )
         return
 
