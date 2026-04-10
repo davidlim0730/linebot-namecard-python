@@ -4,6 +4,7 @@ import os
 from io import BytesIO
 from datetime import datetime
 import PIL.Image
+from linebot.models import TextSendMessage
 
 from . import firebase_utils, gemini_utils, utils, config
 from .gsheets_utils import trigger_sync
@@ -193,3 +194,64 @@ def trigger_batch_completion(user_id: str, org_id: str, db, cloud_tasks_client):
     batch_ref.update(batch_data)
 
     logger.info(f"Created Cloud Task for batch completion: {user_id}")
+
+
+def send_batch_summary_push(user_id: str, org_id: str, results: list,
+                           line_bot_api, db):
+    """推播批量上傳結果摘要（含成功/失敗清單）
+
+    Args:
+        user_id: LINE user ID
+        org_id: Organization ID
+        results: List of OCR results with status, name, company fields
+        line_bot_api: LINE bot API instance
+        db: Firebase database instance
+    """
+    success_cards = [r for r in results if r.get('status') == 'success']
+    failed_cards = [r for r in results if r.get('status') == 'failed']
+
+    total = len(results)
+    success_count = len(success_cards)
+    failed_count = len(failed_cards)
+
+    # 構建成功清單
+    success_list = ""
+    for idx, card in enumerate(success_cards, 1):
+        display_name = card.get('name') or card.get('company') or f"卡片 {idx}"
+        company = card.get('company', '')
+        if company:
+            success_list += f"・[{idx}] {display_name} / {company}\n"
+        else:
+            success_list += f"・[{idx}] {display_name}\n"
+
+    # 構建失敗清單
+    failed_list = ""
+    for idx, card in enumerate(failed_cards, 1):
+        reason = card.get('reason', '辨識失敗')
+        if card.get('status_reason') == 'no_readable_data':
+            reason = "辨識失敗（無可讀資料）"
+        elif card.get('status_reason') == 'duplicate':
+            reason = "已存在重複名片（email 相符）"
+
+        failed_list += f"・[{idx}] {reason}\n"
+
+    # 完整訊息
+    message_text = f"""✅ 批次處理完成！
+
+共上傳 {total} 張，成功 {success_count} 張，失敗 {failed_count} 張。
+
+✅ 成功（{success_count} 張）：
+{success_list if success_list else "無"}
+
+❌ 失敗（{failed_count} 張）：
+{failed_list if failed_list else "無"}
+
+可重新傳送失敗的名片照片進行補上傳。"""
+
+    reply = TextSendMessage(text=message_text)
+    line_bot_api.push_message(user_id, reply)
+
+    # 清除 batch state
+    batch_ref = db.reference(f'batch_states/{user_id}')
+    batch_ref.delete()
+    logger.info(f"Batch summary sent to {user_id}: {success_count} success, {failed_count} failed")

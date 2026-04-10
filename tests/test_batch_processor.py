@@ -6,7 +6,7 @@ import pytest
 import asyncio
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
-from app.batch_processor import process_batch, append_batch_image, check_batch_idle_and_trigger
+from app.batch_processor import process_batch, append_batch_image, check_batch_idle_and_trigger, send_batch_summary_push
 
 
 def test_process_batch_does_not_send_per_image_notifications():
@@ -214,3 +214,38 @@ def test_check_batch_idle_does_not_trigger_before_5_seconds():
 
         # Verify trigger_batch_completion was NOT called
         mock_trigger.assert_not_called()
+
+
+def test_send_batch_summary_push_includes_success_failure_lists():
+    """Verify summary includes detailed success/failure lists"""
+    user_id = "test_user"
+    org_id = "test_org"
+
+    results = [
+        {'status': 'success', 'name': '王小明', 'company': '台灣科技'},
+        {'status': 'success', 'name': '李大華', 'company': '新創'},
+        {'status': 'failed', 'status_reason': 'no_readable_data'},
+        {'status': 'failed', 'reason': '已存在重複名片'}
+    ]
+
+    mock_line_bot_api = MagicMock()
+    mock_db = MagicMock()
+    mock_ref = MagicMock()
+    mock_db.reference.return_value = mock_ref
+
+    send_batch_summary_push(user_id, org_id, results, mock_line_bot_api, mock_db)
+
+    # Verify push_message was called
+    mock_line_bot_api.push_message.assert_called_once()
+
+    # Get the message
+    call_args = mock_line_bot_api.push_message.call_args
+    message_text = call_args[0][1].text
+
+    # Verify format includes counts and lists
+    assert '共上傳 4 張' in message_text
+    assert '成功 2 張' in message_text
+    assert '失敗 2 張' in message_text
+    assert '✅ 成功' in message_text
+    assert '王小明' in message_text
+    assert '❌ 失敗' in message_text
