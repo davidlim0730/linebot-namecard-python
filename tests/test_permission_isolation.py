@@ -273,3 +273,214 @@ class TestDeleteNamecard:
 
         assert result is True
         mock_ref.delete.assert_called_once()
+
+
+class TestUpdateNamecardField:
+    """測試 update_namecard_field 的權限檢查"""
+
+    def test_member_can_update_own_card(self):
+        """成員可以更新自己建立的名片欄位"""
+        from app.firebase_utils import update_namecard_field
+
+        # Mock Firebase reference
+        mock_card_data = {"name": "Alice", "added_by": "user_a"}
+        mock_ref = MagicMock()
+        mock_ref.get.return_value = mock_card_data
+
+        with patch("app.firebase_utils.db.reference", return_value=mock_ref):
+            with patch("app.firebase_utils.trigger_sync"):
+                # Member user_a can update their own card
+                result = update_namecard_field(
+                    card_id="card_123",
+                    user_id="user_a",
+                    org_id="org_1",
+                    field="name",
+                    value="Updated Name",
+                    user_role="member"
+                )
+
+        assert result is True
+        mock_ref.update.assert_called_once()
+
+    def test_member_cannot_update_others_card(self):
+        """成員無法更新他人建立的名片欄位"""
+        from app.firebase_utils import update_namecard_field
+
+        # Mock Firebase reference
+        mock_card_data = {"name": "Alice", "added_by": "user_a"}
+        mock_ref = MagicMock()
+        mock_ref.get.return_value = mock_card_data
+
+        with patch("app.firebase_utils.db.reference", return_value=mock_ref):
+            # Member user_b cannot update card created by user_a
+            result = update_namecard_field(
+                card_id="card_123",
+                user_id="user_b",
+                org_id="org_1",
+                field="name",
+                value="Updated Name",
+                user_role="member"
+            )
+
+        assert result is False
+        mock_ref.update.assert_not_called()
+
+    def test_admin_can_update_any_card(self):
+        """管理員可以更新任何人建立的名片欄位"""
+        from app.firebase_utils import update_namecard_field
+
+        # Mock Firebase reference
+        mock_card_data = {"name": "Alice", "added_by": "user_a"}
+        mock_ref = MagicMock()
+        mock_ref.get.return_value = mock_card_data
+
+        with patch("app.firebase_utils.db.reference", return_value=mock_ref):
+            with patch("app.firebase_utils.trigger_sync"):
+                # Admin user_b can update card created by user_a
+                result = update_namecard_field(
+                    card_id="card_123",
+                    user_id="user_b",
+                    org_id="org_1",
+                    field="name",
+                    value="Updated Name",
+                    user_role="admin"
+                )
+
+        assert result is True
+        mock_ref.update.assert_called_once()
+
+
+class TestTagOperations:
+    """測試 add_tag_to_card 和 remove_tag_from_card 的權限檢查"""
+
+    def test_member_can_add_tag_to_own_card(self):
+        """成員可以為自己建立的名片新增標籤"""
+        from app.firebase_utils import add_tag_to_card
+
+        # Mock Firebase reference
+        mock_card_data = {"name": "Alice", "added_by": "user_a", "tags": []}
+        mock_ref = MagicMock()
+        mock_ref.get.return_value = mock_card_data
+
+        with patch("app.firebase_utils.db.reference", return_value=mock_ref):
+            # Member user_a can add tag to their own card
+            result = add_tag_to_card(
+                card_id="card_123",
+                user_id="user_a",
+                org_id="org_1",
+                tag_name="customer",
+                user_role="member"
+            )
+
+        assert result is True
+        mock_ref.update.assert_called_once()
+
+    def test_member_cannot_add_tag_to_others_card(self):
+        """成員無法為他人建立的名片新增標籤"""
+        from app.firebase_utils import add_tag_to_card
+
+        # Mock Firebase reference
+        mock_card_data = {"name": "Alice", "added_by": "user_a", "tags": []}
+        mock_ref = MagicMock()
+        mock_ref.get.return_value = mock_card_data
+
+        with patch("app.firebase_utils.db.reference", return_value=mock_ref):
+            # Member user_b cannot add tag to card created by user_a
+            result = add_tag_to_card(
+                card_id="card_123",
+                user_id="user_b",
+                org_id="org_1",
+                tag_name="customer",
+                user_role="member"
+            )
+
+        assert result is False
+        mock_ref.update.assert_not_called()
+
+    def test_admin_can_add_tag_to_any_card(self):
+        """管理員可以為任何人建立的名片新增標籤"""
+        from app.firebase_utils import add_tag_to_card
+
+        # Mock Firebase reference
+        mock_card_data = {"name": "Alice", "added_by": "user_a", "tags": []}
+        mock_ref = MagicMock()
+        mock_ref.get.return_value = mock_card_data
+
+        with patch("app.firebase_utils.db.reference", return_value=mock_ref):
+            # Admin user_b can add tag to card created by user_a
+            result = add_tag_to_card(
+                card_id="card_123",
+                user_id="user_b",
+                org_id="org_1",
+                tag_name="customer",
+                user_role="admin"
+            )
+
+        assert result is True
+        mock_ref.update.assert_called_once()
+
+    def test_member_can_remove_tag_from_own_card(self):
+        """成員可以從自己建立的名片移除標籤"""
+        from app.firebase_utils import remove_tag_from_card
+
+        # Mock Firebase reference
+        mock_card_data = {"name": "Alice", "added_by": "user_a", "tags": ["customer"]}
+        mock_ref = MagicMock()
+        mock_ref.get.return_value = mock_card_data
+
+        with patch("app.firebase_utils.db.reference", return_value=mock_ref):
+            # Member user_a can remove tag from their own card
+            result = remove_tag_from_card(
+                card_id="card_123",
+                user_id="user_a",
+                org_id="org_1",
+                tag_name="customer",
+                user_role="member"
+            )
+
+        assert result is True
+        mock_ref.update.assert_called_once()
+
+    def test_member_cannot_remove_tag_from_others_card(self):
+        """成員無法從他人建立的名片移除標籤"""
+        from app.firebase_utils import remove_tag_from_card
+
+        # Mock Firebase reference
+        mock_card_data = {"name": "Alice", "added_by": "user_a", "tags": ["customer"]}
+        mock_ref = MagicMock()
+        mock_ref.get.return_value = mock_card_data
+
+        with patch("app.firebase_utils.db.reference", return_value=mock_ref):
+            # Member user_b cannot remove tag from card created by user_a
+            result = remove_tag_from_card(
+                card_id="card_123",
+                user_id="user_b",
+                org_id="org_1",
+                tag_name="customer",
+                user_role="member"
+            )
+
+        assert result is False
+        mock_ref.update.assert_not_called()
+
+    def test_admin_can_remove_tag_from_any_card(self):
+        """管理員可以從任何人建立的名片移除標籤"""
+        from app.firebase_utils import remove_tag_from_card
+
+        # Mock Firebase reference
+        mock_card_data = {"name": "Alice", "added_by": "user_a", "tags": ["customer"]}
+        mock_ref = MagicMock()
+        mock_ref.get.return_value = mock_card_data
+
+        with patch("app.firebase_utils.db.reference", return_value=mock_ref):
+            # Admin user_b can remove tag from card created by user_a
+            result = remove_tag_from_card(
+                card_id="card_123",
+                user_id="user_b",
+                org_id="org_1",
+                tag_name="customer",
+                user_role="admin"
+            )
+
+        assert result is True
+        mock_ref.update.assert_called_once()

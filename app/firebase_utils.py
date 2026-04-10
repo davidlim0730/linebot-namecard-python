@@ -334,6 +334,86 @@ def remove_card_role_tag(org_id: str, card_id: str, tag_name: str) -> bool:
         return False
 
 
+def add_tag_to_card(card_id: str, user_id: str, org_id: str, tag_name: str, user_role: str = "member") -> bool:
+    """
+    將標籤加入名片，並檢查權限。
+
+    改動：加入權限檢查，成員只能為自己建立的名片加標籤，管理員可為任何名片加標籤。
+
+    Args:
+        card_id: 名片 ID
+        user_id: 當前使用者 ID
+        org_id: 組織 ID
+        tag_name: 要新增的標籤名稱
+        user_role: 使用者角色，預設 "member"
+
+    Returns:
+        True 如果新增成功，False 如果無權限或出現錯誤
+    """
+    try:
+        ref = db.reference(f"{config.NAMECARD_PATH}/{org_id}/{card_id}")
+        card_data = ref.get()
+
+        if card_data is None:
+            return False
+
+        # 權限檢查：檢查 added_by 欄位
+        card_added_by = card_data.get("added_by")
+        if not _check_card_access(card_added_by, user_id, user_role):
+            return False
+
+        # 將標籤加入名片
+        tags = card_data.get("tags", [])
+        if tag_name not in tags:
+            tags.append(tag_name)
+            ref.update({"tags": tags})
+
+        return True
+    except Exception as e:
+        print(f"Error adding tag to card {card_id}: {str(e)}")
+        return False
+
+
+def remove_tag_from_card(card_id: str, user_id: str, org_id: str, tag_name: str, user_role: str = "member") -> bool:
+    """
+    從名片移除標籤，並檢查權限。
+
+    改動：加入權限檢查，成員只能從自己建立的名片移除標籤，管理員可從任何名片移除標籤。
+
+    Args:
+        card_id: 名片 ID
+        user_id: 當前使用者 ID
+        org_id: 組織 ID
+        tag_name: 要移除的標籤名稱
+        user_role: 使用者角色，預設 "member"
+
+    Returns:
+        True 如果移除成功，False 如果無權限或出現錯誤
+    """
+    try:
+        ref = db.reference(f"{config.NAMECARD_PATH}/{org_id}/{card_id}")
+        card_data = ref.get()
+
+        if card_data is None:
+            return False
+
+        # 權限檢查：檢查 added_by 欄位
+        card_added_by = card_data.get("added_by")
+        if not _check_card_access(card_added_by, user_id, user_role):
+            return False
+
+        # 從名片移除標籤
+        tags = card_data.get("tags", [])
+        if tag_name in tags:
+            tags.remove(tag_name)
+            ref.update({"tags": tags})
+
+        return True
+    except Exception as e:
+        print(f"Error removing tag from card {card_id}: {str(e)}")
+        return False
+
+
 def search_cards(org_id: str, query: str) -> list:
     """關鍵字搜尋名片（姓名、公司、職稱），回傳 [(card_id, card_data), ...]"""
     try:
@@ -709,13 +789,39 @@ ALLOWED_EDIT_FIELDS = {"name", "title", "company", "address", "phone", "mobile",
 
 
 def update_namecard_field(
-        org_id: str, card_id: str, field: str, value: str) -> bool:
-    """更新指定名片的特定欄位（僅允許白名單欄位）"""
+        card_id: str, user_id: str, org_id: str, field: str, value: str, user_role: str = "member") -> bool:
+    """
+    更新指定名片的特定欄位（僅允許白名單欄位）並檢查權限。
+
+    改動：加入權限檢查，成員只能更新自己建立的名片，管理員可更新任何名片。
+
+    Args:
+        card_id: 名片 ID
+        user_id: 當前使用者 ID
+        org_id: 組織 ID
+        field: 要更新的欄位名稱
+        value: 新的值
+        user_role: 使用者角色，預設 "member"
+
+    Returns:
+        True 如果更新成功，False 如果無權限、欄位不允許或出現錯誤
+    """
     if field not in ALLOWED_EDIT_FIELDS:
         print(f"Rejected update for disallowed field: {field}")
         return False
     try:
         ref = db.reference(f"{config.NAMECARD_PATH}/{org_id}/{card_id}")
+        card_data = ref.get()
+
+        if card_data is None:
+            return False
+
+        # 權限檢查：檢查 added_by 欄位
+        card_added_by = card_data.get("added_by")
+        if not _check_card_access(card_added_by, user_id, user_role):
+            print(f"User {user_id} attempted to update card {card_id} without permission")
+            return False
+
         ref.update({field: value})
         try:
             card_data = ref.get()
