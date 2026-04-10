@@ -47,6 +47,51 @@ gcloud run deploy {IMAGE_NAME} \
   --set-env-vars "ChannelSecret=...,ChannelAccessToken=...,GEMINI_API_KEY=...,FIREBASE_URL=...,FIREBASE_STORAGE_BUCKET=...,GOOGLE_APPLICATION_CREDENTIALS_JSON=..."
 ```
 
+## Documentation Structure（文檔規範）
+
+### GTM 文件夾組織
+
+```
+docs/gtm/
+├── 📅 planning/          ← 規劃中的產品願景（未來）
+│   ├── roadmap.md       └─ Phase 1-5 路線圖、設計原則、驗收指標
+│   └── feature-planning.md  └─ 功能設計細節、UI 分層、Rich Menu 架構
+│
+├── 🏗️ prd/              ← 進行中開發的規格書（現在）
+│   └── [date]-[name]-prd-v*.md  ← 每個功能開發都有一份 PRD
+│
+└── 📢 pr/               ← 已發佈的版本記錄（過去）
+    ├── product-features.md              ← 對外推廣用功能清單
+    ├── RELEASE-NOTES-TEMPLATE.md        ← 發版模板
+    └── [date]-[name]-release.md         ← 每個版本都發佈一份 Release Notes
+```
+
+### 文檔工作流程
+
+1. **規劃階段** → `planning/roadmap.md`
+   - 列出 Phase X 的規劃功能
+   - 定義設計原則、驗收指標
+
+2. **開發階段** → `prd/*.md`
+   - PRD 完成 → 開發實作
+   - 內容：規格書、驗收標準、技術細節
+
+3. **發佈階段** → `pr/`
+   - 用 `RELEASE-NOTES-TEMPLATE.md` 寫 Release Notes
+   - 更新 `product-features.md`（新功能加入列表）
+
+### 各文件用途速查
+
+| 角色 | 推薦閱讀 |
+|------|--------|
+| **業務 / 行銷** | `pr/product-features.md`, `planning/roadmap.md` |
+| **PM** | 所有文檔 |
+| **設計師** | `planning/feature-planning.md`, `pr/product-features.md` |
+| **工程師** | `planning/feature-planning.md`, `prd/*.md` |
+| **技術主管** | `planning/roadmap.md`, `prd/*.md` |
+
+---
+
 ## Architecture
 
 FastAPI webhook → `line_handlers.py` → `firebase_utils.py` / `gemini_utils.py`
@@ -170,3 +215,11 @@ CLOUD_TASKS_LOCATION=asia-east1
 CLOUD_RUN_URL=https://{SERVICE}-{HASH}.{REGION}.run.app
 GOOGLE_CLOUD_PROJECT={PROJECT_ID}
 ```
+---
+
+## AI 回覆規範
+
+- **直接給結果**：不要前言、不要總結
+- **使用工具後，只回報結果**：不描述過程
+- **除非主動問，否則不解釋**：不說明你在做什麼
+- **程式碼和資料維持完整精確**：只壓縮自然語言

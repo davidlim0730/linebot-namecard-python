@@ -206,3 +206,70 @@ class TestSearchNamecards:
         """沒有符合權限的搜尋結果應返回空列表"""
         from app.firebase_utils import search_namecards
         assert callable(search_namecards)
+
+
+class TestDeleteNamecard:
+    """測試 delete_namecard 的權限檢查"""
+
+    def test_member_can_delete_own_card(self):
+        """成員可以刪除自己建立的名片"""
+        from app.firebase_utils import delete_namecard
+
+        # Mock Firebase reference
+        mock_card_data = {"name": "Alice", "added_by": "user_a"}
+        mock_ref = MagicMock()
+        mock_ref.get.return_value = mock_card_data
+
+        with patch("app.firebase_utils.db.reference", return_value=mock_ref):
+            # Member user_a can delete their own card
+            result = delete_namecard(
+                card_id="card_123",
+                user_id="user_a",
+                org_id="org_1",
+                user_role="member"
+            )
+
+        assert result is True
+        mock_ref.delete.assert_called_once()
+
+    def test_member_cannot_delete_others_card(self):
+        """成員無法刪除他人建立的名片"""
+        from app.firebase_utils import delete_namecard
+
+        # Mock Firebase reference
+        mock_card_data = {"name": "Alice", "added_by": "user_a"}
+        mock_ref = MagicMock()
+        mock_ref.get.return_value = mock_card_data
+
+        with patch("app.firebase_utils.db.reference", return_value=mock_ref):
+            # Member user_b cannot delete card created by user_a
+            result = delete_namecard(
+                card_id="card_123",
+                user_id="user_b",
+                org_id="org_1",
+                user_role="member"
+            )
+
+        assert result is False
+        mock_ref.delete.assert_not_called()
+
+    def test_admin_can_delete_any_card(self):
+        """管理員可以刪除任何人建立的名片"""
+        from app.firebase_utils import delete_namecard
+
+        # Mock Firebase reference
+        mock_card_data = {"name": "Alice", "added_by": "user_a"}
+        mock_ref = MagicMock()
+        mock_ref.get.return_value = mock_card_data
+
+        with patch("app.firebase_utils.db.reference", return_value=mock_ref):
+            # Admin user_b can delete card created by user_a
+            result = delete_namecard(
+                card_id="card_123",
+                user_id="user_b",
+                org_id="org_1",
+                user_role="admin"
+            )
+
+        assert result is True
+        mock_ref.delete.assert_called_once()

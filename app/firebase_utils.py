@@ -447,13 +447,45 @@ def add_namecard(namecard_obj: dict, org_id: str, added_by: str) -> str:
         return None
 
 
-def delete_namecard(org_id: str, card_id: str) -> bool:
-    """刪除指定名片"""
+def delete_namecard(
+    card_id: str,
+    user_id: str,
+    org_id: str,
+    user_role: str = "member"
+) -> bool:
+    """
+    刪除指定名片，並檢查權限。
+
+    改動：加入權限檢查，成員只能刪除自己建立的名片，管理員可刪除任何名片。
+
+    Args:
+        card_id: 名片 ID
+        user_id: 當前使用者 ID
+        org_id: 組織 ID
+        user_role: 使用者角色，預設 "member"
+
+    Returns:
+        True 如果刪除成功，False 如果無權限或出現錯誤
+    """
     try:
-        db.reference(f"{config.NAMECARD_PATH}/{org_id}/{card_id}").delete()
+        # 從 Firebase 取得名片
+        ref = db.reference(f"{config.NAMECARD_PATH}/{org_id}/{card_id}")
+        card_data = ref.get()
+
+        if card_data is None:
+            return False
+
+        # 權限檢查：檢查 added_by 欄位
+        card_added_by = card_data.get("added_by")
+        if not _check_card_access(card_added_by, user_id, user_role):
+            print(f"User {user_id} attempted to delete card {card_id} without permission")
+            return False
+
+        # 刪除名片
+        ref.delete()
         return True
     except Exception as e:
-        print(f"Error deleting namecard: {e}")
+        print(f"Error deleting namecard {card_id}: {str(e)}")
         return False
 
 
