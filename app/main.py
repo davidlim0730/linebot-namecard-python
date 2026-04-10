@@ -13,8 +13,11 @@ from .line_handlers import (
     send_batch_summary_push, handle_follow_event)
 from .bot_instance import close_session, parser
 from .firebase_utils import get_all_cards
-from .batch_processor import process_batch
+from .batch_processor import process_batch, check_batch_idle_and_trigger
 from .rich_menu_utils import init_rich_menu
+import logging
+
+logger = logging.getLogger(__name__)
 
 # =====================
 # 初始化區塊
@@ -133,6 +136,41 @@ async def internal_process_batch(request: Request):
     summary = await process_batch(user_id, org_id, image_paths)
     await send_batch_summary_push(user_id, summary)
     return {"status": "ok", "summary": summary}
+
+
+def get_db_instance():
+    """Get Firebase Realtime Database instance for batch idle checking."""
+    from firebase_admin import db
+    return db
+
+
+@app.post('/internal/check-batch-idle')
+def check_batch_idle():
+    """由 Cloud Scheduler 定期呼叫，檢查是否有 batch 進入 idle 狀態"""
+    try:
+        from google.cloud import tasks_v2
+
+        db = get_db_instance()
+        tasks_client = tasks_v2.CloudTasksClient()
+
+        batch_states_ref = db.reference('batch_states')
+        all_batches = batch_states_ref.get() or {}
+
+        for user_id, batch_data in all_batches.items():
+            org_id = batch_data.get('org_id')
+            status = batch_data.get('status', 'active')
+
+            # 若已排隊，跳過（避免重複）
+            if status == 'queued':
+                logger.info(f"Batch for {user_id} already queued, skipping")
+                continue
+
+            check_batch_idle_and_trigger(user_id, org_id, db, tasks_client)
+
+        return {'status': 'ok'}
+    except Exception as e:
+        logger.error(f"Error in check_batch_idle: {str(e)}")
+        return {'status': 'error', 'message': str(e)}
 
 
 @app.on_event("shutdown")

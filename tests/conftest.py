@@ -44,7 +44,13 @@ class StubFlexMessage:
         self.body = body
         self.quick_reply = None
 
+class StubInvalidSignatureError(Exception):
+    pass
+
 linebot_mock = MagicMock()
+linebot_exceptions_mock = MagicMock()
+linebot_exceptions_mock.InvalidSignatureError = StubInvalidSignatureError
+
 linebot_models_mock = MagicMock()
 linebot_models_mock.PostbackAction = StubPostbackAction
 linebot_models_mock.QuickReplyButton = StubQuickReplyButton
@@ -58,6 +64,7 @@ linebot_models_mock.MessageAction = MagicMock
 linebot_models_mock.FollowEvent = MagicMock
 
 sys.modules['linebot'] = linebot_mock
+sys.modules['linebot.exceptions'] = linebot_exceptions_mock
 sys.modules['linebot.models'] = linebot_models_mock
 sys.modules['linebot.v3'] = MagicMock()
 sys.modules['linebot.aiohttp_async_http_client'] = MagicMock()
