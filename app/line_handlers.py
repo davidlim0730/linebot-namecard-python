@@ -820,9 +820,9 @@ async def handle_adding_tag_state(
     tag_name = msg.strip()
     del user_states[user_id]
     if not tag_name:
-        await line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text='請輸入有效的標籤名稱。'))
+        reply = TextSendMessage(text='請輸入有效的標籤名稱。')
+        reply = attach_cancel_quick_reply(reply)
+        await line_bot_api.reply_message(event.reply_token, reply)
         return
     result = firebase_utils.add_role_tag(org_id, tag_name)
     tags = firebase_utils.get_all_role_tags(org_id)
@@ -831,9 +831,11 @@ async def handle_adding_tag_state(
         text = f'已新增標籤「{tag_name}」。'
     else:
         text = f'標籤「{tag_name}」已存在。'
+    text_msg = TextSendMessage(text=text)
+    text_msg = attach_cancel_quick_reply(text_msg)
     await line_bot_api.reply_message(
         event.reply_token,
-        [TextSendMessage(text=text), reply_msg])
+        [text_msg, reply_msg])
 
 
 async def handle_show_tags(event: MessageEvent, user_id: str, org_id: str):
@@ -998,10 +1000,9 @@ async def handle_export_email_state(
     """處理匯出流程中的 email 輸入"""
     import re
     if not re.match(r'^[^@]+@[^@]+\.[^@]+$', msg.strip()):
-        await line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(
-                text='email 格式不正確，請重新輸入。'))
+        reply = TextSendMessage(text='email 格式不正確，請重新輸入。')
+        reply = attach_cancel_quick_reply(reply)
+        await line_bot_api.reply_message(event.reply_token, reply)
         return
 
     to_email = msg.strip()
@@ -1016,16 +1017,14 @@ async def handle_export_email_state(
         org_name = org.get("name", "團隊")
         csv_bytes = generate_csv(all_cards, org_name)
         send_csv_email(csv_bytes, to_email, org_name)
-        await line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(
-                text=f'CSV 已寄送至 {to_email}，請查收信箱。'))
+        reply = TextSendMessage(text=f'CSV 已寄送至 {to_email}，請查收信箱。')
+        reply = attach_cancel_quick_reply(reply)
+        await line_bot_api.reply_message(event.reply_token, reply)
     except Exception as e:
         print(f"Error in CSV export: {e}")
-        await line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(
-                text='CSV 寄送失敗，請稍後再試或確認 email 地址。'))
+        reply = TextSendMessage(text='CSV 寄送失敗，請稍後再試或確認 email 地址。')
+        reply = attach_cancel_quick_reply(reply)
+        await line_bot_api.reply_message(event.reply_token, reply)
 
 
 async def handle_add_memo_state(
@@ -1034,17 +1033,13 @@ async def handle_add_memo_state(
     card_id = state['card_id']
 
     if firebase_utils.update_namecard_memo(card_id, org_id, msg):
-        await line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(
-                text='備忘錄已成功更新！'
-            ))
+        reply = TextSendMessage(text='備忘錄已成功更新！')
+        reply = attach_cancel_quick_reply(reply)
+        await line_bot_api.reply_message(event.reply_token, reply)
     else:
-        await line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(
-                text='新增備忘錄時發生錯誤，請稍後再試。'
-            ))
+        reply = TextSendMessage(text='新增備忘錄時發生錯誤，請稍後再試。')
+        reply = attach_cancel_quick_reply(reply)
+        await line_bot_api.reply_message(event.reply_token, reply)
     del user_states[user_id]
 
 
@@ -1066,34 +1061,28 @@ async def handle_edit_field_state(
         if updated_card:
             reply_msg = flex_messages.get_namecard_flex_msg(
                 updated_card, card_id)
+            text_msg = TextSendMessage(text='資料已成功更新！')
+            text_msg = attach_cancel_quick_reply(text_msg)
             await line_bot_api.reply_message(
                 event.reply_token,
-                [TextSendMessage(
-                    text='資料已成功更新！'
-                ), reply_msg]
+                [text_msg, reply_msg]
             )
         else:
-            await line_bot_api.reply_message(
-                event.reply_token,
-                TextSendMessage(
-                    text='資料更新成功，但無法立即顯示。'
-                ))
+            reply = TextSendMessage(text='資料更新成功，但無法立即顯示。')
+            reply = attach_cancel_quick_reply(reply)
+            await line_bot_api.reply_message(event.reply_token, reply)
     else:
         # 檢查名片是否存在
         if firebase_utils.check_card_exists(org_id, card_id):
             # 名片存在但無權限
-            await line_bot_api.reply_message(
-                event.reply_token,
-                TextSendMessage(
-                    text='抱歉，您沒有權限訪問或修改此名片。'
-                ))
+            reply = TextSendMessage(text='抱歉，您沒有權限訪問或修改此名片。')
+            reply = attach_cancel_quick_reply(reply)
+            await line_bot_api.reply_message(event.reply_token, reply)
         else:
             # 名片不存在或欄位不允許編輯
-            await line_bot_api.reply_message(
-                event.reply_token,
-                TextSendMessage(
-                    text='更新資料時發生錯誤，請稍後再試。'
-                ))
+            reply = TextSendMessage(text='更新資料時發生錯誤，請稍後再試。')
+            reply = attach_cancel_quick_reply(reply)
+            await line_bot_api.reply_message(event.reply_token, reply)
     del user_states[user_id]
 
 
