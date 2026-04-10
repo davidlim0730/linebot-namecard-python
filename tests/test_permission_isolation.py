@@ -424,7 +424,11 @@ class TestTagOperations:
         from app.firebase_utils import remove_tag_from_card
 
         # Mock Firebase reference
-        mock_card_data = {"name": "Alice", "added_by": "user_a", "tags": ["customer"]}
+        mock_card_data = {
+            "name": "Alice",
+            "added_by": "user_a",
+            "tags": ["customer"]
+        }
         mock_ref = MagicMock()
         mock_ref.get.return_value = mock_card_data
 
@@ -446,7 +450,11 @@ class TestTagOperations:
         from app.firebase_utils import remove_tag_from_card
 
         # Mock Firebase reference
-        mock_card_data = {"name": "Alice", "added_by": "user_a", "tags": ["customer"]}
+        mock_card_data = {
+            "name": "Alice",
+            "added_by": "user_a",
+            "tags": ["customer"]
+        }
         mock_ref = MagicMock()
         mock_ref.get.return_value = mock_card_data
 
@@ -468,7 +476,11 @@ class TestTagOperations:
         from app.firebase_utils import remove_tag_from_card
 
         # Mock Firebase reference
-        mock_card_data = {"name": "Alice", "added_by": "user_a", "tags": ["customer"]}
+        mock_card_data = {
+            "name": "Alice",
+            "added_by": "user_a",
+            "tags": ["customer"]
+        }
         mock_ref = MagicMock()
         mock_ref.get.return_value = mock_card_data
 
