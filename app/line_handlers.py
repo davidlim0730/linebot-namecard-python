@@ -1,7 +1,9 @@
 from urllib.parse import parse_qsl
+from typing import Union
 from linebot.models import (
     PostbackEvent, MessageEvent, TextSendMessage, ImageSendMessage,
-    QuickReply, QuickReplyButton, PostbackAction, MessageAction, FollowEvent
+    QuickReply, QuickReplyButton, PostbackAction, MessageAction, FollowEvent,
+    FlexMessage
 )
 from io import BytesIO
 import PIL.Image
@@ -16,6 +18,29 @@ FIELD_LABELS = {
     "address": "地址", "phone": "電話", "mobile": "手機",
     "email": "Email", "line_id": "LINE ID"
 }
+
+
+def attach_cancel_quick_reply(reply_message: Union[TextSendMessage, FlexMessage]) -> Union[TextSendMessage, FlexMessage]:
+    """為訊息附加取消 Quick Reply
+
+    Args:
+        reply_message: LINE MessageObject (TextSendMessage or FlexMessage)
+
+    Returns:
+        相同訊息，但新增 quick_reply 按鈕：❌ 取消
+    """
+    quick_reply = QuickReply(
+        items=[
+            QuickReplyButton(
+                action=PostbackAction(
+                    label="❌ 取消",
+                    data="action=cancel_state"
+                )
+            )
+        ]
+    )
+    reply_message.quick_reply = quick_reply
+    return reply_message
 
 
 async def check_onboarding(user_id: str, reply_token: str) -> bool:
