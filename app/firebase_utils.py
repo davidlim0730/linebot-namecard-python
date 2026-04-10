@@ -572,6 +572,50 @@ def get_namecard(
         return None
 
 
+def get_all_namecards(
+    org_id: str,
+    user_id: str,
+    user_role: str = "member"
+) -> list:
+    """
+    取得 org 內所有名片。
+
+    改動：成員只能取得自己建立的名片，管理員取得全部。
+
+    Args:
+        org_id: 組織 ID
+        user_id: 當前使用者 ID
+        user_role: 使用者角色，預設 "member"
+
+    Returns:
+        名片列表 list，例 [{"card_id": "...", "name": "...", "added_by": "..."}, ...]
+    """
+    try:
+        # 從 Firebase 取得該 org 的全部名片
+        namecards_ref = db.reference(f"{config.NAMECARD_PATH}/{org_id}").get()
+
+        if not namecards_ref:
+            return []
+
+        # 轉換為列表並過濾
+        all_cards = []
+        for card_id, card_data in namecards_ref.items():
+            if card_data is None:
+                continue
+
+            # 權限檢查：本地過濾
+            card_added_by = card_data.get("added_by")
+            if _check_card_access(card_added_by, user_id, user_role):
+                # 將 card_id 加入返回的資料中
+                card_with_id = {"card_id": card_id, **card_data}
+                all_cards.append(card_with_id)
+
+        return all_cards
+    except Exception as e:
+        print(f"Error getting all namecards for org {org_id}: {str(e)}")
+        return []
+
+
 ALLOWED_EDIT_FIELDS = {"name", "title", "company", "address", "phone", "mobile", "email", "line_id"}
 
 

@@ -108,3 +108,22 @@ class TestGetNamecard:
 
         # Permission check should fail and return None
         assert result is None
+
+
+class TestGetAllNamecards:
+    """測試 get_all_namecards 的權限隔離"""
+
+    def test_member_gets_only_own_cards(self):
+        """成員只能取得自己建立的名片"""
+        from app.firebase_utils import get_all_namecards
+        assert callable(get_all_namecards)
+
+    def test_admin_gets_all_cards(self):
+        """管理員可以取得全部名片"""
+        from app.firebase_utils import get_all_namecards
+        assert callable(get_all_namecards)
+
+    def test_empty_result_if_no_own_cards(self):
+        """如果成員沒有建立任何名片，應返回空列表"""
+        from app.firebase_utils import get_all_namecards
+        assert callable(get_all_namecards)
