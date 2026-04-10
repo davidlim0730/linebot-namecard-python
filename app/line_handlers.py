@@ -8,6 +8,10 @@ from linebot.models import (
 from io import BytesIO
 import PIL.Image
 import json
+import os
+import threading
+import smtplib
+from email.mime.text import MIMEText
 
 from . import firebase_utils, gemini_utils, utils, flex_messages, config, qrcode_utils
 from .bot_instance import line_bot_api, user_states
@@ -1427,3 +1431,57 @@ async def handle_follow_event(event: FollowEvent):
         )
     except Exception as e:
         print(f"Follow event: failed to send welcome message to {user_id}: {e}")
+
+
+def send_feedback_notification_async(org_id: str, user_id: str, feedback_data: dict):
+    """異步發送 PM email 通知（若 FEEDBACK_EMAIL 已設定）
+
+    Args:
+        org_id: Organization ID
+        user_id: User ID
+        feedback_data: {content, type, created_at, user_id}
+    """
+    feedback_email = os.getenv('FEEDBACK_EMAIL')
+    if not feedback_email:
+        return
+
+    def send_email():
+        try:
+            smtp_user = os.getenv('SMTP_USER')
+            smtp_password = os.getenv('SMTP_PASSWORD')
+
+            if not smtp_user or not smtp_password:
+                print("SMTP credentials not configured, skipping email")
+                return
+
+            content = feedback_data.get('content', '（無內容）')
+            timestamp = feedback_data.get('created_at', '')
+
+            subject = f"[反映回報] {org_id} - {user_id}"
+            body = f"""用戶回報：
+
+組織：{org_id}
+用戶ID：{user_id}
+時間：{timestamp}
+
+內容：
+{content}
+"""
+
+            msg = MIMEText(body)
+            msg['Subject'] = subject
+            msg['From'] = smtp_user
+            msg['To'] = feedback_email
+
+            with smtplib.SMTP('smtp.gmail.com', 587) as server:
+                server.starttls()
+                server.login(smtp_user, smtp_password)
+                server.send_message(msg)
+
+            print(f"Feedback email sent to {feedback_email}")
+        except Exception as e:
+            print(f"Failed to send feedback email: {str(e)}")
+
+    # 在背景執行緒中發送
+    thread = threading.Thread(target=send_email, daemon=True)
+    thread.start()

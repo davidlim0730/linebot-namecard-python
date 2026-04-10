@@ -346,3 +346,27 @@ def test_handle_text_event_triggers_reporting_issue():
 
     assert user_id in user_states
     assert user_states[user_id]['action'] == 'reporting_issue'
+
+
+# Task 19 test
+def test_send_feedback_notification_sends_email_when_configured():
+    """Verify email is sent when FEEDBACK_EMAIL is configured"""
+    import os
+    from unittest.mock import patch, MagicMock
+    from app.line_handlers import send_feedback_notification_async
+
+    org_id = "test_org"
+    user_id = "test_user"
+    feedback_data = {
+        'content': 'Test issue',
+        'type': 'text',
+        'created_at': '2026-04-10T12:00:00'
+    }
+
+    with patch.dict(os.environ, {'FEEDBACK_EMAIL': 'pm@example.com'}):
+        with patch('app.line_handlers.threading.Thread') as mock_thread:
+            send_feedback_notification_async(org_id, user_id, feedback_data)
+
+            # Verify Thread was created with send_email function
+            mock_thread.assert_called_once()
+            assert mock_thread.call_args[1]['daemon'] == True

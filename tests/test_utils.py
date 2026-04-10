@@ -93,3 +93,31 @@ def test_merge_back_adds_missing_field():
     back = {"mobile": "0912345678"}
     result = merge_namecard_data(front, back)
     assert result["mobile"] == "0912345678"
+
+
+# Task 18 test
+def test_write_feedback_writes_to_correct_path():
+    """Verify write_feedback writes to correct Firebase path"""
+    from app.firebase_utils import write_feedback
+    from unittest.mock import MagicMock
+
+    org_id = "test_org"
+    user_id = "test_user"
+    timestamp = "2026-04-10T12:00:00.000000"
+
+    feedback_data = {
+        'content': 'Test feedback',
+        'type': 'text',
+        'created_at': timestamp,
+        'user_id': user_id
+    }
+
+    mock_db = MagicMock()
+    mock_ref = MagicMock()
+    mock_db.reference.return_value = mock_ref
+
+    write_feedback(org_id, user_id, timestamp, feedback_data, mock_db)
+
+    expected_path = f'feedback/{org_id}/{user_id}/{timestamp}'
+    mock_db.reference.assert_called_once_with(expected_path)
+    mock_ref.set.assert_called_once_with(feedback_data)
