@@ -1,47 +1,44 @@
 import pytest
-from unittest.mock import MagicMock, patch, call
+from linebot.models import TextSendMessage, QuickReply, QuickReplyButton, PostbackAction, FlexMessage
 
 
 def test_attach_cancel_quick_reply_adds_quick_reply_button():
     """Verify attach_cancel_quick_reply adds ❌ 取消 button"""
-    # Patch the linebot models to use our custom factory
-    with patch('app.line_handlers.QuickReply') as mock_qr_class, \
-         patch('app.line_handlers.QuickReplyButton') as mock_button_class, \
-         patch('app.line_handlers.PostbackAction') as mock_action_class:
+    from app.line_handlers import attach_cancel_quick_reply
 
-        # Setup the mocks to return proper mock objects
-        mock_action = MagicMock()
-        mock_action.label = "❌ 取消"
-        mock_action.data = "action=cancel_state"
-        mock_action_class.return_value = mock_action
+    message = TextSendMessage(text="Please input...")
+    result = attach_cancel_quick_reply(message)
 
-        mock_button = MagicMock()
-        mock_button.action = mock_action
-        mock_button_class.return_value = mock_button
+    assert result.quick_reply is not None
+    assert len(result.quick_reply.items) == 1
+    assert result.quick_reply.items[0].action.label == "❌ 取消"
+    assert result.quick_reply.items[0].action.data == "action=cancel_state"
+    assert result.text == "Please input..."
 
-        mock_qr = MagicMock()
-        mock_qr.items = [mock_button]
-        mock_qr_class.return_value = mock_qr
 
-        # Import after patching
-        from app.line_handlers import attach_cancel_quick_reply
+def test_attach_cancel_quick_reply_raises_on_none():
+    """Verify function raises ValueError for None input"""
+    from app.line_handlers import attach_cancel_quick_reply
 
-        # Create a message
-        message = MagicMock()
-        message.text = "Please input..."
+    with pytest.raises(ValueError, match="cannot be None"):
+        attach_cancel_quick_reply(None)
 
-        # Call the function
-        result = attach_cancel_quick_reply(message)
 
-        # Verify the result
-        assert result is message
-        assert result.quick_reply is mock_qr
-        assert result.quick_reply.items[0].action.label == "❌ 取消"
-        assert result.quick_reply.items[0].action.data == "action=cancel_state"
-        assert result.text == "Please input..."
+def test_attach_cancel_quick_reply_overwrites_existing():
+    """Verify function overwrites existing quick_reply"""
+    from app.line_handlers import attach_cancel_quick_reply
 
-        # Verify PostbackAction was called with correct arguments
-        mock_action_class.assert_called_once_with(
-            label="❌ 取消",
-            data="action=cancel_state"
-        )
+    # Create a message that already has a quick_reply
+    message = TextSendMessage(text="Test")
+    old_reply = QuickReply(
+        items=[
+            QuickReplyButton(action=PostbackAction(label="Old", data="old"))
+        ]
+    )
+    message.quick_reply = old_reply
+
+    result = attach_cancel_quick_reply(message)
+
+    # Verify old quick_reply was replaced
+    assert len(result.quick_reply.items) == 1
+    assert result.quick_reply.items[0].action.label == "❌ 取消"

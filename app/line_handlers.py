@@ -23,12 +23,20 @@ FIELD_LABELS = {
 def attach_cancel_quick_reply(reply_message: Union[TextSendMessage, FlexMessage]) -> Union[TextSendMessage, FlexMessage]:
     """為訊息附加取消 Quick Reply
 
+    Mutates the input message in-place by adding a cancel quick reply button.
+
     Args:
         reply_message: LINE MessageObject (TextSendMessage or FlexMessage)
 
     Returns:
-        相同訊息，但新增 quick_reply 按鈕：❌ 取消
+        The same message object with quick_reply attached: ❌ 取消
+
+    Raises:
+        ValueError: If reply_message is None
     """
+    if reply_message is None:
+        raise ValueError("reply_message cannot be None")
+
     quick_reply = QuickReply(
         items=[
             QuickReplyButton(
