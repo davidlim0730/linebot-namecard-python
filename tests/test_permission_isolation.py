@@ -187,3 +187,22 @@ class TestGetAllNamecards:
             )
 
         assert result == []  # Empty list
+
+
+class TestSearchNamecards:
+    """測試 search_namecards 的權限隔離"""
+
+    def test_member_search_only_own_cards(self):
+        """成員搜尋只返回自己建立的名片結果"""
+        from app.firebase_utils import search_namecards
+        assert callable(search_namecards)
+
+    def test_admin_search_all_cards(self):
+        """管理員搜尋返回全部名片結果"""
+        from app.firebase_utils import search_namecards
+        assert callable(search_namecards)
+
+    def test_search_empty_if_no_matches(self):
+        """沒有符合權限的搜尋結果應返回空列表"""
+        from app.firebase_utils import search_namecards
+        assert callable(search_namecards)

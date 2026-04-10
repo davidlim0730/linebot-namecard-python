@@ -616,6 +616,63 @@ def get_all_namecards(
         return []
 
 
+def search_namecards(
+    org_id: str,
+    query: str,
+    user_id: str,
+    user_role: str = "member"
+) -> list:
+    """
+    搜尋名片（使用本地關鍵字匹配，支援權限過濾）。
+
+    改動：先本地過濾（權限檢查），再進行搜尋。
+
+    Args:
+        org_id: 組織 ID
+        query: 搜尋查詢
+        user_id: 當前使用者 ID
+        user_role: 使用者角色，預設 "member"
+
+    Returns:
+        搜尋結果列表 [(card_id, card_data), ...]
+    """
+    try:
+        # 第 1 步：從 Firebase 取得該 org 的全部名片
+        namecards_ref = db.reference(f"{config.NAMECARD_PATH}/{org_id}").get()
+
+        if not namecards_ref:
+            return []
+
+        # 第 2 步：本地過濾（權限檢查）
+        filtered_cards = {}
+        for card_id, card_data in namecards_ref.items():
+            if card_data is None:
+                continue
+
+            card_added_by = card_data.get("added_by")
+            if _check_card_access(card_added_by, user_id, user_role):
+                filtered_cards[card_id] = card_data
+
+        # 第 3 步：在過濾後的資料上進行搜尋
+        query = query.strip().lower()
+        search_results = []
+        for card_id, card_data in filtered_cards.items():
+            if not isinstance(card_data, dict):
+                continue
+            searchable = " ".join([
+                (card_data.get("name") or ""),
+                (card_data.get("company") or ""),
+                (card_data.get("title") or ""),
+            ]).lower()
+            if query in searchable:
+                search_results.append((card_id, card_data))
+
+        return search_results
+    except Exception as e:
+        print(f"Error searching namecards in org {org_id}: {str(e)}")
+        return []
+
+
 ALLOWED_EDIT_FIELDS = {"name", "title", "company", "address", "phone", "mobile", "email", "line_id"}
 
 
