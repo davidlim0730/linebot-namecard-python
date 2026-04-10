@@ -86,6 +86,11 @@ async def handle_postback_event(event: PostbackEvent, user_id: str):
     action = postback_data.get('action')
     card_id = postback_data.get('card_id')
 
+    # Route cancel_state first (before onboarding check)
+    if action == 'cancel_state':
+        handle_cancel_state_postback(user_id, line_bot_api, event.reply_token)
+        return
+
     # create_org：onboarding 選擇「建立團隊」（在 onboarding 攔截前處理，避免死鎖）
     if action == 'create_org':
         org_id, is_new_org = firebase_utils.ensure_user_org(user_id)
@@ -226,14 +231,6 @@ async def handle_postback_event(event: PostbackEvent, user_id: str):
             TextSendMessage(
                 text="已取消搜尋。"
             )
-        )
-        return
-
-    elif action == "cancel_state":
-        user_states.pop(user_id, None)
-        await line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text="已取消目前操作。")
         )
         return
 

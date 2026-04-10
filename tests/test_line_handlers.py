@@ -65,3 +65,29 @@ def test_handle_cancel_state_postback_clears_state():
     call_args = mock_line_bot_api.reply_message.call_args
     assert call_args[0][0] == reply_token
     assert "✓ 已取消操作" in call_args[0][1].text
+
+
+def test_handle_postback_event_routes_cancel_state_action():
+    """Verify handle_postback_event routes action=cancel_state correctly"""
+    import urllib.parse
+    import asyncio
+    from unittest.mock import MagicMock, patch
+    from app.line_handlers import handle_postback_event, user_states
+
+    user_id = "test_user"
+    reply_token = "token"
+    user_states[user_id] = {'action': 'editing_field'}
+
+    # Create mock event with cancel_state postback
+    mock_event = MagicMock()
+    mock_event.source.user_id = user_id
+    mock_event.reply_token = reply_token
+    mock_event.postback.data = "action=cancel_state"
+
+    with patch('app.line_handlers.line_bot_api') as mock_line_bot_api:
+        # Call the async function
+        asyncio.run(handle_postback_event(mock_event, user_id))
+
+    # Verify cancel handler was executed (state cleared)
+    assert user_id not in user_states
+    mock_line_bot_api.reply_message.assert_called_once()
