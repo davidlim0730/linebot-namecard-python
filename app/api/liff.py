@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Literal
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
@@ -59,7 +59,7 @@ class CardTagsUpdate(BaseModel):
 
 
 class RoleUpdate(BaseModel):
-    role: str
+    role: Literal["admin", "member"]
 
 
 # ---- Auth ----
@@ -135,6 +135,8 @@ async def list_tags(user: UserContext = Depends(get_current_user)):
 
 @router.post("/v1/tags")
 async def add_tag(body: TagCreate, user: UserContext = Depends(get_current_user)):
+    if not user.is_admin:
+        raise HTTPException(status_code=403, detail={"error": "forbidden"})
     tag_service.add_tag(user.org_id, body.name)
     return {"ok": True}
 
@@ -187,5 +189,7 @@ async def update_member_role(
 
 @router.post("/v1/org/invite")
 async def generate_invite(user: UserContext = Depends(get_current_user)):
+    if not user.is_admin:
+        raise HTTPException(status_code=403, detail={"error": "forbidden"})
     code = org_service.generate_invite_code(user.org_id, user.user_id)
     return {"code": code}

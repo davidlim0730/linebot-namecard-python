@@ -189,6 +189,15 @@ def test_add_tag(client):
     assert resp.json()["ok"] is True
 
 
+def test_add_tag_non_admin_forbidden(client):
+    resp = client.post(
+        "/api/v1/tags",
+        json={"name": "新標籤"},
+        headers=jwt_header(role="member"),
+    )
+    assert resp.status_code == 403
+
+
 def test_set_card_tags(client):
     with patch("app.api.liff.tag_service") as mock_svc:
         mock_svc.set_card_tags.return_value = True
@@ -268,3 +277,8 @@ def test_generate_invite_code(client):
         resp = client.post("/api/v1/org/invite", headers=jwt_header())
     assert resp.status_code == 200
     assert resp.json()["code"] == "ABC123"
+
+
+def test_generate_invite_code_non_admin_forbidden(client):
+    resp = client.post("/api/v1/org/invite", headers=jwt_header(role="member"))
+    assert resp.status_code == 403
