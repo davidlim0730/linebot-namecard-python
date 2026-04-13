@@ -11,6 +11,7 @@ from .bot_instance import close_session
 from .rich_menu_utils import init_rich_menu
 from .api.webhook import router as webhook_router
 from .api.internal import router as internal_router
+from .api.liff import router as liff_router
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,7 @@ genai.configure(api_key=config.GEMINI_KEY)
 app = FastAPI()
 app.include_router(webhook_router)
 app.include_router(internal_router)
+app.include_router(liff_router)
 
 
 @app.on_event("startup")
