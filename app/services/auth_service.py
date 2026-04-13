@@ -1,4 +1,3 @@
-import inspect
 import httpx
 import jwt as pyjwt
 from datetime import datetime, timezone, timedelta
@@ -22,8 +21,7 @@ class AuthService:
                 "https://api.line.me/oauth2/v2.1/verify",
                 data={"id_token": id_token, "client_id": self.liff_channel_id},
             )
-        json_result = resp.json()
-        data = await json_result if inspect.isawaitable(json_result) else json_result
+        data = resp.json()
         if resp.status_code != 200 or "sub" not in data:
             raise AuthError(f"LINE token verification failed: {data.get('error', 'unknown')}")
         return data["sub"]

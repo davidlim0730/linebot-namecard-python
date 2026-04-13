@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch, AsyncMock, MagicMock
 from app.services.auth_service import AuthService, AuthError
 from app.models.org import UserContext
 
@@ -11,7 +11,7 @@ def auth_service():
 
 @pytest.mark.asyncio
 async def test_verify_line_token_returns_user_id(auth_service):
-    mock_response = AsyncMock()
+    mock_response = MagicMock()
     mock_response.status_code = 200
     mock_response.json.return_value = {"sub": "U123456", "iss": "https://access.line.me"}
 
@@ -24,7 +24,7 @@ async def test_verify_line_token_returns_user_id(auth_service):
 
 @pytest.mark.asyncio
 async def test_verify_line_token_raises_on_error(auth_service):
-    mock_response = AsyncMock()
+    mock_response = MagicMock()
     mock_response.status_code = 400
     mock_response.json.return_value = {"error": "invalid_request"}
 
