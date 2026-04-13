@@ -15,7 +15,7 @@ def test_check_batch_idle_endpoint_processes_all_batches():
     client = TestClient(app)
 
     # Mock database with two batches
-    with patch('app.main.get_db_instance') as mock_get_db:
+    with patch('app.api.internal.get_db_instance') as mock_get_db:
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
 
