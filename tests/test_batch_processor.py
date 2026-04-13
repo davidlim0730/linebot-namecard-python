@@ -2,7 +2,6 @@
 Tests for batch_processor module.
 Verifies batch processing behavior and notification handling.
 """
-import pytest
 import asyncio
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
@@ -25,7 +24,7 @@ def test_process_batch_does_not_send_per_image_notifications():
     with patch('app.batch_processor.firebase_utils') as mock_firebase, \
          patch('app.batch_processor.gemini_utils') as mock_gemini, \
          patch('app.batch_processor.utils') as mock_utils, \
-         patch('app.batch_processor.trigger_sync') as mock_sync:
+         patch('app.batch_processor.trigger_sync'):
 
         # Setup mocks to simulate successful processing
         mock_firebase.check_org_permission.return_value = {'allowed': True}
@@ -72,7 +71,7 @@ def test_process_batch_returns_summary_only():
     with patch('app.batch_processor.firebase_utils') as mock_firebase, \
          patch('app.batch_processor.gemini_utils') as mock_gemini, \
          patch('app.batch_processor.utils') as mock_utils, \
-         patch('app.batch_processor.trigger_sync') as mock_sync:
+         patch('app.batch_processor.trigger_sync'):
 
         mock_firebase.check_org_permission.return_value = {'allowed': True}
         mock_firebase.download_raw_image.return_value = b"fake_image_data"
@@ -113,7 +112,7 @@ def test_process_batch_logs_progress_not_pushes():
     with patch('app.batch_processor.firebase_utils') as mock_firebase, \
          patch('app.batch_processor.gemini_utils') as mock_gemini, \
          patch('app.batch_processor.utils') as mock_utils, \
-         patch('app.batch_processor.trigger_sync') as mock_sync:
+         patch('app.batch_processor.trigger_sync'):
 
         mock_firebase.check_org_permission.return_value = {'allowed': True}
         mock_firebase.download_raw_image.return_value = b"fake_image_data"

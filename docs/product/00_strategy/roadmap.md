@@ -24,20 +24,21 @@
 - [x] vCard QR Code 匯出
 - [x] Google Sheets 同步
 
+### 已完成
+- [x] **互動取消防呆機制**（v3.7.0，2026-04-13）：Quick Reply 視覺化取消（`❌ 取消操作`）套用於全部 5 種 state handler（`editing_field`、`adding_memo`、`adding_tag`、`exporting_csv`、`reporting_issue`），統一引導文案
+- [x] **用戶回報機制**（v3.7.0，2026-04-13）：LINE 介面問題回報流程（`reporting_issue` state → Firebase `feedback/` 寫入 → 可選 email 通知）
+
 ### 待完成：基礎建設與防呆
-- [ ] **互動取消防呆機制**：
-  - Quick Reply 視覺化取消 (`❌ 取消編輯`)
-  - 狀態超時 (Timeout) 機制（進入等待輸入狀態 1 分鐘後自動失效）
-- [ ] **錯誤監控與回報**：
+- [ ] **狀態超時 (Timeout) 機制**：進入等待輸入狀態 1 分鐘後自動失效（LINE API 自然超時已部分覆蓋）
+- [ ] **錯誤監控**：
   - OCR 成功率量測（記錄每次辨識的成功/失敗）
   - Firebase 讀寫錯誤率監控
-  - 用戶回報機制（提供簡易 LINE 介面讓用戶回報問題）
 
 ---
 
 ## Phase 2 — 團隊化
 
-**狀態**：進入內部 Pilot 驗證階段，需修復 Onboarding 流程
+**狀態**：功能完整，Pilot 驗收指標可執行
 
 **Pilot 目標**：內部業務團隊優先試用，跑 4 週，收集真實回饋後再決定下一步。
 
@@ -49,12 +50,13 @@
   - 成員僅能搜尋、檢視、編輯、匯出自己建立的名片
   - 管理員維持全團隊可見性
   - CSV 匯出自動反映權限範圍
-- [ ] **修復/優化加入機制（Onboarding Flow）**：
+- [x] **修復/優化加入機制（Onboarding Flow）**：
   - 解決「預設建立個人團隊導致無法輸入邀請碼加入他人團隊」的架構問題。
   - 新用戶加入時，提供明確選項：「建立我的專屬名片庫」或「輸入邀請碼加入團隊」。
-- [ ] **CSV 匯出（基本版）**：
+  - Follow event 主動推播歡迎訊息（Proactive Onboarding，v3.5.0）
+- [x] **CSV 匯出（基本版）**：
   - 支援匯出全部名片，透過 LINE 觸發，以 email 寄出 CSV 檔案。
-  - 欄位格式以現有資料模型為準，不強制對齊 CRM 標準（留給 Phase 4）。
+  - 欄位格式以現有資料模型為準，權限範圍依角色自動篩選（v3.6.0）。
 
 ### Pilot 驗收指標
 - 團隊成員能夠順利完成 onboarding（無需協助）
@@ -71,10 +73,18 @@
 
 ### 已完成
 - [x] 批量上傳（Cloud Tasks 非同步 OCR）
-- [x] 試用機制（7 天 / 50 張 / 3 人 trial）
+- [x] **試用機制**（v3.4.0）：
+  - 新用戶自動開通 7 天 / 50 張 / 3 人限制
+  - 觸頂後進入 read-limited 狀態（可搜尋、匯出，無法新增）
+  - 舊 Alpha 組織祖父條款（無 `plan_type` → 預設 `pro`）
+  - 批量上傳迴圈內精確檢查額度，防超刷
 - [x] Proactive Onboarding（Follow event 主動推播）
 - [x] Rich Menu Navigation（3 區段主選單）
 - [x] CSV 基本匯出（SMTP email）
+- [x] **批量上傳 UX 優化**（v3.7.0，2026-04-13）：
+  - 5 秒 Idle Detection（Cloud Scheduler + Firebase `last_image_time`）
+  - 批量完成摘要含成功/失敗清單（姓名、公司、失敗原因）
+  - 兩條完成路徑（手動「完成」＋ Idle 自動觸發）統一摘要格式
 
 ### 待完成
 - [ ] **系統全面 LIFF 化**：

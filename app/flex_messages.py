@@ -1,7 +1,7 @@
 from urllib.parse import quote
 from linebot.models import (
     FlexSendMessage, TextSendMessage, QuickReply, QuickReplyButton, PostbackAction,
-    MessageAction, URIAction
+    MessageAction
 )
 from . import config
 
@@ -842,8 +842,7 @@ def get_onboarding_welcome_message() -> TextSendMessage:
         quick_reply=QuickReply(items=[
             QuickReplyButton(action=PostbackAction(
                 label='🏢 建立團隊',
-                data='action=create_org',
-                display_text='建立團隊'
+                data='action=create_org'
             )),
             QuickReplyButton(action=MessageAction(
                 label='🔗 加入既有團隊',

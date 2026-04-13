@@ -1,5 +1,5 @@
 import pytest
-from linebot.models import TextSendMessage, QuickReply, QuickReplyButton, PostbackAction, FlexMessage
+from linebot.models import TextSendMessage, QuickReply, QuickReplyButton, PostbackAction
 
 
 def test_attach_cancel_quick_reply_adds_quick_reply_button():
@@ -69,7 +69,6 @@ def test_handle_cancel_state_postback_clears_state():
 
 def test_handle_postback_event_routes_cancel_state_action():
     """Verify handle_postback_event routes action=cancel_state correctly"""
-    import urllib.parse
     import asyncio
     from unittest.mock import MagicMock, patch
     from app.line_handlers import handle_postback_event, user_states
@@ -227,7 +226,7 @@ def test_handle_exporting_csv_state_includes_cancel_quick_reply():
         mock_line_bot_api.reply_message = AsyncMock()
 
         with patch('app.csv_export.generate_csv') as mock_gen_csv, \
-             patch('app.csv_export.send_csv_email') as mock_send_email:
+             patch('app.csv_export.send_csv_email'):
 
             mock_gen_csv.return_value = b'csv_data'
 
@@ -314,7 +313,7 @@ def test_handle_reporting_issue_state_processes_input():
 
     mock_line_bot_api = MagicMock()
 
-    with patch('app.line_handlers.firebase_utils.write_feedback') as mock_write:
+    with patch('app.line_handlers.firebase_utils.write_feedback'):
         handle_reporting_issue_state(user_id, org_id, feedback_text, mock_line_bot_api, reply_token)
 
     assert user_id not in user_states
@@ -352,7 +351,7 @@ def test_handle_text_event_triggers_reporting_issue():
 def test_send_feedback_notification_sends_email_when_configured():
     """Verify email is sent when FEEDBACK_EMAIL is configured"""
     import os
-    from unittest.mock import patch, MagicMock
+    from unittest.mock import patch
     from app.line_handlers import send_feedback_notification_async
 
     org_id = "test_org"
@@ -369,4 +368,4 @@ def test_send_feedback_notification_sends_email_when_configured():
 
             # Verify Thread was created with send_email function
             mock_thread.assert_called_once()
-            assert mock_thread.call_args[1]['daemon'] == True
+            assert mock_thread.call_args[1]['daemon'] is True

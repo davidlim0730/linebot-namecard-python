@@ -102,10 +102,14 @@ class TestHandlePostbackEventOnboarding:
         """action=create_org 不被 onboarding 攔截，且會建立 org。"""
         from app import line_handlers
         event = make_postback_event("action=create_org")
-        with patch.object(line_handlers.firebase_utils, 'get_user_org_id', return_value=None), \
-             patch.object(line_handlers.firebase_utils, 'ensure_user_org', return_value=('org_new', True)) as mock_ensure, \
-             patch.object(line_handlers.line_bot_api, 'reply_message', new_callable=AsyncMock) as mock_reply, \
-             patch.object(line_handlers.line_bot_api, 'push_message', new_callable=AsyncMock):
+        with patch.object(line_handlers.firebase_utils, 'get_user_org_id',
+                          return_value=None), \
+             patch.object(line_handlers.firebase_utils, 'ensure_user_org',
+                          return_value=('org_new', True)) as mock_ensure, \
+             patch.object(line_handlers.line_bot_api, 'reply_message',
+                          new_callable=AsyncMock) as mock_reply, \
+             patch.object(line_handlers.line_bot_api, 'push_message',
+                          new_callable=AsyncMock):
             run(line_handlers.handle_postback_event(event, "user_new"))
         mock_ensure.assert_called_once_with("user_new")
         mock_reply.assert_called_once()

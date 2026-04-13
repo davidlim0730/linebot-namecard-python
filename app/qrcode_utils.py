@@ -3,7 +3,7 @@ QR Code generation utilities for namecard vCard export.
 """
 import qrcode
 from io import BytesIO
-from typing import Dict, Optional
+from typing import Dict
 
 
 def generate_vcard_string(namecard_data: Dict[str, str]) -> str:

@@ -49,46 +49,48 @@ gcloud run deploy {IMAGE_NAME} \
 
 ## Documentation Structure（文檔規範）
 
-### GTM 文件夾組織
+### 產品文件夾組織
 
 ```
-docs/gtm/
-├── 📅 planning/          ← 規劃中的產品願景（未來）
-│   ├── roadmap.md       └─ Phase 1-5 路線圖、設計原則、驗收指標
-│   └── feature-planning.md  └─ 功能設計細節、UI 分層、Rich Menu 架構
+docs/product/
+├── 00_strategy/           ← 產品策略與高層次規劃
+│   ├── roadmap.md         └─ 高層次路線圖、設計原則、關鍵指標
+│   └── feature-planning.md └─ 功能設計細節、UI 分層、Rich Menu 架構
 │
-├── 🏗️ prd/              ← 進行中開發的規格書（現在）
-│   └── [date]-[name]-prd-v*.md  ← 每個功能開發都有一份 PRD
+├── 01_features/           ← 每個功能的完整需求規格（每功能一個子資料夾）
+│   └── [feature_name]/
+│       ├── prd.md         └─ PRD（設計細節、UI/UX、驗收標準）
+│       └── tech_design.md └─ （選用）技術設計文件
 │
-└── 📢 pr/               ← 已發佈的版本記錄（過去）
-    ├── product-features.md              ← 對外推廣用功能清單
-    ├── RELEASE-NOTES-TEMPLATE.md        ← 發版模板
-    └── [date]-[name]-release.md         ← 每個版本都發佈一份 Release Notes
+└── 02_releases/           ← 已發佈的版本記錄與對外溝通
+    ├── product-features.md              ← 對外推廣用功能清單（活頁文件）
+    └── release_notes/
+        ├── RELEASE-NOTES-TEMPLATE.md    ← 發版模板
+        └── [date]-[name]-release.md     ← 每個版本的發佈說明
 ```
 
 ### 文檔工作流程
 
-1. **規劃階段** → `planning/roadmap.md`
-   - 列出 Phase X 的規劃功能
-   - 定義設計原則、驗收指標
+1. **策略階段** → `product/00_strategy/`
+   - 定義產品願景、策略、高層次路線圖
 
-2. **開發階段** → `prd/*.md`
-   - PRD 完成 → 開發實作
-   - 內容：規格書、驗收標準、技術細節
+2. **規劃與開發階段** → `product/01_features/[feature_name]/`
+   - 為每個新功能建立子資料夾
+   - 撰寫 `prd.md`（設計細節、UI/UX、驗收標準、技術考量）
 
-3. **發佈階段** → `pr/`
-   - 用 `RELEASE-NOTES-TEMPLATE.md` 寫 Release Notes
+3. **發佈階段** → `product/02_releases/`
+   - 根據 `release_notes/RELEASE-NOTES-TEMPLATE.md` 撰寫發佈說明
    - 更新 `product-features.md`（新功能加入列表）
 
 ### 各文件用途速查
 
 | 角色 | 推薦閱讀 |
 |------|--------|
-| **業務 / 行銷** | `pr/product-features.md`, `planning/roadmap.md` |
+| **業務 / 行銷** | `02_releases/product-features.md`, `00_strategy/roadmap.md` |
 | **PM** | 所有文檔 |
-| **設計師** | `planning/feature-planning.md`, `pr/product-features.md` |
-| **工程師** | `planning/feature-planning.md`, `prd/*.md` |
-| **技術主管** | `planning/roadmap.md`, `prd/*.md` |
+| **設計師** | `00_strategy/feature-planning.md`, `02_releases/product-features.md` |
+| **工程師** | `00_strategy/feature-planning.md`, `01_features/*/prd.md` |
+| **技術主管** | `00_strategy/roadmap.md`, `01_features/*/prd.md` |
 
 ---
 

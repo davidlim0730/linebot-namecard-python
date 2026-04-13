@@ -1,4 +1,3 @@
-import pytest
 from app.utils import validate_namecard_fields
 
 
@@ -64,7 +63,7 @@ def test_multiple_fields_validated_independently():
     assert result["email"] == "valid@example.com"
 
 
-from app.utils import merge_namecard_data
+from app.utils import merge_namecard_data  # noqa: E402
 
 
 def test_merge_back_fills_na_field():

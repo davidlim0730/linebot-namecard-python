@@ -2,7 +2,6 @@
 Tests for main.py endpoints.
 Verifies internal endpoint behavior and Cloud Scheduler integration.
 """
-import pytest
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 

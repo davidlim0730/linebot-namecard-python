@@ -1008,9 +1008,9 @@ def append_batch_image(user_id: str, storage_path: str) -> int:
     try:
         # push() 是原子操作，不需先讀再寫，多個併發請求不會互蓋
         db.reference(f"batch_states/{user_id}/pending_images").push(storage_path)
-        db.reference(f"batch_states/{user_id}/updated_at").set(
-            datetime.now().isoformat()
-        )
+        now = datetime.utcnow().isoformat()
+        db.reference(f"batch_states/{user_id}/last_image_time").set(now)
+        db.reference(f"batch_states/{user_id}/updated_at").set(now)
         # 讀取最新數量（允許短暫不一致，此處僅用於顯示）
         pending_map = db.reference(
             f"batch_states/{user_id}/pending_images").get() or {}

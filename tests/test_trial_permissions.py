@@ -2,9 +2,8 @@
 Tests for SaaS trial permission system (Phase 1 & 2).
 Follows TDD: tests written before implementation.
 """
-import pytest
 from datetime import datetime, timezone, timedelta
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import patch, MagicMock
 
 
 # ---------------------------------------------------------------------------

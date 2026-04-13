@@ -27,12 +27,13 @@ SHEET_HEADERS = [
     "qrcode_url"
 ]
 
+
 def get_gspread_client():
     """初始化並回傳 gspread 客戶端"""
     global _gc
     if _gc is not None:
         return _gc
-    
+
     try:
         # GCP 預設方式，或是透過環境變數傳入 JSON
         gac_str = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
@@ -53,8 +54,9 @@ def get_gspread_client():
                 print("gspread initialized successfully from ENV VAR.")
                 return _gc
             except Exception as e:
-                print(f"Failed to parse GOOGLE_APPLICATION_CREDENTIALS_JSON, falling back to default: {e}")
-        
+                err_msg = "Failed to parse GOOGLE_APPLICATION_CREDENTIALS_JSON, "
+                print(f"{err_msg}falling back to default: {e}")
+
         # GCP 預設授權 (例如 Cloud Run)
         credentials, _ = google.auth.default(scopes=[
             "https://www.googleapis.com/auth/spreadsheets",
@@ -62,40 +64,42 @@ def get_gspread_client():
         ])
         _gc = gspread.authorize(credentials)
         print("gspread initialized successfully from default service account.")
-            
+
         return _gc
     except Exception as e:
         print(f"Failed to initialize gspread client: {e}")
         return None
+
 
 def get_worksheet():
     """取得目標 Google Sheet 工作表"""
     global _worksheet
     if _worksheet is not None:
         return _worksheet
-    
+
     if not config.GOOGLE_SHEET_ID:
         print("GOOGLE_SHEET_ID is not configured. Sync skipped.")
         return None
-        
+
     client = get_gspread_client()
     if not client:
         return None
-        
+
     try:
         spreadsheet = client.open_by_key(config.GOOGLE_SHEET_ID)
         _worksheet = spreadsheet.sheet1
-        
+
         # 確認標題列是否存在，若無則初始化
         first_row = _worksheet.row_values(1)
         if not first_row or first_row[0] != SHEET_HEADERS[0]:
             _worksheet.insert_row(SHEET_HEADERS, index=1)
             print("Initialized Google Sheet headers.")
-            
+
         return _worksheet
     except Exception as e:
         print(f"Failed to open Google Sheet: {e}")
         return None
+
 
 def sync_card_to_sheet_sync(org_id: str, card_id: str, card_data: dict):
     """同步單筆名片資料到 Google Sheet (同步執行)"""
@@ -128,7 +132,7 @@ def sync_card_to_sheet_sync(org_id: str, card_id: str, card_data: dict):
         # 我們假設 card_id 在 B 欄 (index=2)
         try:
             cell = worksheet.find(str(card_id), in_column=2)
-            
+
             # gspread 6.0+ 會回傳 None 而不會丟出 CellNotFound 的例外
             if cell is None:
                 worksheet.append_row(row_data)
@@ -146,9 +150,10 @@ def sync_card_to_sheet_sync(org_id: str, card_id: str, card_data: dict):
                 print(f"Appended new card {card_id} to Google Sheet (legacy fallback).")
             else:
                 print(f"Error finding/updating card {card_id} to Google Sheet: {e}")
-                
+
     except Exception as e:
         print(f"Error syncing card {card_id} to Google Sheet base loop: {e}")
+
 
 def trigger_sync(org_id: str, card_id: str, card_data: dict):
     """

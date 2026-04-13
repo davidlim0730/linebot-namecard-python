@@ -88,35 +88,6 @@ async def process_batch(user_id: str, org_id: str, image_paths: list) -> dict:
     return result
 
 
-def append_batch_image(user_id: str, org_id: str, storage_path: str, db):
-    """新增圖片到批量上傳隊列並記錄時間戳
-
-    Args:
-        user_id: LINE user ID
-        org_id: Organization ID
-        storage_path: Firebase Storage path (e.g., raw_images/org/user/uuid.jpg)
-        db: Firebase database instance
-    """
-    batch_ref = db.reference(f'batch_states/{user_id}')
-    batch_data = batch_ref.get() or {}
-
-    # 新增圖片
-    pending_images = batch_data.get('pending_images', [])
-    if isinstance(pending_images, dict):
-        # Firebase push() returns dict, convert to list for appending
-        pending_images = list(pending_images.values())
-    else:
-        pending_images = list(pending_images) if pending_images else []
-
-    pending_images.append(storage_path)
-
-    # 更新 last_image_time（用於 idle detection）
-    batch_data['pending_images'] = pending_images
-    batch_data['last_image_time'] = datetime.utcnow().isoformat()
-    batch_data['updated_at'] = datetime.utcnow().isoformat()
-
-    batch_ref.update(batch_data)
-    logger.info(f"Appended image to batch for {user_id}, total: {len(pending_images)}")
 
 
 def check_batch_idle_and_trigger(user_id: str, org_id: str, db, cloud_tasks_client):
@@ -178,55 +149,3 @@ def trigger_batch_completion(user_id: str, org_id: str, db, cloud_tasks_client):
     logger.info(f"Triggered batch completion via idle detection: {user_id}, {len(pending_images)} images")
 
 
-async def send_batch_summary_push(user_id: str, summary: dict):
-    """推播批量上傳結果摘要（含成功/失敗清單）
-
-    Args:
-        user_id: LINE user ID
-        summary: Dict returned by process_batch:
-                 {success: int, failed: int,
-                  successes: [{name, company}],
-                  failures: [{index, reason}]}
-    """
-    from .bot_instance import line_bot_api
-
-    success_count = summary.get('success', 0)
-    failed_count = summary.get('failed', 0)
-    total = success_count + failed_count
-    successes = summary.get('successes', [])
-    failures = summary.get('failures', [])
-
-    # 構建成功清單
-    success_list = ""
-    for idx, card in enumerate(successes, 1):
-        name = card.get('name', '')
-        company = card.get('company', '')
-        display = name or company or f"卡片 {idx}"
-        if name and company:
-            success_list += f"・[{idx}] {name} / {company}\n"
-        else:
-            success_list += f"・[{idx}] {display}\n"
-
-    # 構建失敗清單
-    failed_list = ""
-    for idx, failure in enumerate(failures, 1):
-        reason = failure.get('reason', '辨識失敗')
-        if 'OCR 無法解析' in reason or '無可讀資料' in reason or 'OCR 回傳空資料' in reason:
-            reason = "辨識失敗（無可讀資料）"
-        elif 'quota_exceeded' in reason:
-            reason = "已超出上傳額度"
-        failed_list += f"・[{idx}] {reason}\n"
-
-    # 完整訊息
-    message_text = f"""✅ 批次處理完成！
-
-共上傳 {total} 張，成功 {success_count} 張，失敗 {failed_count} 張。
-
-✅ 成功（{success_count} 張）：
-{success_list if success_list else "（無）"}
-❌ 失敗（{failed_count} 張）：
-{failed_list if failed_list else "（無）"}
-可重新傳送失敗的名片照片進行補上傳。"""
-
-    await line_bot_api.push_message(user_id, TextSendMessage(text=message_text))
-    logger.info(f"Batch summary sent to {user_id}: {success_count} success, {failed_count} failed")

@@ -361,12 +361,12 @@ async def handle_postback_event(event: PostbackEvent, user_id: str):
 
     if action == 'add_memo':
         user_states[user_id] = {'action': 'adding_memo', 'card_id': card_id}
-        reply_text = f"請輸入關於「{card_name}」的備忘錄："
+        reply_text = f"請輸入「{card_name}」的備忘錄內容，完成後直接送出。"
         await line_bot_api.reply_message(
             event.reply_token, TextSendMessage(
                 text=reply_text,
                 quick_reply=QuickReply(items=[
-                    QuickReplyButton(action=PostbackAction(label="❌ 取消", data="action=cancel_state"))
+                    QuickReplyButton(action=PostbackAction(label="❌ 取消操作", data="action=cancel_state"))
                 ])
             ))
 
@@ -382,12 +382,12 @@ async def handle_postback_event(event: PostbackEvent, user_id: str):
             'card_id': card_id,
             'field': field_to_edit
         }
-        reply_text = f"請輸入「{card_name}」的新「{field_label}」："
+        reply_text = f"請輸入「{card_name}」的新{field_label}，完成後直接送出。"
         await line_bot_api.reply_message(
             event.reply_token, TextSendMessage(
                 text=reply_text,
                 quick_reply=QuickReply(items=[
-                    QuickReplyButton(action=PostbackAction(label="❌ 取消", data="action=cancel_state"))
+                    QuickReplyButton(action=PostbackAction(label="❌ 取消操作", data="action=cancel_state"))
                 ])
             ))
 
@@ -785,9 +785,9 @@ async def handle_add_tag_input(
     await line_bot_api.reply_message(
         event.reply_token,
         TextSendMessage(
-            text='請輸入新群組名稱：',
+            text='請輸入新標籤名稱，完成後直接送出。',
             quick_reply=QuickReply(items=[
-                QuickReplyButton(action=PostbackAction(label="❌ 取消", data="action=cancel_state"))
+                QuickReplyButton(action=PostbackAction(label="❌ 取消操作", data="action=cancel_state"))
             ])
         ))
 
@@ -993,9 +993,9 @@ async def handle_export(
     await line_bot_api.reply_message(
         event.reply_token,
         TextSendMessage(
-            text='請輸入您的 email 地址，CSV 將寄送至該信箱：',
+            text='請輸入收件 Email，系統將寄送名片清單至該信箱。',
             quick_reply=QuickReply(items=[
-                QuickReplyButton(action=PostbackAction(label="❌ 取消", data="action=cancel_state"))
+                QuickReplyButton(action=PostbackAction(label="❌ 取消操作", data="action=cancel_state"))
             ])
         ))
 
@@ -1101,7 +1101,10 @@ async def handle_reporting_issue_trigger(user_id: str, org_id: str, reply_token:
     }
 
     reply = TextSendMessage(
-        text="請描述您遇到的問題，或直接傳送截圖："
+        text="請描述您遇到的問題，完成後直接送出。",
+        quick_reply=QuickReply(items=[
+            QuickReplyButton(action=PostbackAction(label="❌ 取消操作", data="action=cancel_state"))
+        ])
     )
     await line_bot_api.reply_message(reply_token, reply)
 
@@ -1391,22 +1394,45 @@ async def handle_image_event(event: MessageEvent, user_id: str) -> None:
 
 
 async def send_batch_summary_push(user_id: str, summary: dict) -> None:
-    """推送批次處理結果摘要給用戶"""
-    total = summary["success"] + summary["failed"]
-    text = (
-        f"✅ 批次處理完成！共 {total} 張，"
-        f"成功 {summary['success']} 張，失敗 {summary['failed']} 張。"
-    )
+    """推送批次處理結果摘要給用戶（含成功/失敗清單）"""
+    success_count = summary.get('success', 0)
+    failed_count = summary.get('failed', 0)
+    total = success_count + failed_count
+    successes = summary.get('successes', [])
+    failures = summary.get('failures', [])
+
+    success_list = ""
+    for idx, card in enumerate(successes, 1):
+        name = card.get('name', '')
+        company = card.get('company', '')
+        display = name or company or f"卡片 {idx}"
+        if name and company:
+            success_list += f"・[{idx}] {name} / {company}\n"
+        else:
+            success_list += f"・[{idx}] {display}\n"
+
+    failed_list = ""
+    for idx, failure in enumerate(failures, 1):
+        reason = failure.get('reason', '辨識失敗')
+        if 'OCR 無法解析' in reason or '無可讀資料' in reason or 'OCR 回傳空資料' in reason:
+            reason = "辨識失敗（無可讀資料）"
+        elif 'quota_exceeded' in reason:
+            reason = "已超出上傳額度"
+        failed_list += f"・[{idx}] {reason}\n"
+
+    text = f"""✅ 批次處理完成！
+
+共上傳 {total} 張，成功 {success_count} 張，失敗 {failed_count} 張。
+
+✅ 成功（{success_count} 張）：
+{success_list if success_list else "（無）"}
+❌ 失敗（{failed_count} 張）：
+{failed_list if failed_list else "（無）"}
+可重新傳送失敗的名片照片進行補上傳。"""
+
     if summary.get("quota_hit"):
         text += "\n\n⚠️ 已達用量上限，後續圖片未處理。請升級方案以繼續使用。"
-    elif summary["failures"]:
-        details = "；".join(
-            f"第 {f['index']} 張 — {f['reason']}"
-            for f in summary["failures"]
-            if not f["reason"].startswith("quota_exceeded")
-        )
-        if details:
-            text += f"\n\n失敗原因：{details}"
+
     try:
         await line_bot_api.push_message(user_id, TextSendMessage(text=text))
     except Exception as e:
