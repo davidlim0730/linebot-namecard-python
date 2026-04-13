@@ -38,6 +38,19 @@ app.include_router(webhook_router)
 app.include_router(internal_router)
 app.include_router(liff_router)
 
+
+@app.get("/liff/", include_in_schema=False)
+@app.get("/liff/index.html", include_in_schema=False)
+async def liff_index():
+    from fastapi.responses import HTMLResponse
+    _index = os.path.join(os.path.dirname(__file__), "liff_app", "index.html")
+    if not os.path.isfile(_index):
+        return HTMLResponse("<html><body>LIFF app not found</body></html>", status_code=404)
+    with open(_index) as f:
+        html = f.read().replace("YOUR_LIFF_ID_HERE", config.LIFF_ID)
+    return HTMLResponse(html)
+
+
 _liff_app_dir = os.path.join(os.path.dirname(__file__), "liff_app")
 if os.path.isdir(_liff_app_dir):
     app.mount("/liff", StaticFiles(directory=_liff_app_dir, html=True), name="liff_app")

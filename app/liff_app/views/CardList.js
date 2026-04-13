@@ -4,8 +4,7 @@ import { listCards } from "../api.js";
 
 export default defineComponent({
   name: "CardList",
-  emits: ["navigate"],
-  setup(_, { emit }) {
+  setup() {
     const cards = ref([]);
     const search = ref("");
     const loading = ref(true);
