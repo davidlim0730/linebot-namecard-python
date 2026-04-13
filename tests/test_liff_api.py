@@ -165,3 +165,37 @@ def test_delete_card_success(client):
 def test_cards_require_auth(client):
     resp = client.get("/api/v1/cards")
     assert resp.status_code == 403
+
+
+# ---- Tags ----
+
+def test_list_tags(client):
+    with patch("app.api.liff.tag_service") as mock_svc:
+        mock_svc.list_tags.return_value = ["VIP", "潛力客戶"]
+        resp = client.get("/api/v1/tags", headers=jwt_header())
+    assert resp.status_code == 200
+    assert resp.json() == ["VIP", "潛力客戶"]
+
+
+def test_add_tag(client):
+    with patch("app.api.liff.tag_service") as mock_svc:
+        mock_svc.add_tag.return_value = True
+        resp = client.post(
+            "/api/v1/tags",
+            json={"name": "新標籤"},
+            headers=jwt_header(),
+        )
+    assert resp.status_code == 200
+    assert resp.json()["ok"] is True
+
+
+def test_set_card_tags(client):
+    with patch("app.api.liff.tag_service") as mock_svc:
+        mock_svc.set_card_tags.return_value = True
+        resp = client.post(
+            "/api/v1/cards/card1/tags",
+            json={"tag_names": ["VIP", "潛力客戶"]},
+            headers=jwt_header(),
+        )
+    assert resp.status_code == 200
+    assert resp.json()["ok"] is True

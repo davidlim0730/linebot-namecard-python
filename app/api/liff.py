@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from .. import config
 from ..services.auth_service import AuthService, AuthError
 from ..services.card_service import CardService, PermissionError as CardPermError, NotFoundError
+from ..services.tag_service import TagService
 from ..models.org import UserContext
 from ..models.card import CardUpdate
 from ..repositories.org_repo import OrgRepo
@@ -21,6 +22,7 @@ auth_service = AuthService(
 org_repo = OrgRepo()
 _card_repo = CardRepo()
 card_service = CardService(_card_repo, org_repo)
+tag_service = TagService(org_repo, _card_repo)
 
 
 async def get_current_user(
@@ -43,6 +45,14 @@ class TokenRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     expires_in: int = 3600
+
+
+class TagCreate(BaseModel):
+    name: str
+
+
+class CardTagsUpdate(BaseModel):
+    tag_names: List[str]
 
 
 # ---- Auth ----
@@ -102,6 +112,34 @@ async def update_card(
 async def delete_card(card_id: str, user: UserContext = Depends(get_current_user)):
     try:
         card_service.delete_card(user.org_id, card_id, user)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail={"error": "not_found"})
+    except CardPermError:
+        raise HTTPException(status_code=403, detail={"error": "forbidden"})
+    return {"ok": True}
+
+
+# ---- Tags ----
+
+@router.get("/v1/tags")
+async def list_tags(user: UserContext = Depends(get_current_user)):
+    return tag_service.list_tags(user.org_id)
+
+
+@router.post("/v1/tags")
+async def add_tag(body: TagCreate, user: UserContext = Depends(get_current_user)):
+    tag_service.add_tag(user.org_id, body.name)
+    return {"ok": True}
+
+
+@router.post("/v1/cards/{card_id}/tags")
+async def set_card_tags(
+    card_id: str,
+    body: CardTagsUpdate,
+    user: UserContext = Depends(get_current_user),
+):
+    try:
+        tag_service.set_card_tags(user.org_id, card_id, body.tag_names, user)
     except NotFoundError:
         raise HTTPException(status_code=404, detail={"error": "not_found"})
     except CardPermError:
