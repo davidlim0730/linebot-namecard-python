@@ -199,3 +199,72 @@ def test_set_card_tags(client):
         )
     assert resp.status_code == 200
     assert resp.json()["ok"] is True
+
+
+# ---- Org ----
+
+def make_org():
+    from app.models.org import Org, Member
+    return Org(
+        id="org_abc",
+        name="測試團隊",
+        created_by="U123456",
+        plan_type=None,
+        trial_ends_at=None,
+        members=[
+            Member(user_id="U123456", role="admin", joined_at="2026-01-01T00:00:00"),
+            Member(user_id="U999", role="member", joined_at="2026-02-01T00:00:00"),
+        ],
+    )
+
+
+def test_get_org(client):
+    with patch("app.api.liff.org_repo") as mock_repo:
+        mock_repo.get.return_value = make_org()
+        resp = client.get("/api/v1/org", headers=jwt_header())
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["id"] == "org_abc"
+    assert data["name"] == "測試團隊"
+
+
+def test_list_org_members(client):
+    with patch("app.api.liff.org_repo") as mock_repo:
+        mock_repo.get.return_value = make_org()
+        resp = client.get("/api/v1/org/members", headers=jwt_header())
+    assert resp.status_code == 200
+    members = resp.json()
+    assert len(members) == 2
+    assert members[0]["user_id"] == "U123456"
+
+
+def test_update_member_role_admin_only(client):
+    with patch("app.api.liff.org_service") as mock_svc:
+        mock_svc.update_member_role.return_value = True
+        resp = client.patch(
+            "/api/v1/org/members/U999",
+            json={"role": "admin"},
+            headers=jwt_header(role="admin"),
+        )
+    assert resp.status_code == 200
+    assert resp.json()["ok"] is True
+
+
+def test_update_member_role_non_admin_forbidden(client):
+    from app.services.org_service import PermissionError as OrgPermError
+    with patch("app.api.liff.org_service") as mock_svc:
+        mock_svc.update_member_role.side_effect = OrgPermError("not admin")
+        resp = client.patch(
+            "/api/v1/org/members/U999",
+            json={"role": "admin"},
+            headers=jwt_header(role="member"),
+        )
+    assert resp.status_code == 403
+
+
+def test_generate_invite_code(client):
+    with patch("app.api.liff.org_service") as mock_svc:
+        mock_svc.generate_invite_code.return_value = "ABC123"
+        resp = client.post("/api/v1/org/invite", headers=jwt_header())
+    assert resp.status_code == 200
+    assert resp.json()["code"] == "ABC123"

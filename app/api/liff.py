@@ -6,6 +6,8 @@ from .. import config
 from ..services.auth_service import AuthService, AuthError
 from ..services.card_service import CardService, PermissionError as CardPermError, NotFoundError
 from ..services.tag_service import TagService
+from ..services.org_service import OrgService
+from ..services.org_service import PermissionError as OrgPermError
 from ..models.org import UserContext
 from ..models.card import CardUpdate
 from ..repositories.org_repo import OrgRepo
@@ -23,6 +25,7 @@ org_repo = OrgRepo()
 _card_repo = CardRepo()
 card_service = CardService(_card_repo, org_repo)
 tag_service = TagService(org_repo, _card_repo)
+org_service = OrgService(org_repo)
 
 
 async def get_current_user(
@@ -53,6 +56,10 @@ class TagCreate(BaseModel):
 
 class CardTagsUpdate(BaseModel):
     tag_names: List[str]
+
+
+class RoleUpdate(BaseModel):
+    role: str
 
 
 # ---- Auth ----
@@ -145,3 +152,40 @@ async def set_card_tags(
     except CardPermError:
         raise HTTPException(status_code=403, detail={"error": "forbidden"})
     return {"ok": True}
+
+
+# ---- Org ----
+
+@router.get("/v1/org")
+async def get_org(user: UserContext = Depends(get_current_user)):
+    org = org_repo.get(user.org_id)
+    if not org:
+        raise HTTPException(status_code=404, detail={"error": "not_found"})
+    return org.model_dump()
+
+
+@router.get("/v1/org/members")
+async def list_members(user: UserContext = Depends(get_current_user)):
+    org = org_repo.get(user.org_id)
+    if not org:
+        raise HTTPException(status_code=404, detail={"error": "not_found"})
+    return [m.model_dump() for m in org.members]
+
+
+@router.patch("/v1/org/members/{target_user_id}")
+async def update_member_role(
+    target_user_id: str,
+    body: RoleUpdate,
+    user: UserContext = Depends(get_current_user),
+):
+    try:
+        org_service.update_member_role(user.org_id, target_user_id, body.role, user)
+    except OrgPermError:
+        raise HTTPException(status_code=403, detail={"error": "forbidden"})
+    return {"ok": True}
+
+
+@router.post("/v1/org/invite")
+async def generate_invite(user: UserContext = Depends(get_current_user)):
+    code = org_service.generate_invite_code(user.org_id, user.user_id)
+    return {"code": code}
