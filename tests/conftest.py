@@ -11,6 +11,8 @@ os.environ.setdefault("ChannelSecret", "test_secret")
 os.environ.setdefault("ChannelAccessToken", "test_token")
 os.environ.setdefault("GEMINI_API_KEY", "test_gemini_key")
 os.environ.setdefault("FIREBASE_URL", "https://test.firebaseio.com")
+os.environ.setdefault("JWT_SECRET", "test-secret-for-tests-32-bytes!!")
+os.environ.setdefault("LIFF_CHANNEL_ID", "test-channel")
 
 # Mock firebase_admin at the module level so imports don't fail
 firebase_admin_mock = MagicMock()

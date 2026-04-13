@@ -57,3 +57,111 @@ def test_auth_token_user_not_in_org(client):
 
     assert resp.status_code == 403
     assert resp.json()["detail"]["error"] == "no_org"
+
+
+from app.services.auth_service import AuthService as _AuthService
+
+
+def jwt_header(user_id="U123456", org_id="org_abc", role="admin"):
+    """Helper: get a real JWT for test requests."""
+    import os
+    secret = os.environ.get("JWT_SECRET", "dev-secret-change-in-production")
+    channel = os.environ.get("LIFF_CHANNEL_ID", "test-channel")
+    svc = _AuthService(jwt_secret=secret, liff_channel_id=channel)
+    token = svc.issue_jwt(user_id, org_id, role)
+    return {"Authorization": f"Bearer {token}"}
+
+
+def make_card(card_id="card1", added_by="U123456"):
+    from app.models.card import Card
+    return Card(
+        id=card_id,
+        name="王小明",
+        title="業務經理",
+        company="測試公司",
+        address="台北市",
+        phone="02-1234-5678",
+        mobile="0912-345-678",
+        email="wang@test.com",
+        line_id="wang_line",
+        memo="備注",
+        tags=["VIP"],
+        added_by=added_by,
+        created_at="2026-04-01T00:00:00",
+    )
+
+
+def test_list_cards_returns_list(client):
+    with patch("app.api.liff.card_service") as mock_svc:
+        mock_svc.list_cards.return_value = [make_card()]
+        resp = client.get("/api/v1/cards", headers=jwt_header())
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 1
+    assert data[0]["id"] == "card1"
+    assert data[0]["name"] == "王小明"
+
+
+def test_list_cards_with_search_param(client):
+    with patch("app.api.liff.card_service") as mock_svc:
+        mock_svc.list_cards.return_value = []
+        resp = client.get("/api/v1/cards?search=王&tag=VIP", headers=jwt_header())
+    assert resp.status_code == 200
+    # verify list_cards was called with search and tag
+    mock_svc.list_cards.assert_called_once()
+    call_args = mock_svc.list_cards.call_args
+    all_args = list(call_args.args) + list(call_args.kwargs.values())
+    assert "王" in all_args
+    assert "VIP" in all_args
+
+
+def test_get_card_found(client):
+    with patch("app.api.liff.card_service") as mock_svc:
+        mock_svc.get_card.return_value = make_card("card1")
+        resp = client.get("/api/v1/cards/card1", headers=jwt_header())
+    assert resp.status_code == 200
+    assert resp.json()["id"] == "card1"
+
+
+def test_get_card_not_found(client):
+    with patch("app.api.liff.card_service") as mock_svc:
+        mock_svc.get_card.return_value = None
+        resp = client.get("/api/v1/cards/missing", headers=jwt_header())
+    assert resp.status_code == 404
+
+
+def test_update_card_success(client):
+    with patch("app.api.liff.card_service") as mock_svc:
+        mock_svc.update_card.return_value = True
+        resp = client.put(
+            "/api/v1/cards/card1",
+            json={"name": "新名字", "memo": "更新備注"},
+            headers=jwt_header(),
+        )
+    assert resp.status_code == 200
+    assert resp.json()["ok"] is True
+
+
+def test_update_card_permission_denied(client):
+    from app.services.card_service import PermissionError as CardPermError
+    with patch("app.api.liff.card_service") as mock_svc:
+        mock_svc.update_card.side_effect = CardPermError("no access")
+        resp = client.put(
+            "/api/v1/cards/card1",
+            json={"name": "x"},
+            headers=jwt_header(role="member"),
+        )
+    assert resp.status_code == 403
+
+
+def test_delete_card_success(client):
+    with patch("app.api.liff.card_service") as mock_svc:
+        mock_svc.delete_card.return_value = True
+        resp = client.delete("/api/v1/cards/card1", headers=jwt_header())
+    assert resp.status_code == 200
+    assert resp.json()["ok"] is True
+
+
+def test_cards_require_auth(client):
+    resp = client.get("/api/v1/cards")
+    assert resp.status_code == 403

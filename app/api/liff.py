@@ -1,13 +1,17 @@
+from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from .. import config
 from ..services.auth_service import AuthService, AuthError
+from ..services.card_service import CardService, PermissionError as CardPermError, NotFoundError
 from ..models.org import UserContext
+from ..models.card import CardUpdate
 from ..repositories.org_repo import OrgRepo
+from ..repositories.card_repo import CardRepo
 
 router = APIRouter(prefix="/api")
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 # Module-level singletons (injected in tests via patch)
 auth_service = AuthService(
@@ -15,11 +19,15 @@ auth_service = AuthService(
     liff_channel_id=config.LIFF_CHANNEL_ID,
 )
 org_repo = OrgRepo()
+_card_repo = CardRepo()
+card_service = CardService(_card_repo, org_repo)
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
 ) -> UserContext:
+    if not credentials:
+        raise HTTPException(status_code=403, detail={"error": "forbidden"})
     try:
         return auth_service.verify_jwt(credentials.credentials)
     except AuthError as e:
@@ -53,3 +61,49 @@ async def issue_token(body: TokenRequest):
     role = org_repo.get_user_role(org_id, user_id) or "member"
     token = auth_service.issue_jwt(user_id, org_id, role)
     return TokenResponse(access_token=token)
+
+
+# ---- Cards ----
+
+@router.get("/v1/cards")
+async def list_cards(
+    search: Optional[str] = None,
+    tag: Optional[str] = None,
+    user: UserContext = Depends(get_current_user),
+):
+    cards = card_service.list_cards(user.org_id, user, search=search, tag=tag)
+    return [c.model_dump() for c in cards]
+
+
+@router.get("/v1/cards/{card_id}")
+async def get_card(card_id: str, user: UserContext = Depends(get_current_user)):
+    card = card_service.get_card(user.org_id, card_id, user)
+    if not card:
+        raise HTTPException(status_code=404, detail={"error": "not_found"})
+    return card.model_dump()
+
+
+@router.put("/v1/cards/{card_id}")
+async def update_card(
+    card_id: str,
+    body: CardUpdate,
+    user: UserContext = Depends(get_current_user),
+):
+    try:
+        card_service.update_card(user.org_id, card_id, body, user)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail={"error": "not_found"})
+    except CardPermError:
+        raise HTTPException(status_code=403, detail={"error": "forbidden"})
+    return {"ok": True}
+
+
+@router.delete("/v1/cards/{card_id}")
+async def delete_card(card_id: str, user: UserContext = Depends(get_current_user)):
+    try:
+        card_service.delete_card(user.org_id, card_id, user)
+    except NotFoundError:
+        raise HTTPException(status_code=404, detail={"error": "not_found"})
+    except CardPermError:
+        raise HTTPException(status_code=403, detail={"error": "forbidden"})
+    return {"ok": True}
