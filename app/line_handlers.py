@@ -56,23 +56,18 @@ def attach_cancel_quick_reply(
     return reply_message
 
 
-def handle_cancel_state_postback(user_id: str, line_bot_api, reply_token: str):
+async def handle_cancel_state_postback(user_id: str, reply_token: str):
     """處理 cancel_state postback
 
     Flow:
     1. 清除 user_states[user_id]
     2. 回覆「已取消」訊息
-
-    Args:
-        user_id: LINE user ID
-        line_bot_api: LINE bot API instance
-        reply_token: LINE reply token
     """
     if user_id in user_states:
         del user_states[user_id]
 
     reply = TextSendMessage(text="✓ 已取消操作")
-    line_bot_api.reply_message(reply_token, reply)
+    await line_bot_api.reply_message(reply_token, reply)
 
 
 async def check_onboarding(user_id: str, reply_token: str) -> bool:
@@ -93,7 +88,7 @@ async def handle_postback_event(event: PostbackEvent, user_id: str):
 
     # Route cancel_state first (before onboarding check)
     if action == 'cancel_state':
-        handle_cancel_state_postback(user_id, line_bot_api, event.reply_token)
+        await handle_cancel_state_postback(user_id, event.reply_token)
         return
 
     # create_org：onboarding 選擇「建立團隊」（在 onboarding 攔截前處理，避免死鎖）
@@ -554,7 +549,7 @@ async def handle_text_event(event: MessageEvent, user_id: str) -> None:
     elif user_action == 'adding_tag':
         await handle_adding_tag_state(event, user_id, org_id, msg)
     elif user_action == 'reporting_issue':
-        handle_reporting_issue_state(user_id, org_id, msg, line_bot_api, event.reply_token)
+        await handle_reporting_issue_state(user_id, org_id, msg, event.reply_token)
     elif msg == "remove":
         firebase_utils.remove_redundant_data(org_id)
         await line_bot_api.reply_message(
@@ -615,7 +610,7 @@ async def handle_text_event(event: MessageEvent, user_id: str) -> None:
     elif msg == "群組":
         await handle_show_tags(event, user_id, org_id)
     elif msg.strip() == "回報問題":
-        handle_reporting_issue_trigger(user_id, org_id, line_bot_api, event.reply_token)
+        await handle_reporting_issue_trigger(user_id, org_id, event.reply_token)
     elif msg == "完成":
         await handle_batch_done(event, user_id, org_id)
     elif msg == "取消":
@@ -1096,8 +1091,7 @@ async def handle_edit_field_state(
     del user_states[user_id]
 
 
-def handle_reporting_issue_trigger(user_id: str, org_id: str,
-                                   line_bot_api, reply_token: str):
+async def handle_reporting_issue_trigger(user_id: str, org_id: str, reply_token: str):
     """用戶輸入「回報問題」時觸發"""
     from datetime import datetime
     user_states[user_id] = {
@@ -1109,11 +1103,11 @@ def handle_reporting_issue_trigger(user_id: str, org_id: str,
     reply = TextSendMessage(
         text="請描述您遇到的問題，或直接傳送截圖："
     )
-    line_bot_api.reply_message(reply_token, reply)
+    await line_bot_api.reply_message(reply_token, reply)
 
 
-def handle_reporting_issue_state(user_id: str, org_id: str, content: str,
-                                 line_bot_api, reply_token: str):
+async def handle_reporting_issue_state(user_id: str, org_id: str, content: str,
+                                       reply_token: str):
     """用戶在 reporting_issue 狀態下輸入內容或傳圖"""
     from datetime import datetime
     timestamp = datetime.utcnow().isoformat()
@@ -1134,7 +1128,7 @@ def handle_reporting_issue_state(user_id: str, org_id: str, content: str,
     reply = TextSendMessage(
         text="感謝回報！我們已收到您的反映，將盡快改善。"
     )
-    line_bot_api.reply_message(reply_token, reply)
+    await line_bot_api.reply_message(reply_token, reply)
 
 
 async def handle_smart_query(

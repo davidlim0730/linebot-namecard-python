@@ -15,11 +15,12 @@ logger = logging.getLogger(__name__)
 async def process_batch(user_id: str, org_id: str, image_paths: list) -> dict:
     """
     循序處理批量名片圖片：download → OCR → dedup → save → delete raw image。
-    回傳摘要 {success, failed, failures: [{index, reason}]}
+    回傳摘要 {success, failed, failures: [{index, reason}], successes: [{name, company}]}
     """
     success = 0
     failed = 0
     failures = []
+    successes = []
 
     quota_hit = False
     quota_reason = None
@@ -60,6 +61,7 @@ async def process_batch(user_id: str, org_id: str, image_paths: list) -> dict:
             if existing_id:
                 # 重複名片視為成功（已存在即可）
                 success += 1
+                successes.append({"name": card_obj.get("name", ""), "company": card_obj.get("company", "")})
             else:
                 card_id = firebase_utils.add_namecard(card_obj, org_id, user_id)
                 if card_id:
@@ -68,6 +70,7 @@ async def process_batch(user_id: str, org_id: str, image_paths: list) -> dict:
                     except Exception as e_sync:
                         logger.warning(f"Batch: gsheets sync failed for card {card_id}: {e_sync}")
                     success += 1
+                    successes.append({"name": card_obj.get("name", ""), "company": card_obj.get("company", "")})
                 else:
                     raise ValueError("寫入 Firebase 失敗")
         except Exception as e:
@@ -78,7 +81,7 @@ async def process_batch(user_id: str, org_id: str, image_paths: list) -> dict:
             # 無論成功或失敗都刪除暫存圖
             firebase_utils.delete_raw_image(storage_path)
 
-    result = {"success": success, "failed": failed, "failures": failures}
+    result = {"success": success, "failed": failed, "failures": failures, "successes": successes}
     if quota_hit:
         result["quota_hit"] = True
         result["quota_reason"] = quota_reason
@@ -196,43 +199,43 @@ def trigger_batch_completion(user_id: str, org_id: str, db, cloud_tasks_client):
     logger.info(f"Created Cloud Task for batch completion: {user_id}")
 
 
-def send_batch_summary_push(user_id: str, org_id: str, results: list,
-                           line_bot_api, db):
+async def send_batch_summary_push(user_id: str, summary: dict):
     """推播批量上傳結果摘要（含成功/失敗清單）
 
     Args:
         user_id: LINE user ID
-        org_id: Organization ID
-        results: List of OCR results with status, name, company fields
-        line_bot_api: LINE bot API instance
-        db: Firebase database instance
+        summary: Dict returned by process_batch:
+                 {success: int, failed: int,
+                  successes: [{name, company}],
+                  failures: [{index, reason}]}
     """
-    success_cards = [r for r in results if r.get('status') == 'success']
-    failed_cards = [r for r in results if r.get('status') == 'failed']
+    from .bot_instance import line_bot_api
 
-    total = len(results)
-    success_count = len(success_cards)
-    failed_count = len(failed_cards)
+    success_count = summary.get('success', 0)
+    failed_count = summary.get('failed', 0)
+    total = success_count + failed_count
+    successes = summary.get('successes', [])
+    failures = summary.get('failures', [])
 
     # 構建成功清單
     success_list = ""
-    for idx, card in enumerate(success_cards, 1):
-        display_name = card.get('name') or card.get('company') or f"卡片 {idx}"
+    for idx, card in enumerate(successes, 1):
+        name = card.get('name', '')
         company = card.get('company', '')
-        if company:
-            success_list += f"・[{idx}] {display_name} / {company}\n"
+        display = name or company or f"卡片 {idx}"
+        if name and company:
+            success_list += f"・[{idx}] {name} / {company}\n"
         else:
-            success_list += f"・[{idx}] {display_name}\n"
+            success_list += f"・[{idx}] {display}\n"
 
     # 構建失敗清單
     failed_list = ""
-    for idx, card in enumerate(failed_cards, 1):
-        reason = card.get('reason', '辨識失敗')
-        if card.get('status_reason') == 'no_readable_data':
+    for idx, failure in enumerate(failures, 1):
+        reason = failure.get('reason', '辨識失敗')
+        if 'OCR 無法解析' in reason or '無可讀資料' in reason or 'OCR 回傳空資料' in reason:
             reason = "辨識失敗（無可讀資料）"
-        elif card.get('status_reason') == 'duplicate':
-            reason = "已存在重複名片（email 相符）"
-
+        elif 'quota_exceeded' in reason:
+            reason = "已超出上傳額度"
         failed_list += f"・[{idx}] {reason}\n"
 
     # 完整訊息
@@ -241,17 +244,10 @@ def send_batch_summary_push(user_id: str, org_id: str, results: list,
 共上傳 {total} 張，成功 {success_count} 張，失敗 {failed_count} 張。
 
 ✅ 成功（{success_count} 張）：
-{success_list if success_list else "無"}
-
+{success_list if success_list else "（無）"}
 ❌ 失敗（{failed_count} 張）：
-{failed_list if failed_list else "無"}
-
+{failed_list if failed_list else "（無）"}
 可重新傳送失敗的名片照片進行補上傳。"""
 
-    reply = TextSendMessage(text=message_text)
-    line_bot_api.push_message(user_id, reply)
-
-    # 清除 batch state
-    batch_ref = db.reference(f'batch_states/{user_id}')
-    batch_ref.delete()
+    await line_bot_api.push_message(user_id, TextSendMessage(text=message_text))
     logger.info(f"Batch summary sent to {user_id}: {success_count} success, {failed_count} failed")
