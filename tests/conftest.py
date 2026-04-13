@@ -4,7 +4,7 @@ Also mock Firebase initialization to prevent real connections in tests.
 """
 import os
 import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 # Set env vars before any app import
 os.environ.setdefault("ChannelSecret", "test_secret")
@@ -20,23 +20,32 @@ sys.modules['firebase_admin.storage'] = firebase_admin_mock.storage
 sys.modules['firebase_admin.credentials'] = firebase_admin_mock.credentials
 
 # Mock linebot with stub models that can be used for testing
+
+
 class StubPostbackAction:
-    def __init__(self, label, data):
+    def __init__(self, label, data, **kwargs):
         self.label = label
         self.data = data
+        # Accept but ignore any additional kwargs for forward compatibility
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
 
 class StubQuickReplyButton:
     def __init__(self, action):
         self.action = action
 
+
 class StubQuickReply:
     def __init__(self, items):
         self.items = items
 
+
 class StubTextSendMessage:
-    def __init__(self, text):
+    def __init__(self, text, quick_reply=None):
         self.text = text
-        self.quick_reply = None
+        self.quick_reply = quick_reply
+
 
 class StubFlexMessage:
     def __init__(self, alt_text, body):
@@ -44,8 +53,10 @@ class StubFlexMessage:
         self.body = body
         self.quick_reply = None
 
+
 class StubInvalidSignatureError(Exception):
     pass
+
 
 linebot_mock = MagicMock()
 linebot_exceptions_mock = MagicMock()
