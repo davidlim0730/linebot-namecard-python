@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 import google.generativeai as genai
 import firebase_admin
 from firebase_admin import credentials
@@ -36,6 +37,10 @@ app = FastAPI()
 app.include_router(webhook_router)
 app.include_router(internal_router)
 app.include_router(liff_router)
+
+_liff_app_dir = os.path.join(os.path.dirname(__file__), "liff_app")
+if os.path.isdir(_liff_app_dir):
+    app.mount("/liff", StaticFiles(directory=_liff_app_dir, html=True), name="liff_app")
 
 
 @app.on_event("startup")
