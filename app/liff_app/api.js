@@ -61,3 +61,7 @@ export function updateCard(id, body) {
 export function listTags() {
   return request("GET", "/api/v1/tags");
 }
+
+export function setCardTags(id, tag_names) {
+  return request("POST", `/api/v1/cards/${id}/tags`, { tag_names });
+}

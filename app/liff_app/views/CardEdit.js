@@ -1,6 +1,6 @@
 // CardEdit.js — edit form for all card fields
 import { defineComponent, ref, reactive, onMounted, h } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
-import { getCard, updateCard, listTags } from "../api.js";
+import { getCard, updateCard, listTags, setCardTags } from "../api.js";
 
 const FIELDS = [
   { key: "name", label: "姓名" },
@@ -52,7 +52,10 @@ export default defineComponent({
         for (const f of FIELDS) {
           body[f.key] = form[f.key] || null;
         }
-        await updateCard(props.cardId, body);
+        await Promise.all([
+          updateCard(props.cardId, body),
+          setCardTags(props.cardId, selectedTags.value),
+        ]);
         success.value = true;
         setTimeout(() => {
           window.location.hash = `#/cards/${props.cardId}`;
