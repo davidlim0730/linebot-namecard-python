@@ -151,52 +151,31 @@ def check_batch_idle_and_trigger(user_id: str, org_id: str, db, cloud_tasks_clie
 
 
 def trigger_batch_completion(user_id: str, org_id: str, db, cloud_tasks_client):
-    """觸發批量上傳完成流程
+    """觸發批量上傳完成流程（由 idle detection 呼叫）
 
-    相當於用戶輸入「完成」，建立 Cloud Task 呼叫 /internal/process-batch
-
-    Args:
-        user_id: LINE user ID
-        org_id: Organization ID
-        db: Firebase database instance
-        cloud_tasks_client: Google Cloud Tasks client
+    從 Firebase 讀取 pending_images，建立 Cloud Task 含 image_paths
     """
+    from .cloud_tasks_utils import create_process_batch_task
+
     batch_ref = db.reference(f'batch_states/{user_id}')
     batch_data = batch_ref.get() or {}
 
-    if not batch_data.get('pending_images'):
+    pending_images = batch_data.get('pending_images', [])
+    if isinstance(pending_images, dict):
+        pending_images = list(pending_images.values())
+    else:
+        pending_images = list(pending_images) if pending_images else []
+
+    if not pending_images:
         logger.warning(f"No images to process for {user_id}")
         return
-
-    # 建立 Cloud Task
-    task = {
-        'http_request': {
-            'http_method': 'POST',
-            'url': f"{os.getenv('CLOUD_RUN_URL')}/internal/process-batch",
-            'headers': {'Content-Type': 'application/json'},
-            'body': json.dumps({
-                'user_id': user_id,
-                'org_id': org_id
-            }).encode()
-        }
-    }
-
-    request = {
-        'parent': cloud_tasks_client.queue_path(
-            os.getenv('GOOGLE_CLOUD_PROJECT'),
-            os.getenv('CLOUD_TASKS_LOCATION'),
-            os.getenv('CLOUD_TASKS_QUEUE')
-        ),
-        'task': task
-    }
-
-    cloud_tasks_client.create_task(request)
 
     # 標記為「已排隊」，避免重複觸發
     batch_data['status'] = 'queued'
     batch_ref.update(batch_data)
 
-    logger.info(f"Created Cloud Task for batch completion: {user_id}")
+    create_process_batch_task(user_id, org_id, pending_images)
+    logger.info(f"Triggered batch completion via idle detection: {user_id}, {len(pending_images)} images")
 
 
 async def send_batch_summary_push(user_id: str, summary: dict):

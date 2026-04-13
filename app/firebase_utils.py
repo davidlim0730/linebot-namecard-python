@@ -365,7 +365,9 @@ def add_card_role_tag(org_id: str, card_id: str, tag_name: str, user_id: str = N
         return False
 
 
-def remove_card_role_tag(org_id: str, card_id: str, tag_name: str, user_id: str = None, user_role: str = "member") -> bool:
+def remove_card_role_tag(org_id: str, card_id: str, tag_name: str,
+                         user_id: str = None,
+                         user_role: str = "member") -> bool:
     """
     從名片的 role_tags 陣列移除指定標籤，並檢查權限（如果提供）。
 
@@ -1112,6 +1114,8 @@ def write_feedback(org_id: str, user_id: str, timestamp: str,
     if db is None:
         db = globals()['db']
 
-    feedback_path = f'feedback/{org_id}/{user_id}/{timestamp}'
+    # Firebase key 不能含 '.' 或 ':' — 將 ISO timestamp 正規化
+    safe_timestamp = timestamp.replace(':', '_').replace('.', '_')
+    feedback_path = f'feedback/{org_id}/{user_id}/{safe_timestamp}'
     db.reference(feedback_path).set(feedback_data)
     print(f"Feedback written: {feedback_path}")
