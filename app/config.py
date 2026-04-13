@@ -43,6 +43,13 @@ SMTP_USER = os.environ.get("SMTP_USER")
 SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD")
 
 # =====================
+# LIFF / JWT 設定
+# =====================
+JWT_SECRET = os.environ.get("JWT_SECRET", "dev-secret-change-in-production")
+LIFF_CHANNEL_ID = os.environ.get("LIFF_CHANNEL_ID", "")
+LIFF_ID = os.environ.get("LIFF_ID", "")
+
+# =====================
 # Gemini Prompt 設定
 # =====================
 IMGAGE_PROMPT = """

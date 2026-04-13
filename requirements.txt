@@ -9,3 +9,5 @@ qrcode[pil]
 firebase-admin
 gspread
 google-cloud-tasks
+PyJWT
+httpx

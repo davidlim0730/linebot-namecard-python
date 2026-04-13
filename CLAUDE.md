@@ -178,6 +178,8 @@ display_name_cache/{user_id}: string         ← LINE 顯示名稱快取
 - `GOOGLE_SHEET_ID` — Google Sheets 同步
 - `SMTP_USER`, `SMTP_PASSWORD` — CSV 匯出 email
 - `DEFAULT_ORG_ID` — 預設組織 ID（預設 `org_default`）
+- `LIFF_CHANNEL_ID` — LINE Channel ID（用於驗證 id_token）
+- `LIFF_ID` — LIFF App ID（LINE Developers Console 取得，`/liff/` 頁面動態注入）
 - `CLOUD_TASKS_QUEUE` — Cloud Tasks queue name（e.g. `namecard-batch`）；缺失時批量功能關閉
 - `CLOUD_TASKS_LOCATION` — Cloud Tasks 地區（e.g. `asia-east1`）
 - `CLOUD_RUN_URL` — Cloud Run 服務 URL，供 Cloud Tasks 回呼（e.g. `https://xxx.run.app`）
