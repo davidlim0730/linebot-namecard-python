@@ -25,7 +25,7 @@ class NLUPipeline(BaseModel):
 class NLUInteraction(BaseModel):
     """Represents a sales interaction or conversation note"""
     entity_name: str
-    raw_transcript: str
+    raw_transcript: str = ""
     ai_key_insights: List[str] = Field(default_factory=list)
     sentiment: str = "Neutral"
 
@@ -34,7 +34,7 @@ class NLUAction(BaseModel):
     """Represents an action or follow-up task extracted from NLU"""
     entity_name: str
     task_detail: str
-    due_date: str
+    due_date: str = ""
 
 
 class NLUResult(BaseModel):
