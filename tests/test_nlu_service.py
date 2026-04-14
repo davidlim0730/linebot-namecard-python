@@ -1,6 +1,9 @@
 import pytest
+from unittest.mock import patch
 from app.models.nlu import NLUResult, NLUEntity, NLUPipeline, NLUInteraction, NLUAction
-from app.services.nlu_service import fuzzy_match_entity
+from app.models.card import Card
+from app.models.product import Product
+from app.services.nlu_service import fuzzy_match_entity, build_grounding_context
 
 
 def test_nlu_result_defaults():
@@ -45,12 +48,6 @@ def test_fuzzy_match_no_match():
 def test_fuzzy_match_empty_list():
     result = fuzzy_match_entity("台積電", [])
     assert result is None
-
-
-from unittest.mock import patch, MagicMock
-from app.services.nlu_service import build_grounding_context
-from app.models.card import Card
-from app.models.product import Product
 
 
 def test_build_grounding_context_basic():

@@ -47,21 +47,21 @@ def build_grounding_context(org_id: str) -> str:
 
     # Collect unique company names from namecards
     cards = card_repo.list_all(org_id)
-    companies = sorted({
+    companies = {
         card.company
         for card in cards.values()
         if card.company
-    })
+    }
 
     # Also collect entity_names from active deals (may not be in namecards)
     deals = deal_repo.list_all(org_id)
-    deal_entities = sorted({
+    deal_entities = {
         deal.entity_name
         for deal in deals.values()
-        if deal.entity_name and deal.entity_name not in companies
-    })
+        if deal.entity_name
+    }
 
-    all_entities = companies + deal_entities
+    all_entities = sorted(companies | deal_entities)
 
     # Active products
     products = product_repo.list_active(org_id)
@@ -78,7 +78,7 @@ def build_grounding_context(org_id: str) -> str:
     lines.append("")
     lines.append("## 可用產品線")
     if products:
-        for product in products:
+        for product in sorted(products, key=lambda p: p.id):
             desc = f" | {product.description}" if product.description else ""
             lines.append(f"- {product.id} | {product.name}{desc}")
     else:
