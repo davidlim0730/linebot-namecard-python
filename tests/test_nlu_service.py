@@ -45,3 +45,57 @@ def test_fuzzy_match_no_match():
 def test_fuzzy_match_empty_list():
     result = fuzzy_match_entity("台積電", [])
     assert result is None
+
+
+from unittest.mock import patch, MagicMock
+from app.services.nlu_service import build_grounding_context
+from app.models.card import Card
+from app.models.product import Product
+
+
+def test_build_grounding_context_basic():
+    mock_cards = {
+        "card-1": Card(id="card-1", name="王大明", company="台積電", added_by="u1", created_at="2026-01-01T00:00:00Z"),
+        "card-2": Card(id="card-2", name="李小姐", company="聯發科", added_by="u1", created_at="2026-01-01T00:00:00Z"),
+    }
+    mock_products = [
+        Product(id="PL-0001", org_id="org1", name="AI 質檢方案", status="Active", created_at="2026-01-01T00:00:00Z"),
+        Product(id="PL-0002", org_id="org1", name="智慧倉儲系統", status="Active", created_at="2026-01-01T00:00:00Z"),
+    ]
+
+    with patch("app.services.nlu_service.CardRepo") as MockCardRepo, \
+         patch("app.services.nlu_service.ProductRepo") as MockProductRepo, \
+         patch("app.services.nlu_service.DealRepo") as MockDealRepo:
+
+        MockCardRepo.return_value.list_all.return_value = mock_cards
+        MockProductRepo.return_value.list_active.return_value = mock_products
+        MockDealRepo.return_value.list_all.return_value = {}
+
+        result = build_grounding_context("org1")
+
+    assert "台積電" in result
+    assert "聯發科" in result
+    assert "PL-0001" in result
+    assert "AI 質檢方案" in result
+    assert "## 現有客戶名單" in result
+    assert "## 可用產品線" in result
+
+
+def test_build_grounding_context_dedup_companies():
+    """同一 company 出現多次只列一次"""
+    mock_cards = {
+        "card-1": Card(id="card-1", name="王大明", company="台積電", added_by="u1", created_at="2026-01-01T00:00:00Z"),
+        "card-2": Card(id="card-2", name="張小姐", company="台積電", added_by="u1", created_at="2026-01-01T00:00:00Z"),
+    }
+
+    with patch("app.services.nlu_service.CardRepo") as MockCardRepo, \
+         patch("app.services.nlu_service.ProductRepo") as MockProductRepo, \
+         patch("app.services.nlu_service.DealRepo") as MockDealRepo:
+
+        MockCardRepo.return_value.list_all.return_value = mock_cards
+        MockProductRepo.return_value.list_active.return_value = []
+        MockDealRepo.return_value.list_all.return_value = {}
+
+        result = build_grounding_context("org1")
+
+    assert result.count("台積電") == 1
