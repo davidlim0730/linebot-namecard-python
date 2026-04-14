@@ -137,7 +137,10 @@ def auto_link_namecard(entity_name: str, org_id: str) -> Optional[str]:
     """
     Fuzzy-match entity_name to existing namecards (company field).
     Returns the card_id of the best match, or None if no match found.
+    "First card wins" tie-breaking follows Firebase key lexicographic order.
     """
+    if not entity_name or not entity_name.strip():
+        return None
     card_repo = CardRepo()
     cards = card_repo.list_all(org_id)
 

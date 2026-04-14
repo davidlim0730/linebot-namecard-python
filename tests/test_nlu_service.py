@@ -213,3 +213,11 @@ def test_auto_link_namecard_not_found():
         result = auto_link_namecard("完全不存在公司", "org1")
 
     assert result is None
+
+
+def test_auto_link_namecard_empty_entity_name():
+    """Empty entity_name returns None without hitting Firebase"""
+    with patch("app.services.nlu_service.CardRepo") as MockCardRepo:
+        result = auto_link_namecard("", "org1")
+    assert result is None
+    MockCardRepo.return_value.list_all.assert_not_called()
