@@ -1,9 +1,17 @@
 import difflib
+import json
+import logging
+import os
+from datetime import date
 from typing import List, Optional
 
 from ..repositories.card_repo import CardRepo
 from ..repositories.deal_repo import DealRepo
 from ..repositories.product_repo import ProductRepo
+from ..gemini_utils import generate_gemini_text_complete
+from ..models.nlu import NLUResult
+
+logger = logging.getLogger(__name__)
 
 
 def fuzzy_match_entity(name: str, entity_list: List[str]) -> Optional[str]:
@@ -85,3 +93,38 @@ def build_grounding_context(org_id: str) -> str:
         lines.append("（目前無產品資料）")
 
     return "\n".join(lines)
+
+
+def parse_text(raw_text: str, org_id: str) -> NLUResult:
+    """
+    Parse a natural language CRM report via Gemini NLU.
+    Injects grounding context (known companies + products) into the prompt.
+    Returns NLUResult; returns empty NLUResult on Gemini failure.
+    """
+    system_prompt_path = os.path.join(
+        os.path.dirname(__file__), "..", "nlu", "system_prompt.md"
+    )
+    try:
+        with open(system_prompt_path, "r", encoding="utf-8") as f:
+            system_prompt = f.read()
+    except FileNotFoundError:
+        logger.error("system_prompt.md not found at %s", system_prompt_path)
+        system_prompt = ""
+
+    grounding_context = build_grounding_context(org_id)
+    today = date.today().isoformat()
+
+    prompt_parts = [
+        system_prompt,
+        f"\n\n**系統提供的今天日期**：{today}\n",
+        f"\n**Grounding Context**：\n{grounding_context}\n",
+        f"\n**BD 輸入**：\n{raw_text}",
+    ]
+
+    try:
+        response = generate_gemini_text_complete(prompt_parts)
+        data = json.loads(response.text)
+        return NLUResult(**data)
+    except Exception as e:
+        logger.error("NLU parse failed: %s", e)
+        return NLUResult()

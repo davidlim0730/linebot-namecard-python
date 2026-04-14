@@ -1,9 +1,10 @@
+import json
 import pytest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from app.models.nlu import NLUResult, NLUEntity, NLUPipeline, NLUInteraction, NLUAction
 from app.models.card import Card
 from app.models.product import Product
-from app.services.nlu_service import fuzzy_match_entity, build_grounding_context
+from app.services.nlu_service import fuzzy_match_entity, build_grounding_context, parse_text
 
 
 def test_nlu_result_defaults():
@@ -96,3 +97,71 @@ def test_build_grounding_context_dedup_companies():
         result = build_grounding_context("org1")
 
     assert result.count("台積電") == 1
+
+
+SAMPLE_NLU_JSON = {
+    "intents": ["UPDATE_PIPELINE", "LOG_INTERACTION"],
+    "overall_confidence": 0.88,
+    "missing_fields": [],
+    "entities": [
+        {
+            "name": "台積電",
+            "category": "Client",
+            "industry": "半導體",
+            "matched_entity_id": "C-0001",
+            "entity_match_confidence": 0.97
+        }
+    ],
+    "pipelines": [
+        {
+            "entity_name": "台積電",
+            "stage": "3",
+            "product_id": None,
+            "est_value": 5000000,
+            "next_action_date": "2026-04-20",
+            "status_summary": "進入正式提案階段"
+        }
+    ],
+    "interactions": [
+        {
+            "entity_name": "台積電",
+            "raw_transcript": "台積那邊今天進入正式提案",
+            "ai_key_insights": ["關鍵點 1", "關鍵點 2", "關鍵點 3"],
+            "sentiment": "Positive"
+        }
+    ],
+    "actions": []
+}
+
+
+def test_parse_text_returns_nlu_result():
+    mock_response = MagicMock()
+    mock_response.text = json.dumps(SAMPLE_NLU_JSON)
+
+    with patch("app.services.nlu_service.build_grounding_context", return_value="## 現有客戶名單\n- C-0001 | 台積電"), \
+         patch("app.services.nlu_service.generate_gemini_text_complete", return_value=mock_response):
+
+        result = parse_text("台積那邊今天進入正式提案", "org1")
+
+    assert isinstance(result, NLUResult)
+    assert "UPDATE_PIPELINE" in result.intents
+    assert result.overall_confidence == 0.88
+    assert len(result.entities) == 1
+    assert result.entities[0].name == "台積電"
+    assert len(result.pipelines) == 1
+    assert result.pipelines[0].stage == "3"
+
+
+def test_parse_text_gemini_malformed_json():
+    """Gemini 回傳無法解析的 JSON 時，回傳空 NLUResult 而非 crash"""
+    mock_response = MagicMock()
+    mock_response.text = "這不是 JSON"
+
+    with patch("app.services.nlu_service.build_grounding_context", return_value=""), \
+         patch("app.services.nlu_service.generate_gemini_text_complete", return_value=mock_response):
+
+        result = parse_text("隨便輸入", "org1")
+
+    assert isinstance(result, NLUResult)
+    assert result.intents == []
+    assert result.overall_confidence == 0.0
