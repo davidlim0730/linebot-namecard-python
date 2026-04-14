@@ -109,7 +109,7 @@ def parse_text(raw_text: str, org_id: str) -> NLUResult:
             system_prompt = f.read()
     except FileNotFoundError:
         logger.error("system_prompt.md not found at %s", system_prompt_path)
-        system_prompt = ""
+        return NLUResult()
 
     grounding_context = build_grounding_context(org_id)
     today = date.today().isoformat()
@@ -125,6 +125,9 @@ def parse_text(raw_text: str, org_id: str) -> NLUResult:
         response = generate_gemini_text_complete(prompt_parts)
         data = json.loads(response.text)
         return NLUResult(**data)
+    except json.JSONDecodeError as e:
+        logger.warning("Gemini returned non-JSON response: %s", e)
+        return NLUResult()
     except Exception as e:
-        logger.error("NLU parse failed: %s", e)
+        logger.error("NLU parse failed (schema or API error): %s", e)
         return NLUResult()

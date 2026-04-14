@@ -165,3 +165,13 @@ def test_parse_text_gemini_malformed_json():
     assert isinstance(result, NLUResult)
     assert result.intents == []
     assert result.overall_confidence == 0.0
+
+
+def test_parse_text_missing_system_prompt():
+    """Missing system_prompt.md returns empty NLUResult (not a crash or silent bad parse)"""
+    with patch("builtins.open", side_effect=FileNotFoundError), \
+         patch("app.services.nlu_service.build_grounding_context", return_value=""):
+        result = parse_text("任意輸入", "org1")
+    assert isinstance(result, NLUResult)
+    assert result.intents == []
+    assert result.overall_confidence == 0.0
