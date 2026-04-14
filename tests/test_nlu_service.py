@@ -4,7 +4,7 @@ from unittest.mock import patch, MagicMock
 from app.models.nlu import NLUResult, NLUEntity, NLUPipeline, NLUInteraction, NLUAction
 from app.models.card import Card
 from app.models.product import Product
-from app.services.nlu_service import fuzzy_match_entity, build_grounding_context, parse_text
+from app.services.nlu_service import fuzzy_match_entity, build_grounding_context, parse_text, auto_link_namecard
 
 
 def test_nlu_result_defaults():
@@ -175,3 +175,41 @@ def test_parse_text_missing_system_prompt():
     assert isinstance(result, NLUResult)
     assert result.intents == []
     assert result.overall_confidence == 0.0
+
+
+def test_auto_link_namecard_found():
+    mock_cards = {
+        "card-1": Card(id="card-1", name="王大明", company="台積電", added_by="u1", created_at="2026-01-01T00:00:00Z"),
+        "card-2": Card(id="card-2", name="李小姐", company="聯發科", added_by="u1", created_at="2026-01-01T00:00:00Z"),
+    }
+
+    with patch("app.services.nlu_service.CardRepo") as MockCardRepo:
+        MockCardRepo.return_value.list_all.return_value = mock_cards
+        result = auto_link_namecard("台積電", "org1")
+
+    assert result == "card-1"
+
+
+def test_auto_link_namecard_fuzzy():
+    """「台積」也能匹配到 company=台積電 的 card"""
+    mock_cards = {
+        "card-1": Card(id="card-1", name="王大明", company="台積電", added_by="u1", created_at="2026-01-01T00:00:00Z"),
+    }
+
+    with patch("app.services.nlu_service.CardRepo") as MockCardRepo:
+        MockCardRepo.return_value.list_all.return_value = mock_cards
+        result = auto_link_namecard("台積", "org1")
+
+    assert result == "card-1"
+
+
+def test_auto_link_namecard_not_found():
+    mock_cards = {
+        "card-1": Card(id="card-1", name="王大明", company="台積電", added_by="u1", created_at="2026-01-01T00:00:00Z"),
+    }
+
+    with patch("app.services.nlu_service.CardRepo") as MockCardRepo:
+        MockCardRepo.return_value.list_all.return_value = mock_cards
+        result = auto_link_namecard("完全不存在公司", "org1")
+
+    assert result is None

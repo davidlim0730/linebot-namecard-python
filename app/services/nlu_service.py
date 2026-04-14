@@ -131,3 +131,27 @@ def parse_text(raw_text: str, org_id: str) -> NLUResult:
     except Exception as e:
         logger.error("NLU parse failed (schema or API error): %s", e)
         return NLUResult()
+
+
+def auto_link_namecard(entity_name: str, org_id: str) -> Optional[str]:
+    """
+    Fuzzy-match entity_name to existing namecards (company field).
+    Returns the card_id of the best match, or None if no match found.
+    """
+    card_repo = CardRepo()
+    cards = card_repo.list_all(org_id)
+
+    if not cards:
+        return None
+
+    # Build mapping: company_name → card_id (take first match per company)
+    company_to_card: dict[str, str] = {}
+    for card_id, card in cards.items():
+        if card.company and card.company not in company_to_card:
+            company_to_card[card.company] = card_id
+
+    matched_company = fuzzy_match_entity(entity_name, list(company_to_card.keys()))
+    if matched_company is None:
+        return None
+
+    return company_to_card[matched_company]
