@@ -4,9 +4,11 @@ import logging
 from .. import config
 from ..batch_processor import process_batch, check_batch_idle_and_trigger
 from ..line_handlers import send_batch_summary_push
+from ..repositories.org_repo import OrgRepo
 
 router = APIRouter(prefix="/internal")
 logger = logging.getLogger(__name__)
+org_repo = OrgRepo()
 
 
 def get_db_instance():
@@ -53,3 +55,50 @@ def check_batch_idle():
     except Exception as e:
         logger.error(f"Error in check_batch_idle: {str(e)}")
         return {'status': 'error', 'message': str(e)}
+
+
+@router.post("/push-action-reminders")
+async def push_action_reminders_all():
+    """Cloud Scheduler: push today's due actions to all orgs."""
+    from ..services.push_service import push_action_reminders
+    from firebase_admin import db
+
+    try:
+        # Collect all distinct org_ids from user_org_map
+        all_org_ids = set()
+        user_org_map = db.reference("user_org_map").get() or {}
+        for org_id in user_org_map.values():
+            if isinstance(org_id, str):
+                all_org_ids.add(org_id)
+
+        total_notified = 0
+        for org_id in all_org_ids:
+            total_notified += await push_action_reminders(org_id)
+
+        return {"status": "ok", "notified": total_notified}
+    except Exception as e:
+        logger.error("push-action-reminders error: %s", e)
+        return {"status": "error", "message": str(e)}
+
+
+@router.post("/push-weekly-summary")
+async def push_weekly_summary_all():
+    """Cloud Scheduler: push weekly summary to all orgs."""
+    from ..services.push_service import push_weekly_summary
+    from firebase_admin import db
+
+    try:
+        all_org_ids = set()
+        user_org_map = db.reference("user_org_map").get() or {}
+        for org_id in user_org_map.values():
+            if isinstance(org_id, str):
+                all_org_ids.add(org_id)
+
+        total_notified = 0
+        for org_id in all_org_ids:
+            total_notified += await push_weekly_summary(org_id)
+
+        return {"status": "ok", "notified": total_notified}
+    except Exception as e:
+        logger.error("push-weekly-summary error: %s", e)
+        return {"status": "error", "message": str(e)}

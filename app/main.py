@@ -13,6 +13,7 @@ from .rich_menu_utils import init_rich_menu
 from .api.webhook import router as webhook_router
 from .api.internal import router as internal_router
 from .api.liff import router as liff_router
+from .api.crm import router as crm_router
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,7 @@ app = FastAPI()
 app.include_router(webhook_router)
 app.include_router(internal_router)
 app.include_router(liff_router)
+app.include_router(crm_router)
 
 
 @app.get("/liff/", include_in_schema=False)
