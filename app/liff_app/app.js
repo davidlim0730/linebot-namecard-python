@@ -13,6 +13,7 @@ import ContactCrm from "./views/ContactCrm.js";
 import ManagerPipeline from "./views/ManagerPipeline.js";
 import ProductList from "./views/ProductList.js";
 import BottomNav from "./components/BottomNav.js";
+import Toast from "./components/Toast.js";
 
 // ---- Router ----
 // #/               → CardList
@@ -49,15 +50,31 @@ function parseRoute(hash) {
 const App = defineComponent({
   name: "App",
   components: {
-    BottomNav
+    BottomNav,
+    Toast
   },
   setup() {
     const liffReady = ref(false);
     const authError = ref("");
     const route = ref(parseRoute(window.location.hash));
+    const toastMessage = ref("");
+    const toastType = ref("info");
+    const toastVisible = ref(false);
+    const toastDuration = ref(3000);
 
     function onHashChange() {
       route.value = parseRoute(window.location.hash);
+    }
+
+    function showToast(message, type = "info", duration = 3000) {
+      toastMessage.value = message;
+      toastType.value = type;
+      toastDuration.value = duration;
+      toastVisible.value = true;
+    }
+
+    function closeToast() {
+      toastVisible.value = false;
     }
 
     onMounted(async () => {
@@ -92,32 +109,61 @@ const App = defineComponent({
       window.removeEventListener("hashchange", onHashChange);
     });
 
-    return () => {
-      if (authError.value) return h(Login, { message: authError.value });
-      if (!liffReady.value) return h("div", { style: "text-align:center;padding:60px;color:#999;font-family:sans-serif;" }, "載入中…");
+    // Provide showToast to all child components
+    return {
+      liffReady,
+      authError,
+      route,
+      toastMessage,
+      toastType,
+      toastVisible,
+      toastDuration,
+      showToast,
+      closeToast,
+      renderFn: () => {
+        if (authError.value) return h(Login, { message: authError.value });
+        if (!liffReady.value) return h("div", { style: "text-align:center;padding:60px;color:#999;font-family:sans-serif;" }, "載入中…");
 
-      const { view, cardId, dealId, tab } = route.value;
-      let currentView;
-      if (view === "CrmInput")       currentView = h(CrmInput);
-      else if (view === "DealList")       currentView = h(DealList);
-      else if (view === "DealDetail")     currentView = h(DealDetail, { dealId });
-      else if (view === "ActionList")     currentView = h(ActionList);
-      else if (view === "ContactCrm")     currentView = h(ContactCrm, { cardId });
-      else if (view === "ManagerPipeline") currentView = h(ManagerPipeline);
-      else if (view === "ProductList")    currentView = h(ProductList);
-      else if (view === "CardEdit")       currentView = h(CardEdit, { cardId });
-      else if (view === "CardDetail")     currentView = h(CardDetail, { cardId });
-      else currentView = h(CardList);
+        const { view, cardId, dealId, tab } = route.value;
+        let currentView;
+        if (view === "CrmInput")       currentView = h(CrmInput);
+        else if (view === "DealList")       currentView = h(DealList);
+        else if (view === "DealDetail")     currentView = h(DealDetail, { dealId });
+        else if (view === "ActionList")     currentView = h(ActionList);
+        else if (view === "ContactCrm")     currentView = h(ContactCrm, { cardId });
+        else if (view === "ManagerPipeline") currentView = h(ManagerPipeline);
+        else if (view === "ProductList")    currentView = h(ProductList);
+        else if (view === "CardEdit")       currentView = h(CardEdit, { cardId });
+        else if (view === "CardDetail")     currentView = h(CardDetail, { cardId });
+        else currentView = h(CardList);
 
-      // 只在主視圖展示 BottomNav（避免在詳細頁面疊加）
-      const showBottomNav = view === "CardList" || view === "CrmInput" || view === "DealList" || view === "ActionList" || view === "ManagerPipeline" || view === "ProductList";
+        // 只在主視圖展示 BottomNav（避免在詳細頁面疊加）
+        const showBottomNav = view === "CardList" || view === "CrmInput" || view === "DealList" || view === "ActionList" || view === "ManagerPipeline" || view === "ProductList";
 
-      return h("div", { style: "display:flex;flex-direction:column;height:100vh;" }, [
-        h("div", { style: "flex:1;overflow-y:auto;" }, currentView),
-        showBottomNav ? h(BottomNav, { currentTab: tab || "cards" }) : null
-      ]);
+        return h("div", { style: "display:flex;flex-direction:column;height:100vh;" }, [
+          h("div", { style: "flex:1;overflow-y:auto;" }, currentView),
+          h(Toast, {
+            message: toastMessage.value,
+            type: toastType.value,
+            visible: toastVisible.value,
+            duration: toastDuration.value,
+            onClose: closeToast
+          }),
+          showBottomNav ? h(BottomNav, { currentTab: tab || "cards" }) : null
+        ]);
+      }
     };
   },
+  render() {
+    return this.renderFn();
+  },
+  provide() {
+    return {
+      showToast: this.showToast,
+      closeToast: this.closeToast
+    };
+  }
 });
 
-createApp(App).mount("#app");
+const app = createApp(App);
+app.mount("#app");
