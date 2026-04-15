@@ -1,9 +1,10 @@
 // CardList.js — 名片列表頁面，包含搜尋、篩選、Skeleton loading、FAB
-import { defineComponent, ref, computed, onMounted, onUnmounted, inject } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
+import { defineComponent, ref, onMounted, onUnmounted, inject } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
 import { listCards, listTags } from "../api.js";
 
 export default defineComponent({
   name: "CardList",
+  props: {},
   setup() {
     const showToast = inject("showToast");
 
@@ -15,38 +16,13 @@ export default defineComponent({
     const error = ref("");
     let searchTimeout;
 
-    // 計算篩選後的名片列表
-    const filteredCards = computed(() => {
-      let filtered = cards.value;
-
-      // 篩選：搜尋
-      if (searchQuery.value) {
-        const q = searchQuery.value.toLowerCase();
-        filtered = filtered.filter(card =>
-          (card.name || "").toLowerCase().includes(q) ||
-          (card.company || "").toLowerCase().includes(q) ||
-          (card.email || "").toLowerCase().includes(q)
-        );
-      }
-
-      // 篩選：標籤
-      if (selectedTag.value !== "全部") {
-        if (selectedTag.value === "未標籤") {
-          filtered = filtered.filter(c => !c.tags || c.tags.length === 0);
-        } else {
-          filtered = filtered.filter(c => c.tags && c.tags.includes(selectedTag.value));
-        }
-      }
-
-      return filtered;
-    });
-
     async function fetchCards() {
       loading.value = true;
       try {
         const params = {};
         if (searchQuery.value) params.search = searchQuery.value;
         if (selectedTag.value !== "全部") params.tag = selectedTag.value;
+        // 後端負責篩選，直接使用返回的已過濾結果
         cards.value = await listCards(params.search, params.tag);
         error.value = "";
       } catch (err) {
@@ -84,6 +60,8 @@ export default defineComponent({
 
     function onTagSelect(tag) {
       selectedTag.value = tag;
+      // 清空搜尋防抖計時器，立即執行篩選
+      clearTimeout(searchTimeout);
       fetchCards();
     }
 
@@ -102,7 +80,6 @@ export default defineComponent({
       selectedTag,
       tags,
       error,
-      filteredCards,
       onSearchInput,
       onTagSelect,
       goToCardDetail,
@@ -148,9 +125,9 @@ export default defineComponent({
       </div>
 
       <!-- 名片列表 -->
-      <div v-else-if="!error && filteredCards.length > 0" class="card-list">
+      <div v-else-if="!error && cards.length > 0" class="card-list">
         <div
-          v-for="card in filteredCards"
+          v-for="card in cards"
           :key="card.id"
           class="card-item"
           @click="goToCardDetail(card.id)"
@@ -169,7 +146,7 @@ export default defineComponent({
       </div>
 
       <!-- 空狀態 -->
-      <div v-else-if="!error && filteredCards.length === 0" class="empty-state">
+      <div v-else-if="!error && cards.length === 0" class="empty-state">
         <div class="empty-state-icon">📭</div>
         <div class="empty-state-text">還沒有名片</div>
         <div class="empty-state-hint">返回 LINE 拍名片新增</div>
