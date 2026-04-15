@@ -22,6 +22,9 @@ export default defineComponent({
     // Inject showToast from app.js
     const showToast = inject("showToast");
 
+    // Navigation timeout tracking
+    let navigationTimeout;
+
     // Form data
     const form = reactive({
       name: "", title: "", company: "", phone: "", mobile: "",
@@ -101,6 +104,7 @@ export default defineComponent({
 
     // Check for unsaved changes before unmounting (navigation)
     onBeforeUnmount(() => {
+      clearTimeout(navigationTimeout); // 清理導航計時器
       if (isDirty.value) {
         const confirmed = confirm("你有未保存的變更，確認離開嗎？");
         if (!confirmed) {
@@ -141,7 +145,8 @@ export default defineComponent({
 
         // Show success toast and navigate back
         showToast?.("名片已保存", "success", 2000);
-        setTimeout(() => {
+        navigationTimeout = clearTimeout(navigationTimeout); // 清理前面的計時器
+        navigationTimeout = setTimeout(() => {
           window.location.hash = `#/cards/${props.cardId}`;
         }, 800);
       } catch (e) {
