@@ -16,9 +16,6 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* 導入 animations（含 Glassmorphism） */
-@import './animations.css';
-
 #app {
   display: flex;
   flex-direction: column;
