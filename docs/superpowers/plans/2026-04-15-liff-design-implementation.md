@@ -126,7 +126,7 @@ tests/
   /* Border Radius */
   --radius-sm: 4px;
   --radius-md: 8px;
-  --radius-lg: 12px;
+  --radius-lg: 16px;      /* 卡片圓角 */
   --radius-full: 9999px;
 
   /* Z-index */
@@ -221,6 +221,9 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* 導入 animations（含 Glassmorphism） */
+@import './animations.css';
+
 #app {
   display: flex;
   flex-direction: column;
@@ -233,7 +236,7 @@ html, body {
 .liff-content {
   flex: 1;
   overflow-y: auto;
-  padding-bottom: 60px;  /* 為底部導航預留空間 */
+  padding-bottom: 56px;  /* 為底部導航預留空間 (56px nav + 1px border) */
   -webkit-overflow-scrolling: touch;  /* iOS 平滑滾動 */
 }
 
@@ -243,15 +246,15 @@ html, body {
   min-height: 100%;
 }
 
-/* 底部導航欄（固定位置） */
+/* 底部導航欄（固定位置，56px + 1px border） */
 .bottom-nav {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  height: 60px;
+  height: 56px;
   background-color: var(--color-bg-1);
-  border-top: 1px solid var(--color-bg-3);
+  border-top: 1px solid var(--color-bg-3);  /* 幽靈邊框 */
   display: flex;
   justify-content: space-around;
   align-items: center;
@@ -287,22 +290,23 @@ html, body {
   font-weight: 600;
 }
 
-/* 浮動按鈕 (FAB) */
+/* 浮動按鈕 (FAB) - 全寬 52px，在底部導航上方 */
 .fab {
   position: fixed;
-  bottom: 80px;    /* 在導航欄上方 */
+  bottom: 64px;    /* 底部導航 56px + 間距 8px */
+  left: var(--space-16);
   right: var(--space-16);
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background-color: var(--color-primary);
+  height: 52px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
   color: white;
   border: none;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
+  font-size: 16px;
+  font-weight: 600;
   box-shadow: var(--shadow-lg);
   transition: background-color 0.3s ease, transform 0.2s ease;
   z-index: var(--z-overlay);
@@ -346,6 +350,15 @@ git commit -m "feat(liff): add layout styles and bottom navigation structure"
 
 ```css
 /* app/liff_app/styles/animations.css */
+
+/* Glassmorphism：頂部 Bar 效果（80% 不透明 + 20px backdrop-blur） */
+@supports (backdrop-filter: blur(20px)) {
+  .glassmorphism-header {
+    background-color: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);  /* Safari 支援 */
+  }
+}
 
 @keyframes slideDown {
   from {
@@ -907,11 +920,13 @@ export default {
     </div>
   `,
   styles: `
-    /* 搜尋欄 */
+    /* 搜尋欄（Glassmorphism 頂部 bar） */
     .search-bar-fixed {
       position: sticky;
       top: 0;
-      background-color: var(--color-bg-1);
+      background-color: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
       padding: var(--space-12) 0;
       margin-bottom: var(--space-12);
       border-bottom: 1px solid var(--color-bg-3);
