@@ -375,10 +375,16 @@ def test_send_feedback_notification_sends_email_when_configured():
 import time
 from unittest.mock import patch
 
-def test_get_valid_state_returns_none_when_no_state():
-    from app.line_handlers import get_valid_state
+@pytest.fixture(autouse=True)
+def cleanup_user_states():
+    """Auto-cleanup user_states before and after each test."""
     from app.bot_instance import user_states
     user_states.clear()
+    yield
+    user_states.clear()
+
+def test_get_valid_state_returns_none_when_no_state():
+    from app.line_handlers import get_valid_state
     assert get_valid_state("nonexistent_user") is None
 
 def test_get_valid_state_returns_state_when_fresh():
@@ -388,7 +394,6 @@ def test_get_valid_state_returns_state_when_fresh():
     result = get_valid_state("u1")
     assert result is not None
     assert result["action"] == "adding_memo"
-    user_states.clear()
 
 def test_get_valid_state_clears_and_returns_none_when_expired():
     from app.line_handlers import get_valid_state
