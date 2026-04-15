@@ -37,3 +37,41 @@ def test_batch_ocr_success_logs_structured_event(caplog):
         bp._log_ocr_event("ocr_success", "org1", "user1", "batch")
 
     assert any("ocr_success" in r.message for r in caplog.records)
+
+
+def test_firebase_write_error_logs_structured_event(caplog):
+    """Firebase write error should log structured event with path and reason"""
+    import app.firebase_utils as fu
+
+    with caplog.at_level(logging.ERROR, logger="app.firebase_utils"):
+        fu._log_firebase_event("firebase_write_error", "namecard/org1/card1", "Connection timeout")
+
+    # Check that the error was logged
+    assert len(caplog.records) > 0
+    last_record = caplog.records[-1]
+    assert last_record.levelname == "ERROR"
+
+    # Parse JSON from message
+    log_data = json.loads(last_record.message)
+    assert log_data["event"] == "firebase_write_error"
+    assert log_data["path"] == "namecard/org1/card1"
+    assert log_data["reason"] == "Connection timeout"
+
+
+def test_firebase_read_error_logs_structured_event(caplog):
+    """Firebase read error should log structured event with path and reason"""
+    import app.firebase_utils as fu
+
+    with caplog.at_level(logging.ERROR, logger="app.firebase_utils"):
+        fu._log_firebase_event("firebase_read_error", "organizations/org1", "Permission denied")
+
+    # Check that the error was logged
+    assert len(caplog.records) > 0
+    last_record = caplog.records[-1]
+    assert last_record.levelname == "ERROR"
+
+    # Parse JSON from message
+    log_data = json.loads(last_record.message)
+    assert log_data["event"] == "firebase_read_error"
+    assert log_data["path"] == "organizations/org1"
+    assert log_data["reason"] == "Permission denied"

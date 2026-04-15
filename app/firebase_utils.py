@@ -1,12 +1,31 @@
 import random
 import string
 import uuid
+import json
+import logging
 from firebase_admin import db, storage
 from . import config
 from io import BytesIO
 from datetime import timedelta, datetime, timezone
 from collections import Counter
 from .gsheets_utils import trigger_sync
+
+logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Monitoring and Logging
+# ---------------------------------------------------------------------------
+
+def _log_firebase_event(event: str, path: str, reason: str = None):
+    """Log structured Firebase event to Cloud Logging."""
+    payload = {"event": event, "path": path}
+    if reason:
+        payload["reason"] = reason
+    if event.endswith("_failure") or event.endswith("_error"):
+        logger.error(json.dumps(payload))
+    else:
+        logger.info(json.dumps(payload))
 
 
 # ---------------------------------------------------------------------------
@@ -64,6 +83,7 @@ def get_user_org_id(user_id: str) -> str:
         ref = db.reference(f"user_org_map/{user_id}")
         return ref.get()
     except Exception as e:
+        _log_firebase_event("firebase_read_error", f"user_org_map/{user_id}", str(e))
         print(f"Error getting user org id: {e}")
         return None
 
@@ -93,6 +113,7 @@ def create_org(user_id: str, org_name: str) -> str:
         db.reference(f"user_org_map/{user_id}").set(org_id)
         return org_id
     except Exception as e:
+        _log_firebase_event("firebase_write_error", f"organizations/{f'org_{uuid.uuid4().hex[:8]}'}", str(e))
         print(f"Error creating org: {e}")
         return None
 
@@ -103,6 +124,7 @@ def get_org(org_id: str) -> dict:
         ref = db.reference(f"organizations/{org_id}")
         return ref.get() or {}
     except Exception as e:
+        _log_firebase_event("firebase_read_error", f"organizations/{org_id}", str(e))
         print(f"Error getting org: {e}")
         return {}
 
@@ -113,6 +135,7 @@ def update_org_name(org_id: str, name: str) -> bool:
         db.reference(f"organizations/{org_id}/name").set(name)
         return True
     except Exception as e:
+        _log_firebase_event("firebase_write_error", f"organizations/{org_id}/name", str(e))
         print(f"Error updating org name: {e}")
         return False
 
@@ -578,6 +601,7 @@ def get_all_cards(org_id: str) -> dict:
         namecard_data = ref.get()
         return namecard_data or {}
     except Exception as e:
+        _log_firebase_event("firebase_read_error", f"{config.NAMECARD_PATH}/{org_id}", str(e))
         print(f"Error fetching namecards: {e}")
         return {}
 
@@ -595,6 +619,7 @@ def add_namecard(namecard_obj: dict, org_id: str, added_by: str) -> str:
         increment_scan_count(org_id)
         return card_id
     except Exception as e:
+        _log_firebase_event("firebase_write_error", f"{config.NAMECARD_PATH}/{org_id}", str(e))
         print(f"Error adding namecard: {e}")
         return None
 
@@ -637,6 +662,7 @@ def delete_namecard(
         ref.delete()
         return True
     except Exception as e:
+        _log_firebase_event("firebase_write_error", f"{config.NAMECARD_PATH}/{org_id}/{card_id}", str(e))
         print(f"Error deleting namecard {card_id}: {str(e)}")
         return False
 
@@ -654,6 +680,7 @@ def update_namecard_memo(card_id: str, org_id: str, memo: str) -> bool:
             print(f"Error triggering sync on memo update: {e_sync}")
         return True
     except Exception as e:
+        _log_firebase_event("firebase_write_error", f"{config.NAMECARD_PATH}/{org_id}/{card_id}/memo", str(e))
         print(f"Error updating memo: {e}")
         return False
 
@@ -713,6 +740,7 @@ def get_card_by_id(org_id: str, card_id: str) -> dict:
         ref = db.reference(f"{config.NAMECARD_PATH}/{org_id}/{card_id}")
         return ref.get()
     except Exception as e:
+        _log_firebase_event("firebase_read_error", f"{config.NAMECARD_PATH}/{org_id}/{card_id}", str(e))
         print(f"Error getting card by id: {e}")
         return None
 
@@ -903,6 +931,7 @@ def update_namecard_field(
             print(f"Error triggering sync on field update: {e_sync}")
         return True
     except Exception as e:
+        _log_firebase_event("firebase_write_error", f"{config.NAMECARD_PATH}/{org_id}/{card_id}/{field}", str(e))
         print(f"Error updating {field}: {e}")
         return False
 
@@ -926,6 +955,7 @@ def upload_qrcode_to_storage(
         blob.make_public()
         return blob.public_url
     except Exception as e:
+        _log_firebase_event("firebase_write_error", f"storage:qrcodes/{user_id}/{card_id}.png", str(e))
         print(f"Error uploading QR code to storage: {e}")
         return None
 
@@ -944,6 +974,7 @@ def upload_raw_image_to_storage(org_id: str, user_id: str, image_bytes: bytes) -
         blob.upload_from_string(image_bytes, content_type='image/jpeg')
         return blob_name
     except Exception as e:
+        _log_firebase_event("firebase_write_error", f"storage:raw_images/{org_id}/{user_id}/*", str(e))
         print(f"Error uploading raw image to storage: {e}")
         return None
 
@@ -955,6 +986,7 @@ def delete_raw_image(storage_path: str) -> None:
         blob = bucket.blob(storage_path)
         blob.delete()
     except Exception as e:
+        _log_firebase_event("firebase_write_error", f"storage:{storage_path}", str(e))
         print(f"Warning: could not delete raw image {storage_path}: {e}")
 
 
@@ -965,6 +997,7 @@ def download_raw_image(storage_path: str) -> bytes:
         blob = bucket.blob(storage_path)
         return blob.download_as_bytes()
     except Exception as e:
+        _log_firebase_event("firebase_read_error", f"storage:{storage_path}", str(e))
         print(f"Error downloading raw image {storage_path}: {e}")
         return None
 
@@ -981,6 +1014,7 @@ def get_batch_state(user_id: str) -> dict:
         ref = db.reference(f"batch_states/{user_id}")
         return ref.get()
     except Exception as e:
+        _log_firebase_event("firebase_read_error", f"batch_states/{user_id}", str(e))
         print(f"Error getting batch state: {e}")
         return None
 
@@ -996,6 +1030,7 @@ def init_batch_state(user_id: str, org_id: str) -> None:
             "updated_at": now,
         })
     except Exception as e:
+        _log_firebase_event("firebase_write_error", f"batch_states/{user_id}", str(e))
         print(f"Error init batch state: {e}")
 
 
@@ -1016,6 +1051,7 @@ def append_batch_image(user_id: str, storage_path: str) -> int:
             f"batch_states/{user_id}/pending_images").get() or {}
         return len(pending_map)
     except Exception as e:
+        _log_firebase_event("firebase_write_error", f"batch_states/{user_id}/pending_images", str(e))
         print(f"Error appending batch image: {e}")
         return 0
 
@@ -1025,6 +1061,7 @@ def clear_batch_state(user_id: str) -> None:
     try:
         db.reference(f"batch_states/{user_id}").delete()
     except Exception as e:
+        _log_firebase_event("firebase_write_error", f"batch_states/{user_id}", str(e))
         print(f"Error clearing batch state: {e}")
 
 

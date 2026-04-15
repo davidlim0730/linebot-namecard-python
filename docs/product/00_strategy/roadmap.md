@@ -33,6 +33,7 @@
 - [ ] **錯誤監控**：
   - OCR 成功率量測（記錄每次辨識的成功/失敗）
   - Firebase 讀寫錯誤率監控
+- [ ] **一鍵加入通訊錄**（取代 QR Code）：現有 vCard QR Code 操作反直覺，改為直接產生 `.vcf` 下載連結，iOS / Android 原生支援一鍵匯入通訊錄
 
 ---
 
@@ -99,27 +100,49 @@
 
 ---
 
-## Phase 4 — CRM / MA 系統串接
+## Phase 4 — Conversational CRM
 
-**狀態**：規劃中，待 Phase 3 Pilot 回饋後定義細節
+**狀態**：後端已完成，LIFF 前端開發中
 
-### 規劃功能
-- [ ] **進階篩選**：依標籤、公司、職稱等多維交叉篩選
-- [ ] **Rich Menu 個人化**：依用戶角色顯示不同選單
-- [ ] **標籤系統進階**：支援多標籤交叉篩選，與 CRM 分類對齊
-- [ ] **API 對接**：企業內部 CRM / 行銷自動化系統
-- [ ] **Follow-up 追蹤**：設定跟進提醒，到期推播通知
+> 透過 AI 讓業務人員在 LINE 上用說話完成所有 CRM 操作。主介面升級為 LIFF App，LINE Chat 保留推播通知與名片上傳。
+
+### 後端（已完成）
+- [x] **資料模型**：Deal、Activity、Action、Product、Stakeholder（`app/models/`）
+- [x] **Repositories**：Firebase CRUD for all CRM entities（`app/repositories/`）
+- [x] **NLU Service**：Gemini 解析自然語言 → 結構化 CRM 資料，含 Grounding Context（`app/services/nlu_service.py`）
+- [x] **業務 Services**：DealService（pipeline upsert + 階段追蹤）、ActivityService（互動紀錄 + auto-link）、ActionService（待辦 + 到期查詢）
+- [x] **API 路由**：`/crm/parse`、`/crm/confirm`、`/deals`、`/activities`、`/actions`、`/pipeline/summary`、`/contacts/:id/crm`（`app/api/crm.py`）
+- [x] **推播 Service**：`push_action_reminders`（每日 09:00）、`push_weekly_summary`（週五 18:00）
+- [x] **排程端點**：`/internal/push-action-reminders`、`/internal/push-weekly-summary`
+- [x] **Cloud Scheduler 設定腳本**：`scripts/setup_scheduler.sh`
+- [x] **Rich Menu 重設計**：業務版（6 格）+ 主管版（含 Pipeline 總覽）
+- [x] **LINE Chat 快速指令**：`「我的待辦」`、`「查 [名稱]」`、`「pipeline」`（admin）
+
+### LIFF 前端（待完成）
+- [ ] **CrmInput**：意識流輸入 → NLU 預覽 → 確認寫入（`#/crm`）
+- [ ] **DealList / DealDetail**：Pipeline Kanban + 案件詳情 + Stakeholders（`#/deals`）
+- [ ] **ActionList**：今日 / 本週 / 全部待辦，一鍵完成（`#/actions`）
+- [ ] **ContactCrm**：聯絡人 CRM 視角（deals + activities timeline）（`#/contacts/:id/crm`）
+- [ ] **ManagerPipeline**：主管 team pipeline 儀表板（`#/pipeline`，admin only）
+- [ ] **ProductList**：產品線管理（`#/products`，admin only）
+
+### 驗收標準
+- 意識流輸入 → NLU 解析 → 預覽確認 → Firebase 寫入 → LIFF 顯示
+- 「查王總」→ LINE Chat 回傳 Contact + Deal 摘要
+- 主管 Pipeline 視角：admin 帳號可見 ManagerPipeline
+- 現有名片功能迴歸測試通過（OCR / 邀請 / 匯出 不受影響）
 
 ---
 
-## Phase 5 — 自動化與追蹤
+## Phase 5 — 進階串接與自動化
 
 **狀態**：留白，由真實用戶行為數據驅動
 
 ### 可能方向（未承諾）
-- 聯絡人 follow-up 提醒
-- 自動化跟進與業務追蹤
-- 互動數據分析
+- 企業內部 CRM / MA 系統 API 對接（HubSpot、Salesforce）
+- CSV 匯出對齊主流 CRM 標準欄位
+- 互動數據分析與自動化跟進建議
+- 進階篩選：依標籤、公司、職稱多維交叉
 
 ---
 
@@ -130,5 +153,5 @@
 | Phase 1 穩定化 | 監控、防呆機制上線 | 操作不易誤觸、錯誤有追蹤 |
 | Phase 2 Pilot | 修復 Onboarding、CSV 基本匯出 | 完成 onboarding、收集回饋 |
 | Phase 3 體驗升級 | 系統 LIFF 化、CSV 進階匯出 | 編輯體驗流暢、匯出格式符合標準 |
-| Phase 4 串接 | CRM 串接 | 依 Pilot 回饋決定優先對接系統 |
-| Phase 5 追蹤 | 自動化追蹤 | 由真實用戶行為數據驅動 |
+| Phase 4 Conversational CRM | NLU + LIFF CRM 全功能 | LIFF 前端完成，端對端主流程通過 |
+| Phase 5 串接與自動化 | 外部 CRM 串接、進階分析 | 由真實用戶行為數據驅動 |
