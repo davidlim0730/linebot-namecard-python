@@ -369,3 +369,31 @@ def test_send_feedback_notification_sends_email_when_configured():
             # Verify Thread was created with send_email function
             mock_thread.assert_called_once()
             assert mock_thread.call_args[1]['daemon'] is True
+
+
+# Task 1: State TTL tests
+import time
+from unittest.mock import patch
+
+def test_get_valid_state_returns_none_when_no_state():
+    from app.line_handlers import get_valid_state
+    from app.bot_instance import user_states
+    user_states.clear()
+    assert get_valid_state("nonexistent_user") is None
+
+def test_get_valid_state_returns_state_when_fresh():
+    from app.line_handlers import get_valid_state
+    from app.bot_instance import user_states
+    user_states["u1"] = {"action": "adding_memo", "expires_at": time.time() + 1800}
+    result = get_valid_state("u1")
+    assert result is not None
+    assert result["action"] == "adding_memo"
+    user_states.clear()
+
+def test_get_valid_state_clears_and_returns_none_when_expired():
+    from app.line_handlers import get_valid_state
+    from app.bot_instance import user_states
+    user_states["u2"] = {"action": "editing_field", "expires_at": time.time() - 1}
+    result = get_valid_state("u2")
+    assert result is None
+    assert "u2" not in user_states

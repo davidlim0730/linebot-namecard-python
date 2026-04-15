@@ -11,6 +11,7 @@ import PIL.Image
 import threading
 import smtplib
 from email.mime.text import MIMEText
+import time
 
 from . import firebase_utils, gemini_utils, utils, flex_messages, config, qrcode_utils
 from .bot_instance import line_bot_api, user_states
@@ -25,6 +26,16 @@ _action_repo = ActionRepo()
 _deal_repo = DealRepo()
 _card_repo = CardRepo()
 _org_repo = OrgRepo()
+
+def get_valid_state(user_id: str) -> dict | None:
+    """讀取 user_states，若 state 過期（>30 min）則自動清除並回傳 None。"""
+    state = user_states.get(user_id)
+    if state is None:
+        return None
+    if state.get('expires_at', 0) < time.time():
+        del user_states[user_id]
+        return None
+    return state
 
 FIELD_LABELS = {
     "name": "姓名", "title": "職稱", "company": "公司",
