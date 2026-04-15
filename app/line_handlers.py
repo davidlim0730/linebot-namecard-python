@@ -1428,6 +1428,7 @@ async def handle_image_event(event: MessageEvent, user_id: str) -> None:
 
     if isinstance(card_obj, list):
         if not card_obj:
+            _log_ocr_event("ocr_failure", org_id, user_id, "single", reason="Gemini returned empty list")
             await line_bot_api.reply_message(
                 event.reply_token,
                 [TextSendMessage(text=f"無法解析這張名片，Gemini 回傳了空的資料。 資訊: {result.text}")]
