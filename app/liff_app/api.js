@@ -107,3 +107,33 @@ export function addDealStakeholder(id, body) {
 export function getPipelineSummary() {
   return request("GET", "/api/v1/pipeline/summary");
 }
+
+// Action endpoints
+export function listActions(status) {
+  const params = new URLSearchParams();
+  if (status) params.set("status", status);
+  const qs = params.toString();
+  return request("GET", `/api/v1/actions${qs ? "?" + qs : ""}`);
+}
+
+export function updateAction(id, body) {
+  return request("PUT", `/api/v1/actions/${id}`, body);
+}
+
+// Product endpoints
+export function listProducts() {
+  return request("GET", "/api/v1/products");
+}
+
+export function createProduct(body) {
+  return request("POST", "/api/v1/products", body);
+}
+
+export function updateProduct(id, body) {
+  return request("PUT", `/api/v1/products/${id}`, body);
+}
+
+// Contact CRM view
+export function getContactCrm(cardId) {
+  return request("GET", `/api/v1/contacts/${cardId}/crm`);
+}

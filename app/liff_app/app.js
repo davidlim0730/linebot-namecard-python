@@ -8,20 +8,38 @@ import CardEdit from "./views/CardEdit.js";
 import CrmInput from "./views/CrmInput.js";
 import DealList from "./views/DealList.js";
 import DealDetail from "./views/DealDetail.js";
+import ActionList from "./views/ActionList.js";
+import ContactCrm from "./views/ContactCrm.js";
+import ManagerPipeline from "./views/ManagerPipeline.js";
+import ProductList from "./views/ProductList.js";
 
 // ---- Router ----
-// Routes: #/ → CardList, #/crm → CrmInput, #/deals → DealList, #/deals/:id → DealDetail, #/cards/:id → CardDetail, #/cards/:id/edit → CardEdit
+// #/               → CardList
+// #/crm            → CrmInput
+// #/deals          → DealList
+// #/deals/:id      → DealDetail
+// #/actions        → ActionList
+// #/contacts/:id/crm → ContactCrm
+// #/pipeline       → ManagerPipeline (admin)
+// #/products       → ProductList (admin)
+// #/cards/:id      → CardDetail
+// #/cards/:id/edit → CardEdit
 
 function parseRoute(hash) {
   const path = hash.replace(/^#/, "") || "/";
-  if (path === "/crm") return { view: "CrmInput" };
-  if (path === "/deals") return { view: "DealList" };
-  const dealMatch = path.match(/^\/deals\/([^/]+)$/);
-  if (dealMatch) return { view: "DealDetail", dealId: dealMatch[1] };
-  const editMatch = path.match(/^\/cards\/([^/]+)\/edit$/);
-  if (editMatch) return { view: "CardEdit", cardId: editMatch[1] };
+  if (path === "/crm")      return { view: "CrmInput" };
+  if (path === "/deals")    return { view: "DealList" };
+  if (path === "/actions")  return { view: "ActionList" };
+  if (path === "/pipeline") return { view: "ManagerPipeline" };
+  if (path === "/products") return { view: "ProductList" };
+  const dealMatch    = path.match(/^\/deals\/([^/]+)$/);
+  if (dealMatch)    return { view: "DealDetail", dealId: dealMatch[1] };
+  const contactCrm  = path.match(/^\/contacts\/([^/]+)\/crm$/);
+  if (contactCrm)   return { view: "ContactCrm", cardId: contactCrm[1] };
+  const editMatch   = path.match(/^\/cards\/([^/]+)\/edit$/);
+  if (editMatch)    return { view: "CardEdit", cardId: editMatch[1] };
   const detailMatch = path.match(/^\/cards\/([^/]+)$/);
-  if (detailMatch) return { view: "CardDetail", cardId: detailMatch[1] };
+  if (detailMatch)  return { view: "CardDetail", cardId: detailMatch[1] };
   return { view: "CardList" };
 }
 
@@ -73,11 +91,15 @@ const App = defineComponent({
       if (!liffReady.value) return h("div", { style: "text-align:center;padding:60px;color:#999;font-family:sans-serif;" }, "載入中…");
 
       const { view, cardId, dealId } = route.value;
-      if (view === "CrmInput") return h(CrmInput);
-      if (view === "DealList") return h(DealList);
-      if (view === "DealDetail") return h(DealDetail, { dealId });
-      if (view === "CardEdit") return h(CardEdit, { cardId });
-      if (view === "CardDetail") return h(CardDetail, { cardId });
+      if (view === "CrmInput")       return h(CrmInput);
+      if (view === "DealList")       return h(DealList);
+      if (view === "DealDetail")     return h(DealDetail, { dealId });
+      if (view === "ActionList")     return h(ActionList);
+      if (view === "ContactCrm")     return h(ContactCrm, { cardId });
+      if (view === "ManagerPipeline") return h(ManagerPipeline);
+      if (view === "ProductList")    return h(ProductList);
+      if (view === "CardEdit")       return h(CardEdit, { cardId });
+      if (view === "CardDetail")     return h(CardDetail, { cardId });
       return h(CardList);
     };
   },
