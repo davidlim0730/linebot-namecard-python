@@ -1,0 +1,668 @@
+/* ========== CardList ========== */
+/* ========== 搜尋欄（Glassmorphism 頂部 bar） ========== */
+    .search-bar-fixed {
+      position: sticky;
+      top: 0;
+      background-color: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      padding: var(--space-12) 0;
+      margin-bottom: var(--space-12);
+      border-bottom: 1px solid var(--color-bg-3);
+      z-index: 100;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: var(--space-12);
+      border: 1px solid var(--color-bg-3);
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      font-family: var(--font-body);
+      background-color: var(--color-bg-2);
+      color: var(--color-text-primary);
+      transition: background-color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      background-color: var(--color-bg-1);
+    }
+
+    .search-input::placeholder {
+      color: var(--color-text-secondary);
+    }
+
+    /* ========== 篩選 Tabs ========== */
+    .filter-tabs {
+      display: flex;
+      gap: var(--space-8);
+      margin-bottom: var(--space-16);
+      overflow-x: auto;
+      padding-bottom: var(--space-8);
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .filter-tabs::-webkit-scrollbar {
+      height: 4px;
+    }
+
+    .filter-tabs::-webkit-scrollbar-thumb {
+      background-color: var(--color-bg-3);
+      border-radius: 2px;
+    }
+
+    .filter-tab {
+      padding: var(--space-8) var(--space-12);
+      border: none;
+      border-radius: var(--radius-full);
+      background-color: var(--color-bg-2);
+      color: var(--color-text-secondary);
+      font-weight: 600;
+      font-family: var(--font-body);
+      font-size: 13px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+    }
+
+    .filter-tab:active {
+      transform: scale(0.95);
+    }
+
+    .filter-tab.active {
+      background-color: var(--color-primary);
+      color: white;
+    }
+
+    /* ========== 名片列表 ========== */
+    .card-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-12);
+    }
+
+    .card-item {
+      display: flex;
+      gap: var(--space-12);
+      padding: var(--space-16);
+      background-color: var(--color-bg-1);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: background-color 0.2s ease, transform 0.1s ease;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .card-item:active {
+      transform: scale(0.98);
+      background-color: var(--color-bg-3);
+    }
+
+    .card-item-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background-color: var(--color-primary-light);
+      color: var(--color-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .card-item-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .card-item-name {
+      font-weight: 600;
+      font-size: 15px;
+      color: var(--color-text-primary);
+      margin-bottom: var(--space-4);
+    }
+
+    .card-item-company {
+      font-size: 13px;
+      color: var(--color-text-secondary);
+      margin-bottom: var(--space-4);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .card-item-tags {
+      display: flex;
+      gap: var(--space-4);
+      flex-wrap: wrap;
+    }
+
+    .tag-badge {
+      font-size: 11px;
+      padding: 2px 6px;
+      background-color: var(--color-bg-3);
+      color: var(--color-text-secondary);
+      border-radius: var(--radius-sm);
+      font-weight: 500;
+    }
+
+    /* ========== Skeleton Loading ========== */
+    .card-list-loading {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-12);
+    }
+
+    .skeleton-card {
+      display: flex;
+      gap: var(--space-12);
+      padding: var(--space-16);
+      background-color: var(--color-bg-1);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .skeleton-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .skeleton-content {
+      flex: 1;
+    }
+
+    .skeleton-text {
+      height: 12px;
+      margin-bottom: var(--space-8);
+      border-radius: var(--radius-sm);
+    }
+
+    .skeleton-avatar,
+    .skeleton-text {
+      background: linear-gradient(90deg, var(--color-bg-3) 0%, var(--color-bg-2) 50%, var(--color-bg-3) 100%);
+      background-size: 1000px 100%;
+      animation: skeleton-shimmer 2s infinite;
+    }
+
+    /* ========== 空狀態 ========== */
+    .empty-state {
+      text-align: center;
+      padding: var(--space-32);
+      color: var(--color-text-secondary);
+    }
+
+    .empty-state-icon {
+      font-size: 64px;
+      margin-bottom: var(--space-16);
+    }
+
+    .empty-state-text {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--color-text-primary);
+      margin-bottom: var(--space-8);
+    }
+
+    .empty-state-hint {
+      font-size: 12px;
+    }
+
+    /* ========== 錯誤狀態 ========== */
+    .error-state {
+      text-align: center;
+      padding: var(--space-32);
+    }
+
+    .error-text {
+      color: var(--color-error);
+      margin-bottom: var(--space-16);
+      font-size: 14px;
+    }
+
+    .retry-button {
+      padding: var(--space-12) var(--space-20);
+      background-color: var(--color-primary);
+      color: white;
+      border: none;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      font-weight: 600;
+      font-family: var(--font-body);
+      transition: background-color 0.2s ease, transform 0.1s ease;
+    }
+
+    .retry-button:active {
+      transform: scale(0.95);
+      background-color: var(--color-primary-dark);
+    }
+
+/* ========== CardDetail ========== */
+/* ========== Header ========== */
+    .card-detail-header {
+      display: flex;
+      align-items: center;
+      gap: var(--space-12);
+      padding: var(--space-16) 0;
+      margin-bottom: var(--space-24);
+      border-bottom: 1px solid var(--color-bg-3);
+    }
+
+    .back-button {
+      background: none;
+      border: none;
+      color: var(--color-primary);
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 20px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 32px;
+      height: 32px;
+      transition: opacity 0.2s ease;
+    }
+
+    .back-button:active {
+      opacity: 0.7;
+    }
+
+    .header-title {
+      font-family: var(--font-headline);
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--color-text-primary);
+      margin: 0;
+    }
+
+    /* ========== Card Header Info ========== */
+    .card-header-info {
+      text-align: center;
+      padding: var(--space-24);
+      background-color: var(--color-bg-1);
+      border-radius: var(--radius-lg);
+      margin-bottom: var(--space-24);
+      border: 1px solid var(--color-bg-3);
+    }
+
+    .card-avatar {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      font-weight: 700;
+      margin: 0 auto var(--space-16);
+    }
+
+    .card-name {
+      font-family: var(--font-headline);
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--color-text-primary);
+      margin: 0 0 var(--space-4);
+    }
+
+    .card-title {
+      font-family: var(--font-body);
+      font-size: 14px;
+      color: var(--color-text-secondary);
+      margin: 0 0 var(--space-2);
+    }
+
+    .card-company {
+      font-family: var(--font-body);
+      font-size: 14px;
+      color: var(--color-text-secondary);
+      margin: 0;
+    }
+
+    /* ========== Details Section ========== */
+    .card-details-section {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin-bottom: var(--space-24);
+    }
+
+    .detail-field {
+      display: flex;
+      flex-direction: column;
+      padding: var(--space-16) 0;
+      border-bottom: 1px solid var(--color-bg-3);
+    }
+
+    .detail-field:last-child {
+      border-bottom: none;
+    }
+
+    .field-label {
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--color-text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: var(--space-4);
+    }
+
+    .field-value {
+      font-family: var(--font-body);
+      font-size: 15px;
+      color: var(--color-text-primary);
+      word-break: break-word;
+      line-height: 1.5;
+    }
+
+    /* ========== Tags ========== */
+    .tags-container {
+      display: flex;
+      gap: var(--space-8);
+      flex-wrap: wrap;
+      margin-top: var(--space-4);
+    }
+
+    .tag-badge {
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 500;
+      padding: var(--space-4) var(--space-8);
+      background-color: var(--color-bg-3);
+      color: var(--color-text-secondary);
+      border-radius: var(--radius-sm);
+      white-space: nowrap;
+    }
+
+    /* ========== Edit Button ========== */
+    .edit-button {
+      width: 100%;
+      padding: var(--space-16);
+      background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+      color: white;
+      border: none;
+      border-radius: var(--radius-md);
+      font-family: var(--font-body);
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: transform 0.1s ease, box-shadow 0.2s ease;
+      box-shadow: var(--shadow-md);
+    }
+
+    .edit-button:active {
+      transform: scale(0.98);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* ========== Loading State ========== */
+    .card-detail-loading {
+      text-align: center;
+      padding: var(--space-32);
+      color: var(--color-text-secondary);
+      font-family: var(--font-body);
+    }
+
+    /* ========== Error State ========== */
+    .error-state {
+      text-align: center;
+      padding: var(--space-32);
+    }
+
+    .error-text {
+      font-family: var(--font-body);
+      font-size: 14px;
+      color: var(--color-error);
+      margin-bottom: var(--space-16);
+      line-height: 1.5;
+    }
+
+    .retry-button {
+      padding: var(--space-12) var(--space-20);
+      background-color: var(--color-primary);
+      color: white;
+      border: none;
+      border-radius: var(--radius-md);
+      font-family: var(--font-body);
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: transform 0.1s ease, opacity 0.2s ease;
+    }
+
+    .retry-button:active {
+      transform: scale(0.95);
+      opacity: 0.9;
+    }
+
+/* ========== CardEdit ========== */
+/* ========== Page Layout ========== */
+    .page-container {
+      padding: var(--space-16);
+      padding-bottom: var(--space-32);
+    }
+
+    .card-edit-page {
+      background-color: var(--color-bg-2);
+    }
+
+    /* ========== Header ========== */
+    .card-edit-header {
+      display: flex;
+      align-items: center;
+      gap: var(--space-12);
+      margin-bottom: var(--space-24);
+      padding-bottom: var(--space-16);
+      border-bottom: 1px solid var(--color-bg-3);
+    }
+
+    .back-button {
+      background: none;
+      border: none;
+      color: var(--color-primary);
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 20px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 32px;
+      height: 32px;
+      transition: opacity 0.2s ease;
+    }
+
+    .back-button:active {
+      opacity: 0.7;
+    }
+
+    .header-title {
+      font-family: var(--font-headline);
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--color-text-primary);
+      margin: 0;
+    }
+
+    /* ========== Loading State ========== */
+    .card-edit-loading {
+      text-align: center;
+      padding: var(--space-32);
+      color: var(--color-text-secondary);
+      font-size: 14px;
+    }
+
+    /* ========== Error Banner ========== */
+    .error-banner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: var(--color-error);
+      color: white;
+      padding: var(--space-12);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--space-16);
+      font-size: 14px;
+      animation: slideDown 0.3s ease;
+    }
+
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .error-banner-close {
+      background: none;
+      border: none;
+      color: white;
+      cursor: pointer;
+      font-size: 18px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ========== Form ========== */
+    .edit-form {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-24);
+    }
+
+    /* ========== Form Group ========== */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-8);
+    }
+
+    .form-label {
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--color-text-primary);
+      display: flex;
+      align-items: center;
+      gap: var(--space-4);
+    }
+
+    .required {
+      color: var(--color-error);
+    }
+
+    /* ========== Input Fields ========== */
+    .form-input,
+    .form-textarea {
+      border: 1px solid var(--color-bg-3);
+      border-radius: var(--radius-md);
+      padding: var(--space-12);
+      font-family: var(--font-body);
+      font-size: 14px;
+      color: var(--color-text-primary);
+      background-color: var(--color-bg-1);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .form-input:focus,
+    .form-textarea:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(6, 199, 85, 0.1);
+    }
+
+    .form-input.input-error,
+    .form-textarea.input-error {
+      border-color: var(--color-error);
+    }
+
+    .form-input.input-error:focus,
+    .form-textarea.input-error:focus {
+      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+    }
+
+    .form-textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    /* ========== Error Text ========== */
+    .error-text {
+      font-size: 12px;
+      color: var(--color-error);
+      margin-top: var(--space-4);
+    }
+
+    /* ========== Tags ========== */
+    .tags-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-8);
+    }
+
+    .tag-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-8) var(--space-12);
+      border: 1px solid var(--color-bg-3);
+      border-radius: var(--radius-full);
+      background-color: var(--color-bg-1);
+      color: var(--color-text-primary);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .tag-button:active {
+      transform: scale(0.95);
+    }
+
+    .tag-button-active {
+      border-color: var(--color-primary);
+      background-color: var(--color-primary-light);
+      color: var(--color-primary);
+      font-weight: 600;
+    }
+
+    /* ========== Save Button ========== */
+    .save-button {
+      width: 100%;
+      padding: var(--space-16);
+      border: none;
+      border-radius: var(--radius-md);
+      background-color: var(--color-primary);
+      color: white;
+      font-family: var(--font-body);
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-top: var(--space-8);
+    }
+
+    .save-button:active:not(:disabled) {
+      opacity: 0.9;
+      transform: scale(0.98);
+    }
+
+    .save-button:disabled {
+      background-color: var(--color-bg-4);
+      color: var(--color-text-disabled);
+      cursor: not-allowed;
+    }

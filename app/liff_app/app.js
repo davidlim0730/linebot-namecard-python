@@ -12,6 +12,8 @@ import ActionList from "./views/ActionList.js";
 import ContactCrm from "./views/ContactCrm.js";
 import ManagerPipeline from "./views/ManagerPipeline.js";
 import ProductList from "./views/ProductList.js";
+import TeamPage from "./views/TeamPage.js";
+import SettingsPage from "./views/SettingsPage.js";
 import BottomNav from "./components/BottomNav.js";
 import Toast from "./components/Toast.js";
 
@@ -34,8 +36,8 @@ function parseRoute(hash) {
   if (path === "/actions")  return { view: "ActionList", tab: "cards" };
   if (path === "/pipeline") return { view: "ManagerPipeline", tab: "cards" };
   if (path === "/products") return { view: "ProductList", tab: "cards" };
-  if (path === "/team")     return { view: "CardList", tab: "team" };
-  if (path === "/settings") return { view: "CardList", tab: "settings" };
+  if (path === "/team")     return { view: "TeamPage", tab: "team" };
+  if (path === "/settings") return { view: "SettingsPage", tab: "settings" };
   const dealMatch    = path.match(/^\/deals\/([^/]+)$/);
   if (dealMatch)    return { view: "DealDetail", dealId: dealMatch[1], tab: "crm" };
   const contactCrm  = path.match(/^\/contacts\/([^/]+)\/crm$/);
@@ -135,10 +137,12 @@ const App = defineComponent({
         else if (view === "ProductList")    currentView = h(ProductList);
         else if (view === "CardEdit")       currentView = h(CardEdit, { cardId });
         else if (view === "CardDetail")     currentView = h(CardDetail, { cardId });
+        else if (view === "TeamPage")       currentView = h(TeamPage);
+        else if (view === "SettingsPage")   currentView = h(SettingsPage);
         else currentView = h(CardList);
 
         // 只在主視圖展示 BottomNav（避免在詳細頁面疊加）
-        const showBottomNav = view === "CardList" || view === "CrmInput" || view === "DealList" || view === "ActionList" || view === "ManagerPipeline" || view === "ProductList";
+        const showBottomNav = view === "CardList" || view === "TeamPage" || view === "SettingsPage" || view === "CrmInput" || view === "DealList" || view === "ActionList" || view === "ManagerPipeline" || view === "ProductList";
 
         return h("div", { style: "display:flex;flex-direction:column;height:100vh;" }, [
           h("div", { style: "flex:1;overflow-y:auto;" }, currentView),
