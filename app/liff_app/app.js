@@ -1,5 +1,5 @@
 // app.js — LIFF init, auth, and hash router
-import { createApp, defineComponent, ref, onMounted, onUnmounted, h } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
+import { createApp, defineComponent, ref, onMounted, onUnmounted, h, computed } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
 import { login, isAuthenticated } from "./api.js";
 import Login from "./views/Login.js";
 import CardList from "./views/CardList.js";
@@ -12,6 +12,7 @@ import ActionList from "./views/ActionList.js";
 import ContactCrm from "./views/ContactCrm.js";
 import ManagerPipeline from "./views/ManagerPipeline.js";
 import ProductList from "./views/ProductList.js";
+import BottomNav from "./components/BottomNav.js";
 
 // ---- Router ----
 // #/               → CardList
@@ -27,24 +28,29 @@ import ProductList from "./views/ProductList.js";
 
 function parseRoute(hash) {
   const path = hash.replace(/^#/, "") || "/";
-  if (path === "/crm")      return { view: "CrmInput" };
-  if (path === "/deals")    return { view: "DealList" };
-  if (path === "/actions")  return { view: "ActionList" };
-  if (path === "/pipeline") return { view: "ManagerPipeline" };
-  if (path === "/products") return { view: "ProductList" };
+  if (path === "/crm")      return { view: "CrmInput", tab: "cards" };
+  if (path === "/deals")    return { view: "DealList", tab: "crm" };
+  if (path === "/actions")  return { view: "ActionList", tab: "cards" };
+  if (path === "/pipeline") return { view: "ManagerPipeline", tab: "cards" };
+  if (path === "/products") return { view: "ProductList", tab: "cards" };
+  if (path === "/team")     return { view: "CardList", tab: "team" };
+  if (path === "/settings") return { view: "CardList", tab: "settings" };
   const dealMatch    = path.match(/^\/deals\/([^/]+)$/);
-  if (dealMatch)    return { view: "DealDetail", dealId: dealMatch[1] };
+  if (dealMatch)    return { view: "DealDetail", dealId: dealMatch[1], tab: "crm" };
   const contactCrm  = path.match(/^\/contacts\/([^/]+)\/crm$/);
-  if (contactCrm)   return { view: "ContactCrm", cardId: contactCrm[1] };
+  if (contactCrm)   return { view: "ContactCrm", cardId: contactCrm[1], tab: "crm" };
   const editMatch   = path.match(/^\/cards\/([^/]+)\/edit$/);
-  if (editMatch)    return { view: "CardEdit", cardId: editMatch[1] };
+  if (editMatch)    return { view: "CardEdit", cardId: editMatch[1], tab: "cards" };
   const detailMatch = path.match(/^\/cards\/([^/]+)$/);
-  if (detailMatch)  return { view: "CardDetail", cardId: detailMatch[1] };
-  return { view: "CardList" };
+  if (detailMatch)  return { view: "CardDetail", cardId: detailMatch[1], tab: "cards" };
+  return { view: "CardList", tab: "cards" };
 }
 
 const App = defineComponent({
   name: "App",
+  components: {
+    BottomNav
+  },
   setup() {
     const liffReady = ref(false);
     const authError = ref("");
@@ -90,17 +96,26 @@ const App = defineComponent({
       if (authError.value) return h(Login, { message: authError.value });
       if (!liffReady.value) return h("div", { style: "text-align:center;padding:60px;color:#999;font-family:sans-serif;" }, "載入中…");
 
-      const { view, cardId, dealId } = route.value;
-      if (view === "CrmInput")       return h(CrmInput);
-      if (view === "DealList")       return h(DealList);
-      if (view === "DealDetail")     return h(DealDetail, { dealId });
-      if (view === "ActionList")     return h(ActionList);
-      if (view === "ContactCrm")     return h(ContactCrm, { cardId });
-      if (view === "ManagerPipeline") return h(ManagerPipeline);
-      if (view === "ProductList")    return h(ProductList);
-      if (view === "CardEdit")       return h(CardEdit, { cardId });
-      if (view === "CardDetail")     return h(CardDetail, { cardId });
-      return h(CardList);
+      const { view, cardId, dealId, tab } = route.value;
+      let currentView;
+      if (view === "CrmInput")       currentView = h(CrmInput);
+      else if (view === "DealList")       currentView = h(DealList);
+      else if (view === "DealDetail")     currentView = h(DealDetail, { dealId });
+      else if (view === "ActionList")     currentView = h(ActionList);
+      else if (view === "ContactCrm")     currentView = h(ContactCrm, { cardId });
+      else if (view === "ManagerPipeline") currentView = h(ManagerPipeline);
+      else if (view === "ProductList")    currentView = h(ProductList);
+      else if (view === "CardEdit")       currentView = h(CardEdit, { cardId });
+      else if (view === "CardDetail")     currentView = h(CardDetail, { cardId });
+      else currentView = h(CardList);
+
+      // 只在主視圖展示 BottomNav（避免在詳細頁面疊加）
+      const showBottomNav = view === "CardList" || view === "CrmInput" || view === "DealList" || view === "ActionList" || view === "ManagerPipeline" || view === "ProductList";
+
+      return h("div", { style: "display:flex;flex-direction:column;height:100vh;" }, [
+        h("div", { style: "flex:1;overflow-y:auto;" }, currentView),
+        showBottomNav ? h(BottomNav, { currentTab: tab || "cards" }) : null
+      ]);
     };
   },
 });
