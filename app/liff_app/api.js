@@ -74,3 +74,36 @@ export function crmParse(raw_text) {
 export function crmConfirm(confirmed_data) {
   return request("POST", "/api/v1/crm/confirm", { confirmed_data });
 }
+
+// Deal endpoints
+export function listDeals(stage, owner) {
+  const params = new URLSearchParams();
+  if (stage) params.set("stage", stage);
+  if (owner) params.set("owner", owner);
+  const qs = params.toString();
+  return request("GET", `/api/v1/deals${qs ? "?" + qs : ""}`);
+}
+
+export function getDeal(id) {
+  return request("GET", `/api/v1/deals/${id}`);
+}
+
+export function updateDeal(id, body) {
+  return request("PUT", `/api/v1/deals/${id}`, body);
+}
+
+export function listDealActivities(id) {
+  return request("GET", `/api/v1/deals/${id}/activities`);
+}
+
+export function listDealStakeholders(id) {
+  return request("GET", `/api/v1/deals/${id}/stakeholders`);
+}
+
+export function addDealStakeholder(id, body) {
+  return request("POST", `/api/v1/deals/${id}/stakeholders`, body);
+}
+
+export function getPipelineSummary() {
+  return request("GET", "/api/v1/pipeline/summary");
+}

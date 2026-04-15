@@ -6,13 +6,18 @@ import CardList from "./views/CardList.js";
 import CardDetail from "./views/CardDetail.js";
 import CardEdit from "./views/CardEdit.js";
 import CrmInput from "./views/CrmInput.js";
+import DealList from "./views/DealList.js";
+import DealDetail from "./views/DealDetail.js";
 
 // ---- Router ----
-// Routes: #/ → CardList, #/crm → CrmInput, #/cards/:id → CardDetail, #/cards/:id/edit → CardEdit
+// Routes: #/ → CardList, #/crm → CrmInput, #/deals → DealList, #/deals/:id → DealDetail, #/cards/:id → CardDetail, #/cards/:id/edit → CardEdit
 
 function parseRoute(hash) {
   const path = hash.replace(/^#/, "") || "/";
   if (path === "/crm") return { view: "CrmInput" };
+  if (path === "/deals") return { view: "DealList" };
+  const dealMatch = path.match(/^\/deals\/([^/]+)$/);
+  if (dealMatch) return { view: "DealDetail", dealId: dealMatch[1] };
   const editMatch = path.match(/^\/cards\/([^/]+)\/edit$/);
   if (editMatch) return { view: "CardEdit", cardId: editMatch[1] };
   const detailMatch = path.match(/^\/cards\/([^/]+)$/);
@@ -67,8 +72,10 @@ const App = defineComponent({
       if (authError.value) return h(Login, { message: authError.value });
       if (!liffReady.value) return h("div", { style: "text-align:center;padding:60px;color:#999;font-family:sans-serif;" }, "載入中…");
 
-      const { view, cardId } = route.value;
+      const { view, cardId, dealId } = route.value;
       if (view === "CrmInput") return h(CrmInput);
+      if (view === "DealList") return h(DealList);
+      if (view === "DealDetail") return h(DealDetail, { dealId });
       if (view === "CardEdit") return h(CardEdit, { cardId });
       if (view === "CardDetail") return h(CardDetail, { cardId });
       return h(CardList);
