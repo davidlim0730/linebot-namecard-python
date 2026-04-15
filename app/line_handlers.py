@@ -15,6 +15,16 @@ from email.mime.text import MIMEText
 from . import firebase_utils, gemini_utils, utils, flex_messages, config, qrcode_utils
 from .bot_instance import line_bot_api, user_states
 from .cloud_tasks_utils import create_process_batch_task
+from .repositories.action_repo import ActionRepo
+from .repositories.deal_repo import DealRepo
+from .repositories.card_repo import CardRepo
+from .repositories.org_repo import OrgRepo
+from .services.nlu_service import fuzzy_match_entity
+
+_action_repo = ActionRepo()
+_deal_repo = DealRepo()
+_card_repo = CardRepo()
+_org_repo = OrgRepo()
 
 FIELD_LABELS = {
     "name": "姓名", "title": "職稱", "company": "公司",
@@ -615,12 +625,16 @@ async def handle_text_event(event: MessageEvent, user_id: str) -> None:
         await handle_batch_done(event, user_id, org_id)
     elif msg == "取消":
         await handle_batch_cancel(event, user_id, org_id)
+    elif msg in ("我的待辦", "today"):
+        await handle_crm_today(event.reply_token, user_id, org_id)
+    elif msg.startswith("查 ") and len(msg) > 2:
+        await handle_crm_search(event.reply_token, org_id, msg[2:].strip())
+    elif msg == "pipeline":
+        await handle_crm_pipeline(event.reply_token, user_id, org_id)
     else:
         await line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(
-                text="找不到對應指令，請點下方選單操作。"
-            )
+            TextSendMessage(text="找不到對應指令，請點下方選單操作。")
         )
 
 
@@ -1503,3 +1517,115 @@ def send_feedback_notification_async(org_id: str, user_id: str, feedback_data: d
     # 在背景執行緒中發送
     thread = threading.Thread(target=send_email, daemon=True)
     thread.start()
+
+
+# ---- CRM LINE Chat 快速指令 ----
+
+async def handle_crm_today(reply_token: str, user_id: str, org_id: str) -> None:
+    """「我的待辦」/ today — 列出今日到期的 pending actions"""
+    from datetime import datetime
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    all_actions = _action_repo.list_all(org_id)
+    due = [
+        a for a in all_actions.values()
+        if a.added_by == user_id and a.status == "pending" and a.due_date <= today
+    ]
+    if not due:
+        await line_bot_api.reply_message(
+            reply_token, TextSendMessage(text="🎉 今日無到期待辦！")
+        )
+        return
+
+    lines = [f"📌 今日待辦（{len(due)} 筆）"]
+    for a in due[:10]:
+        lines.append(f"• {a.entity_name}｜{a.task_detail}｜{a.due_date}")
+    if len(due) > 10:
+        lines.append(f"…還有 {len(due) - 10} 筆，請至 LIFF 查看")
+
+    liff_url = f"https://liff.line.me/{config.LIFF_ID}#/actions" if config.LIFF_ID else ""
+    text = "\n".join(lines)
+    if liff_url:
+        text += f"\n\n👉 {liff_url}"
+    await line_bot_api.reply_message(reply_token, TextSendMessage(text=text))
+
+
+async def handle_crm_search(reply_token: str, org_id: str, query: str) -> None:
+    """「查 [名稱]」— fuzzy match namecard/entity，回傳聯絡人摘要 + 最新 deal status"""
+    # 取得所有名片作為候選清單
+    all_cards = _card_repo.list_all(org_id)
+    names = []
+    name_to_card = {}
+    for card in all_cards.values():
+        display = card.company or card.name
+        if display:
+            names.append(display)
+            name_to_card[display] = card
+
+    matched_name = fuzzy_match_entity(query, names)
+    if not matched_name:
+        await line_bot_api.reply_message(
+            reply_token,
+            TextSendMessage(text=f"❌ 找不到「{query}」相關聯絡人。")
+        )
+        return
+
+    card = name_to_card[matched_name]
+    lines = [
+        f"👤 {card.name}" + (f"（{card.title}）" if card.title else ""),
+        f"🏢 {card.company}" if card.company else "",
+        f"📱 {card.phone}" if card.phone else "",
+        f"✉️ {card.email}" if card.email else "",
+    ]
+
+    # 最新 deal
+    deals = _deal_repo.list_by_entity_name(org_id, matched_name)
+    if deals:
+        latest = sorted(deals, key=lambda d: d.updated_at, reverse=True)[0]
+        lines.append(f"\n📊 最新案件：Stage {latest.stage}｜{latest.status_summary or '無備註'}")
+
+    liff_url = ""
+    if config.LIFF_ID:
+        liff_url = f"https://liff.line.me/{config.LIFF_ID}#/contacts/{card.id}/crm"
+        lines.append(f"\n👉 {liff_url}")
+
+    await line_bot_api.reply_message(
+        reply_token, TextSendMessage(text="\n".join(l for l in lines if l))
+    )
+
+
+async def handle_crm_pipeline(reply_token: str, user_id: str, org_id: str) -> None:
+    """「pipeline」— admin 限定，回傳本週 stage 分佈快照"""
+    role = _org_repo.get_user_role(org_id, user_id) or "member"
+    if role != "admin":
+        await line_bot_api.reply_message(
+            reply_token, TextSendMessage(text="❌ 此功能僅限主管使用。")
+        )
+        return
+
+    all_deals = _deal_repo.list_all(org_id)
+    by_stage: dict = {}
+    total_value = 0
+    stage_labels = {
+        "0": "洽詢", "1": "報價", "2": "提案", "3": "評估",
+        "4": "談判", "5": "決策", "6": "簽約", "成交": "成交", "失敗": "失敗"
+    }
+    for deal in all_deals.values():
+        by_stage[deal.stage] = by_stage.get(deal.stage, 0) + 1
+        if deal.est_value:
+            total_value += deal.est_value
+
+    lines = ["📊 Pipeline 快照"]
+    for stage in ["0", "1", "2", "3", "4", "5", "6", "成交", "失敗"]:
+        count = by_stage.get(stage, 0)
+        if count > 0:
+            lines.append(f"  {stage_labels[stage]}：{count} 件")
+    if total_value:
+        lines.append(f"\n💰 預估總金額：NT${total_value:,}")
+    lines.append(f"📋 共 {len(all_deals)} 件")
+
+    if config.LIFF_ID:
+        lines.append(f"\n👉 https://liff.line.me/{config.LIFF_ID}#/pipeline")
+
+    await line_bot_api.reply_message(
+        reply_token, TextSendMessage(text="\n".join(lines))
+    )
