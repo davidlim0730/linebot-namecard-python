@@ -15,7 +15,7 @@ export default defineComponent({
     async function fetchOrgInfo() {
       loading.value = true;
       try {
-        const token = localStorage.getItem("liff_token");
+        const token = sessionStorage.getItem("jwt");
         if (!token) throw new Error("未登入");
 
         const [orgRes, membersRes] = await Promise.all([
@@ -29,7 +29,7 @@ export default defineComponent({
         }
         if (membersRes.ok) {
           const data = await membersRes.json();
-          members.value = data.members || [];
+          members.value = Array.isArray(data) ? data : (data.members || []);
         }
       } catch (err) {
         showToast?.("無法載入團隊資訊", "error");
@@ -40,7 +40,7 @@ export default defineComponent({
 
     async function generateInvite() {
       try {
-        const token = localStorage.getItem("liff_token");
+        const token = sessionStorage.getItem("jwt");
         const res = await fetch("/api/v1/org/invite", {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },
