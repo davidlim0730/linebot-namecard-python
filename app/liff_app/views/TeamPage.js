@@ -1,5 +1,6 @@
 // TeamPage.js — 團隊資訊頁
 import { defineComponent, ref, onMounted, inject } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
+import { getOrg, listOrgMembers, generateInviteCode } from "../api.js";
 
 export default defineComponent({
   name: "TeamPage",
@@ -15,24 +16,14 @@ export default defineComponent({
     async function fetchOrgInfo() {
       loading.value = true;
       try {
-        const token = sessionStorage.getItem("jwt");
-        if (!token) throw new Error("未登入");
-
-        const [orgRes, membersRes] = await Promise.all([
-          fetch("/api/v1/org", { headers: { Authorization: `Bearer ${token}` } }),
-          fetch("/api/v1/org/members", { headers: { Authorization: `Bearer ${token}` } }),
+        const [org, membersData] = await Promise.all([
+          getOrg(),
+          listOrgMembers(),
         ]);
-
-        if (orgRes.ok) {
-          const org = await orgRes.json();
-          orgName.value = org.name || "我的團隊";
-        }
-        if (membersRes.ok) {
-          const data = await membersRes.json();
-          members.value = Array.isArray(data) ? data : (data.members || []);
-        }
+        orgName.value = org.name || "我的團隊";
+        members.value = Array.isArray(membersData) ? membersData : (membersData.members || []);
       } catch (err) {
-        showToast?.("無法載入團隊資訊", "error");
+        showToast?.("無法載入團隊資訊：" + (err.message || ""), "error");
       } finally {
         loading.value = false;
       }
@@ -40,16 +31,9 @@ export default defineComponent({
 
     async function generateInvite() {
       try {
-        const token = sessionStorage.getItem("jwt");
-        const res = await fetch("/api/v1/org/invite", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          inviteCode.value = data.code;
-          showInvite.value = true;
-        }
+        const data = await generateInviteCode();
+        inviteCode.value = data.code;
+        showInvite.value = true;
       } catch {
         showToast?.("無法產生邀請碼", "error");
       }

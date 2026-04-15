@@ -137,3 +137,16 @@ export function updateProduct(id, body) {
 export function getContactCrm(cardId) {
   return request("GET", `/api/v1/contacts/${cardId}/crm`);
 }
+
+// Org endpoints
+export function getOrg() {
+  return request("GET", "/api/v1/org");
+}
+
+export function listOrgMembers() {
+  return request("GET", "/api/v1/org/members");
+}
+
+export function generateInviteCode() {
+  return request("POST", "/api/v1/org/invite");
+}
