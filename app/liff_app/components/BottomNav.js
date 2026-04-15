@@ -1,5 +1,5 @@
 // BottomNav.js — Navigation component with 3 tabs (Cards, Team, Settings)
-import { defineComponent, computed } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
+import { defineComponent } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
 
 export default defineComponent({
   name: "BottomNav",
