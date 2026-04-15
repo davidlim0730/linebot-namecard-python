@@ -65,3 +65,12 @@ export function listTags() {
 export function setCardTags(id, tag_names) {
   return request("POST", `/api/v1/cards/${id}/tags`, { tag_names });
 }
+
+// CRM endpoints
+export function crmParse(raw_text) {
+  return request("POST", "/api/v1/crm/parse", { raw_text });
+}
+
+export function crmConfirm(confirmed_data) {
+  return request("POST", "/api/v1/crm/confirm", { confirmed_data });
+}

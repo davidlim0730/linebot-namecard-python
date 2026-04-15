@@ -5,12 +5,14 @@ import Login from "./views/Login.js";
 import CardList from "./views/CardList.js";
 import CardDetail from "./views/CardDetail.js";
 import CardEdit from "./views/CardEdit.js";
+import CrmInput from "./views/CrmInput.js";
 
 // ---- Router ----
-// Routes: #/ → CardList, #/cards/:id → CardDetail, #/cards/:id/edit → CardEdit
+// Routes: #/ → CardList, #/crm → CrmInput, #/cards/:id → CardDetail, #/cards/:id/edit → CardEdit
 
 function parseRoute(hash) {
   const path = hash.replace(/^#/, "") || "/";
+  if (path === "/crm") return { view: "CrmInput" };
   const editMatch = path.match(/^\/cards\/([^/]+)\/edit$/);
   if (editMatch) return { view: "CardEdit", cardId: editMatch[1] };
   const detailMatch = path.match(/^\/cards\/([^/]+)$/);
@@ -66,6 +68,7 @@ const App = defineComponent({
       if (!liffReady.value) return h("div", { style: "text-align:center;padding:60px;color:#999;font-family:sans-serif;" }, "載入中…");
 
       const { view, cardId } = route.value;
+      if (view === "CrmInput") return h(CrmInput);
       if (view === "CardEdit") return h(CardEdit, { cardId });
       if (view === "CardDetail") return h(CardDetail, { cardId });
       return h(CardList);
