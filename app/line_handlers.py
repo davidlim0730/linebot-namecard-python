@@ -231,7 +231,7 @@ async def handle_postback_event(event: PostbackEvent, user_id: str):
         return
 
     elif action == "start_search":
-        user_states[user_id] = {'action': 'searching'}
+        user_states[user_id] = {'action': 'searching', 'expires_at': time.time() + 1800}
         await line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(
@@ -278,7 +278,8 @@ async def handle_postback_event(event: PostbackEvent, user_id: str):
         return
 
     elif action == "scan_back":
-        if user_states.get(user_id, {}).get('action') == 'scanning_back':
+        _state = get_valid_state(user_id)
+        if _state and _state.get('action') == 'scanning_back':
             await line_bot_api.reply_message(
                 event.reply_token,
                 TextSendMessage(text="請傳送名片背面照片 📷")
@@ -293,8 +294,8 @@ async def handle_postback_event(event: PostbackEvent, user_id: str):
         return
 
     elif action == "save_front":
-        state = user_states.get(user_id, {})
-        if state.get('action') == 'scanning_back':
+        state = get_valid_state(user_id)
+        if state and state.get('action') == 'scanning_back':
             front_data = state['front_data']
             front_data = utils.validate_namecard_fields(front_data)
             user_states.pop(user_id, None)
@@ -343,7 +344,7 @@ async def handle_postback_event(event: PostbackEvent, user_id: str):
         return
 
     elif action == 'menu_search_prompt':
-        user_states[user_id] = {'action': 'searching'}
+        user_states[user_id] = {'action': 'searching', 'expires_at': time.time() + 1800}
         await line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(
@@ -381,7 +382,11 @@ async def handle_postback_event(event: PostbackEvent, user_id: str):
         return
 
     if action == 'add_memo':
-        user_states[user_id] = {'action': 'adding_memo', 'card_id': card_id}
+        user_states[user_id] = {
+            'action': 'adding_memo',
+            'card_id': card_id,
+            'expires_at': time.time() + 1800
+        }
         reply_text = f"請輸入「{card_name}」的備忘錄內容，完成後直接送出。"
         await line_bot_api.reply_message(
             event.reply_token, TextSendMessage(
@@ -401,7 +406,8 @@ async def handle_postback_event(event: PostbackEvent, user_id: str):
         user_states[user_id] = {
             'action': 'editing_field',
             'card_id': card_id,
-            'field': field_to_edit
+            'field': field_to_edit,
+            'expires_at': time.time() + 1800
         }
         reply_text = f"請輸入「{card_name}」的新{field_label}，完成後直接送出。"
         await line_bot_api.reply_message(
@@ -554,7 +560,8 @@ async def handle_text_event(event: MessageEvent, user_id: str) -> None:
         await line_bot_api.push_message(
             user_id, flex_messages.get_trial_welcome_message()
         )
-    user_action = user_states.get(user_id, {}).get('action')
+    _state = get_valid_state(user_id)
+    user_action = _state.get('action') if _state else None
 
     # 若在等待背面照片期間收到文字，靜默清除 state，讓指令繼續正常執行
     if user_action == 'scanning_back':
@@ -806,7 +813,7 @@ async def handle_add_tag_input(
             event.reply_token,
             TextSendMessage(text='此功能僅限管理員使用。'))
         return
-    user_states[user_id] = {'action': 'adding_tag', 'org_id': org_id}
+    user_states[user_id] = {'action': 'adding_tag', 'org_id': org_id, 'expires_at': time.time() + 1800}
     await line_bot_api.reply_message(
         event.reply_token,
         TextSendMessage(
@@ -849,6 +856,12 @@ async def handle_exec_delete_tag(
 async def handle_adding_tag_state(
         event: MessageEvent, user_id: str, org_id: str, msg: str):
     """處理新增標籤的文字輸入"""
+    state = get_valid_state(user_id)
+    if state is None:
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text='操作已逾時，請重新開始。'))
+        return
     tag_name = msg.strip()
     del user_states[user_id]
     if not tag_name:
@@ -1014,7 +1027,7 @@ async def handle_export(
                 text='匯出功能尚未設定，請聯繫管理員。'))
         return
 
-    user_states[user_id] = {'action': 'exporting_csv', 'org_id': org_id}
+    user_states[user_id] = {'action': 'exporting_csv', 'org_id': org_id, 'expires_at': time.time() + 1800}
     await line_bot_api.reply_message(
         event.reply_token,
         TextSendMessage(
@@ -1028,6 +1041,12 @@ async def handle_export(
 async def handle_export_email_state(
         event: MessageEvent, user_id: str, org_id: str, msg: str):
     """處理匯出流程中的 email 輸入"""
+    state = get_valid_state(user_id)
+    if state is None:
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text='操作已逾時，請重新開始。'))
+        return
     import re
     if not re.match(r'^[^@]+@[^@]+\.[^@]+$', msg.strip()):
         reply = TextSendMessage(text='email 格式不正確，請重新輸入。')
@@ -1059,7 +1078,12 @@ async def handle_export_email_state(
 
 async def handle_add_memo_state(
         event: MessageEvent, user_id: str, org_id: str, msg: str):
-    state = user_states[user_id]
+    state = get_valid_state(user_id)
+    if state is None:
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text='操作已逾時，請重新開始。'))
+        return
     card_id = state['card_id']
 
     if firebase_utils.update_namecard_memo(card_id, org_id, msg):
@@ -1075,7 +1099,12 @@ async def handle_add_memo_state(
 
 async def handle_edit_field_state(
         event: MessageEvent, user_id: str, org_id: str, msg: str):
-    state = user_states[user_id]
+    state = get_valid_state(user_id)
+    if state is None:
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text='操作已逾時，請重新開始。'))
+        return
     card_id = state['card_id']
     field = state['field']
 
@@ -1122,7 +1151,8 @@ async def handle_reporting_issue_trigger(user_id: str, org_id: str, reply_token:
     user_states[user_id] = {
         'action': 'reporting_issue',
         'org_id': org_id,
-        'created_at': datetime.utcnow().isoformat()
+        'created_at': datetime.utcnow().isoformat(),
+        'expires_at': time.time() + 1800
     }
 
     reply = TextSendMessage(
@@ -1137,6 +1167,12 @@ async def handle_reporting_issue_trigger(user_id: str, org_id: str, reply_token:
 async def handle_reporting_issue_state(user_id: str, org_id: str, content: str,
                                        reply_token: str):
     """用戶在 reporting_issue 狀態下輸入內容或傳圖"""
+    state = get_valid_state(user_id)
+    if state is None:
+        await line_bot_api.reply_message(
+            reply_token,
+            TextSendMessage(text='操作已逾時，請重新開始。'))
+        return
     from datetime import datetime
     timestamp = datetime.utcnow().isoformat()
 
@@ -1387,8 +1423,9 @@ async def handle_image_event(event: MessageEvent, user_id: str) -> None:
     card_obj = {k.lower(): v for k, v in card_obj.items()}
 
     # 背面掃描狀態：合併正背面後儲存
-    if user_states.get(user_id, {}).get('action') == 'scanning_back':
-        front_data = user_states[user_id]['front_data']
+    _state = get_valid_state(user_id)
+    if _state and _state.get('action') == 'scanning_back':
+        front_data = _state['front_data']
         merged = utils.merge_namecard_data(front_data, card_obj)
         merged = utils.validate_namecard_fields(merged)
         user_states.pop(user_id, None)
@@ -1398,7 +1435,7 @@ async def handle_image_event(event: MessageEvent, user_id: str) -> None:
     # 正面掃描：暫存並詢問是否有背面
     name = card_obj.get("name", "N/A")
     company = card_obj.get("company", "N/A")
-    user_states[user_id] = {'action': 'scanning_back', 'front_data': card_obj}
+    user_states[user_id] = {'action': 'scanning_back', 'front_data': card_obj, 'expires_at': time.time() + 1800}
     await line_bot_api.reply_message(
         event.reply_token,
         TextSendMessage(
