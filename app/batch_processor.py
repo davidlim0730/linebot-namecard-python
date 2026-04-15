@@ -12,6 +12,17 @@ from .gsheets_utils import trigger_sync
 logger = logging.getLogger(__name__)
 
 
+def _log_ocr_event(event: str, org_id: str, user_id: str, mode: str, reason: str = None):
+    """Log structured OCR event to Cloud Logging."""
+    payload = {"event": event, "org_id": org_id, "user_id": user_id, "mode": mode}
+    if reason:
+        payload["reason"] = reason
+    if event.endswith("_failure") or event.endswith("_error"):
+        logger.error(json.dumps(payload))
+    else:
+        logger.info(json.dumps(payload))
+
+
 async def process_batch(user_id: str, org_id: str, image_paths: list) -> dict:
     """
     循序處理批量名片圖片：download → OCR → dedup → save → delete raw image。
@@ -62,6 +73,7 @@ async def process_batch(user_id: str, org_id: str, image_paths: list) -> dict:
                 # 重複名片視為成功（已存在即可）
                 success += 1
                 successes.append({"name": card_obj.get("name", ""), "company": card_obj.get("company", "")})
+                _log_ocr_event("ocr_success", org_id, user_id, "batch")
             else:
                 card_id = firebase_utils.add_namecard(card_obj, org_id, user_id)
                 if card_id:
@@ -71,12 +83,14 @@ async def process_batch(user_id: str, org_id: str, image_paths: list) -> dict:
                         logger.warning(f"Batch: gsheets sync failed for card {card_id}: {e_sync}")
                     success += 1
                     successes.append({"name": card_obj.get("name", ""), "company": card_obj.get("company", "")})
+                    _log_ocr_event("ocr_success", org_id, user_id, "batch")
                 else:
                     raise ValueError("寫入 Firebase 失敗")
         except Exception as e:
             failed += 1
             failures.append({"index": idx + 1, "reason": str(e)})
             logger.error(f"Batch: failed processing image {idx}: {e}")
+            _log_ocr_event("ocr_failure", org_id, user_id, "batch", reason=str(e))
         finally:
             # 無論成功或失敗都刪除暫存圖
             firebase_utils.delete_raw_image(storage_path)

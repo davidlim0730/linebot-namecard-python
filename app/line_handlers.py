@@ -12,6 +12,8 @@ import threading
 import smtplib
 from email.mime.text import MIMEText
 import time
+import logging
+import json
 
 from . import firebase_utils, gemini_utils, utils, flex_messages, config, qrcode_utils
 from .bot_instance import line_bot_api, user_states
@@ -22,10 +24,22 @@ from .repositories.card_repo import CardRepo
 from .repositories.org_repo import OrgRepo
 from .services.nlu_service import fuzzy_match_entity
 
+logger = logging.getLogger(__name__)
+
 _action_repo = ActionRepo()
 _deal_repo = DealRepo()
 _card_repo = CardRepo()
 _org_repo = OrgRepo()
+
+def _log_ocr_event(event: str, org_id: str, user_id: str, mode: str, reason: str = None):
+    """Log structured OCR event to Cloud Logging."""
+    payload = {"event": event, "org_id": org_id, "user_id": user_id, "mode": mode}
+    if reason:
+        payload["reason"] = reason
+    if event.endswith("_failure") or event.endswith("_error"):
+        logger.error(json.dumps(payload))
+    else:
+        logger.info(json.dumps(payload))
 
 def get_valid_state(user_id: str) -> dict | None:
     """讀取 user_states，若 state 過期（>30 min）則自動清除並回傳 None。"""
@@ -1405,6 +1419,7 @@ async def handle_image_event(event: MessageEvent, user_id: str) -> None:
     card_obj = utils.parse_gemini_result_to_json(result.text)
 
     if not card_obj:
+        _log_ocr_event("ocr_failure", org_id, user_id, "single", reason=result.text[:200])
         await line_bot_api.reply_message(
             event.reply_token,
             [TextSendMessage(text=f"無法解析這張名片，請再試一次。 錯誤資訊: {result.text}")]
@@ -1421,6 +1436,7 @@ async def handle_image_event(event: MessageEvent, user_id: str) -> None:
         card_obj = card_obj[0]
 
     card_obj = {k.lower(): v for k, v in card_obj.items()}
+    _log_ocr_event("ocr_success", org_id, user_id, "single")
 
     # 背面掃描狀態：合併正背面後儲存
     _state = get_valid_state(user_id)
