@@ -7,6 +7,8 @@
  * before any other stylesheets.
  */
 
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&family=Inter:wght@400;600;700&display=swap');
+
 :root {
   /* ====== PRIMARY COLOR (LINE Green) ====== */
   --color-primary: #06C755;

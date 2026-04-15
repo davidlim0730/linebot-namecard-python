@@ -1,0 +1,123 @@
+/* app/liff_app/styles/layout.css */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  font-family: var(--font-body);
+  background-color: var(--color-bg-2);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 導入 animations（含 Glassmorphism） */
+@import './animations.css';
+
+#app {
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* 主內容區域（在導航上方） */
+.liff-content {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 56px;  /* 為底部導航預留空間 (56px nav + 1px border) */
+  -webkit-overflow-scrolling: touch;  /* iOS 平滑滾動 */
+}
+
+/* 頁面容器（內填充） */
+.page-container {
+  padding: var(--space-16);
+  min-height: 100%;
+}
+
+/* 底部導航欄（固定位置，56px + 1px border） */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  background-color: var(--color-bg-1);
+  border-top: 1px solid var(--color-bg-3);  /* 幽靈邊框 */
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  z-index: var(--z-overlay);
+  box-shadow: var(--shadow-md);
+}
+
+.bottom-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--color-text-secondary);
+  transition: color 0.3s ease;
+}
+
+.bottom-nav-item.active {
+  color: var(--color-primary);
+}
+
+.bottom-nav-item-icon {
+  font-size: 24px;
+}
+
+.bottom-nav-item-label {
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+}
+
+/* 浮動按鈕 (FAB) - 全寬 52px，在底部導航上方 */
+.fab {
+  position: fixed;
+  bottom: 64px;    /* 底部導航 56px + 間距 8px */
+  left: var(--space-16);
+  right: var(--space-16);
+  height: 52px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 600;
+  box-shadow: var(--shadow-lg);
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  z-index: var(--z-overlay);
+}
+
+.fab:hover {
+  background-color: var(--color-primary-dark);
+}
+
+.fab:active {
+  transform: scale(0.95);
+}
+
+/* Responsive（手機為主，保持固定） */
+@media (max-width: 768px) {
+  .liff-content {
+    padding-bottom: 60px;
+  }
+}
