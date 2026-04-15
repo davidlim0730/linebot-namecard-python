@@ -1,0 +1,185 @@
+/*
+ * Animations - Toast, Skeleton Loading, Glassmorphism, and Page Transitions
+ *
+ * This file defines all animation keyframes and transition effects used in the LIFF app.
+ * Includes:
+ * - Toast slide-in/out animations
+ * - Skeleton loading shimmer effect
+ * - Glassmorphism backdrop blur
+ * - Page fade-in/out transitions
+ */
+
+/* ====== GLASSMORPHISM EFFECT ====== */
+/* 80% opacity + 20px backdrop blur for glass-like appearance */
+@supports (backdrop-filter: blur(20px)) {
+  .glassmorphism-header {
+    background-color: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);  /* Safari support */
+  }
+}
+
+/* ====== TOAST ANIMATIONS ====== */
+/* Slide-down entrance animation */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-44px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Slide-up exit animation */
+@keyframes slideUp {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-44px);
+  }
+}
+
+/* Toast container - positioned at top with fixed height */
+.toast {
+  position: fixed;
+  top: 60px;    /* Positioned below status bar, 60px from top */
+  left: var(--space-16);
+  right: var(--space-16);
+  max-width: calc(100vw - 32px);
+  height: 44px;
+  background-color: var(--color-text-primary);
+  color: white;
+  border-radius: var(--radius-md);
+  padding: 0 var(--space-16);
+  display: flex;
+  align-items: center;
+  z-index: var(--z-toast);
+  animation: slideDown 0.3s ease-out;
+  box-shadow: var(--shadow-lg);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+}
+
+/* Toast variant: Success (green) */
+.toast.success {
+  background-color: var(--color-success);
+}
+
+/* Toast variant: Error (red) */
+.toast.error {
+  background-color: var(--color-error);
+}
+
+/* Toast variant: Info (blue) */
+.toast.info {
+  background-color: var(--color-info);
+}
+
+/* Toast exit state - triggers slide-up animation */
+.toast.exit {
+  animation: slideUp 0.3s ease-out forwards;
+}
+
+/* ====== SKELETON LOADING ANIMATION ====== */
+/* Shimmer background position animation for loading state */
+@keyframes skeleton-shimmer {
+  0% {
+    background-color: var(--color-bg-4);
+    background-position: -1000px 0;
+  }
+  100% {
+    background-color: var(--color-bg-3);
+    background-position: 1000px 0;
+  }
+}
+
+/* Base skeleton loader with shimmer effect */
+.skeleton-loader {
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-3) 0%,
+    var(--color-bg-2) 50%,
+    var(--color-bg-3) 100%
+  );
+  background-size: 1000px 100%;
+  animation: skeleton-shimmer 2s infinite;
+  border-radius: var(--radius-md);
+}
+
+/* Skeleton text placeholder (12px height) */
+.skeleton-text {
+  height: 12px;
+  margin-bottom: var(--space-8);
+}
+
+/* Skeleton title placeholder (20px height) */
+.skeleton-title {
+  height: 20px;
+  margin-bottom: var(--space-12);
+}
+
+/* Skeleton avatar placeholder (circular, 44px) */
+.skeleton-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+}
+
+/* ====== PAGE TRANSITION ANIMATIONS ====== */
+/* Fade-in entrance animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Fade-out exit animation */
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Page entrance transition (Vue Router) */
+.page-enter-active {
+  transition: opacity 0.2s ease;
+}
+
+/* Page exit transition (Vue Router) */
+.page-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+/* Initial state for page entrance */
+.page-enter-from {
+  opacity: 0;
+}
+
+/* Final state for page exit */
+.page-leave-to {
+  opacity: 0;
+}
+
+/* ====== UTILITY ANIMATION CLASSES ====== */
+/* Apply fade-in animation directly */
+.fade-in {
+  animation: fadeIn 0.2s ease forwards;
+}
+
+/* Apply fade-out animation directly */
+.fade-out {
+  animation: fadeOut 0.2s ease forwards;
+}
