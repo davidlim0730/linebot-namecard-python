@@ -1,0 +1,1294 @@
+openapi: "3.0.3"
+info:
+  title: Namecard CRM API
+  description: |
+    CRM API for the LINE Namecard application. Provides NLU parsing, deal pipeline
+    management, activity logging, action tracking, contact views, and product management.
+  version: "1.0.0"
+
+servers:
+  - url: /
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained via LIFF login or internal auth service.
+
+  schemas:
+    # ---- Error responses ----
+    ErrorForbidden:
+      type: object
+      properties:
+        error:
+          type: string
+          example: forbidden
+
+    ErrorUnauthorized:
+      type: object
+      properties:
+        error:
+          type: string
+          example: unauthorized
+        message:
+          type: string
+          example: Invalid or expired token
+
+    ErrorNotFound:
+      type: object
+      properties:
+        error:
+          type: string
+          example: not_found
+
+    OkResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          example: true
+
+    # ---- NLU ----
+    ParseRequest:
+      type: object
+      required:
+        - raw_text
+      properties:
+        raw_text:
+          type: string
+          description: Free-form text input from sales rep (Chinese or English)
+          example: "今天拜訪了台積電，跟王小明談到採購合約，預計Q3簽約"
+
+    NLUEntity:
+      type: object
+      properties:
+        name:
+          type: string
+        category:
+          type: string
+          example: Client
+        industry:
+          type: string
+          nullable: true
+        matched_entity_id:
+          type: string
+          nullable: true
+        entity_match_confidence:
+          type: number
+          format: float
+
+    NLUPipeline:
+      type: object
+      properties:
+        entity_name:
+          type: string
+        stage:
+          type: string
+          nullable: true
+        is_pending:
+          type: boolean
+          nullable: true
+        product_id:
+          type: string
+          nullable: true
+        est_value:
+          type: integer
+          nullable: true
+        next_action_date:
+          type: string
+          format: date
+          nullable: true
+        status_summary:
+          type: string
+
+    NLUInteraction:
+      type: object
+      properties:
+        entity_name:
+          type: string
+        raw_transcript:
+          type: string
+        ai_key_insights:
+          type: array
+          items:
+            type: string
+        sentiment:
+          type: string
+          enum: [Positive, Neutral, Negative]
+
+    NLUAction:
+      type: object
+      properties:
+        entity_name:
+          type: string
+        task_detail:
+          type: string
+        due_date:
+          type: string
+          format: date
+
+    NLUResult:
+      type: object
+      properties:
+        intents:
+          type: array
+          items:
+            type: string
+        overall_confidence:
+          type: number
+          format: float
+        missing_fields:
+          type: array
+          items:
+            type: string
+        entities:
+          type: array
+          items:
+            $ref: '#/components/schemas/NLUEntity'
+        pipelines:
+          type: array
+          items:
+            $ref: '#/components/schemas/NLUPipeline'
+        interactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/NLUInteraction'
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/NLUAction'
+
+    ParseResponse:
+      type: object
+      properties:
+        parsed:
+          $ref: '#/components/schemas/NLUResult'
+
+    ConfirmRequest:
+      type: object
+      required:
+        - confirmed_data
+      properties:
+        confirmed_data:
+          type: object
+          description: The NLU result (from /crm/parse) after user review and optional edits
+          properties:
+            pipelines:
+              type: array
+              items:
+                $ref: '#/components/schemas/NLUPipeline'
+            interactions:
+              type: array
+              items:
+                $ref: '#/components/schemas/NLUInteraction'
+            actions:
+              type: array
+              items:
+                $ref: '#/components/schemas/NLUAction'
+
+    ConfirmResponse:
+      type: object
+      properties:
+        written:
+          type: object
+          properties:
+            entities_created:
+              type: array
+              items:
+                type: string
+            pipelines_updated:
+              type: array
+              items:
+                type: string
+            interactions_logged:
+              type: array
+              items:
+                type: string
+            actions_scheduled:
+              type: array
+              items:
+                type: string
+            contacts_upserted:
+              type: array
+              items:
+                type: string
+
+    # ---- Deal ----
+    Deal:
+      type: object
+      required:
+        - id
+        - org_id
+        - entity_name
+        - stage
+      properties:
+        id:
+          type: string
+        org_id:
+          type: string
+        entity_name:
+          type: string
+        company_contact_id:
+          type: string
+          nullable: true
+        contract_entity_id:
+          type: string
+          nullable: true
+        poc_contact_id:
+          type: string
+          nullable: true
+        stage:
+          type: string
+          description: "0–6, 成交, or 失敗"
+          example: "2"
+        is_pending:
+          type: boolean
+          nullable: true
+        product_id:
+          type: string
+          nullable: true
+        est_value:
+          type: integer
+          nullable: true
+          description: Estimated contract value in TWD
+        next_action_date:
+          type: string
+          format: date
+          nullable: true
+        status_summary:
+          type: string
+        added_by:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    DealWithActivities:
+      allOf:
+        - $ref: '#/components/schemas/Deal'
+        - type: object
+          properties:
+            activities:
+              type: array
+              items:
+                $ref: '#/components/schemas/Activity'
+
+    DealUpdate:
+      type: object
+      properties:
+        entity_name:
+          type: string
+        product_id:
+          type: string
+          nullable: true
+        est_value:
+          type: integer
+          nullable: true
+        next_action_date:
+          type: string
+          format: date
+          nullable: true
+        stage:
+          type: string
+        is_pending:
+          type: boolean
+          nullable: true
+        status_summary:
+          type: string
+        company_contact_id:
+          type: string
+          nullable: true
+        contract_entity_id:
+          type: string
+          nullable: true
+        poc_contact_id:
+          type: string
+          nullable: true
+
+    # ---- Activity ----
+    Activity:
+      type: object
+      required:
+        - id
+        - org_id
+        - raw_transcript
+      properties:
+        id:
+          type: string
+        org_id:
+          type: string
+        deal_id:
+          type: string
+          nullable: true
+        contact_id:
+          type: string
+          nullable: true
+        entity_name:
+          type: string
+          nullable: true
+        raw_transcript:
+          type: string
+        ai_key_insights:
+          type: array
+          items:
+            type: string
+          description: Up to 3 key insights (Chinese, max 30 chars each)
+        sentiment:
+          type: string
+          enum: [Positive, Neutral, Negative]
+        is_human_corrected:
+          type: boolean
+        edit_log:
+          type: string
+          nullable: true
+          description: JSON string of edit history
+        added_by:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    # ---- Action ----
+    Action:
+      type: object
+      required:
+        - id
+        - org_id
+        - task_detail
+        - status
+        - added_by
+        - created_at
+      properties:
+        id:
+          type: string
+        org_id:
+          type: string
+        deal_id:
+          type: string
+          nullable: true
+        contact_id:
+          type: string
+          nullable: true
+        entity_name:
+          type: string
+          nullable: true
+        task_detail:
+          type: string
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        status:
+          type: string
+          enum: [pending, completed]
+        added_by:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    ActionUpdate:
+      type: object
+      properties:
+        task_detail:
+          type: string
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        status:
+          type: string
+          enum: [pending, completed]
+        entity_name:
+          type: string
+
+    # ---- Stakeholder ----
+    Stakeholder:
+      type: object
+      required:
+        - id
+        - org_id
+        - deal_id
+        - name
+        - role
+        - added_by
+        - created_at
+      properties:
+        id:
+          type: string
+        org_id:
+          type: string
+        deal_id:
+          type: string
+        name:
+          type: string
+        title:
+          type: string
+          nullable: true
+        role:
+          type: string
+          enum: [Champion, "Decision Maker", Gatekeeper]
+        attitude:
+          type: string
+          enum: [Supportive, Neutral, Skeptical]
+          nullable: true
+        email:
+          type: string
+          format: email
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        contact_id:
+          type: string
+          nullable: true
+        is_champion:
+          type: boolean
+        notes:
+          type: string
+          nullable: true
+        added_by:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    StakeholderCreate:
+      type: object
+      required:
+        - name
+        - role
+      properties:
+        name:
+          type: string
+        title:
+          type: string
+          nullable: true
+        attitude:
+          type: string
+          enum: [Champion, "Decision Maker", Gatekeeper]
+          nullable: true
+          description: Role/attitude of the stakeholder
+
+    StakeholderCreated:
+      type: object
+      properties:
+        id:
+          type: string
+        ok:
+          type: boolean
+
+    # ---- Product ----
+    Product:
+      type: object
+      required:
+        - id
+        - org_id
+        - name
+        - status
+        - created_at
+      properties:
+        id:
+          type: string
+        org_id:
+          type: string
+        name:
+          type: string
+          description: Product line name (Chinese)
+        status:
+          type: string
+          enum: [Active, Beta, Sunset]
+        description:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    ProductCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+          enum: [Active, Beta, Sunset]
+          default: Active
+
+    ProductCreated:
+      type: object
+      properties:
+        id:
+          type: string
+        ok:
+          type: boolean
+
+    ProductUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+          enum: [Active, Beta, Sunset]
+
+    # ---- Contact ----
+    Contact:
+      type: object
+      required:
+        - id
+        - contact_type
+        - display_name
+        - added_by
+        - created_at
+      properties:
+        id:
+          type: string
+        contact_type:
+          type: string
+          description: "company or person"
+        display_name:
+          type: string
+        legal_name:
+          type: string
+          nullable: true
+        aliases:
+          type: array
+          items:
+            type: string
+        parent_company_id:
+          type: string
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        mobile:
+          type: string
+          nullable: true
+        email:
+          type: string
+          format: email
+          nullable: true
+        line_id:
+          type: string
+          nullable: true
+        memo:
+          type: string
+          nullable: true
+        source:
+          type: string
+          nullable: true
+        added_by:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    Card:
+      type: object
+      required:
+        - id
+        - added_by
+        - created_at
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        company:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        mobile:
+          type: string
+          nullable: true
+        email:
+          type: string
+          format: email
+          nullable: true
+        line_id:
+          type: string
+          nullable: true
+        memo:
+          type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+        added_by:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    ContactCrmResponse:
+      type: object
+      description: |
+        CRM view for a contact. When a Contact record exists, returns `contact` field.
+        Falls back to legacy Card schema and returns `card` field if no Contact found.
+      properties:
+        contact:
+          $ref: '#/components/schemas/Contact'
+          description: Present when Contact record found (new schema)
+        card:
+          $ref: '#/components/schemas/Card'
+          description: Present when falling back to legacy Card record
+        deals:
+          type: array
+          items:
+            $ref: '#/components/schemas/Deal'
+        activities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Activity'
+
+    # ---- Pipeline Summary ----
+    PipelineSummary:
+      type: object
+      description: Aggregated deal pipeline statistics for the organization
+      additionalProperties: true
+      example:
+        total_deals: 12
+        by_stage:
+          "0": 3
+          "1": 2
+          "2": 4
+          "成交": 2
+          "失敗": 1
+        total_est_value: 4500000
+
+  responses:
+    Forbidden:
+      description: No credentials provided
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorForbidden'
+    Unauthorized:
+      description: Invalid or expired token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorUnauthorized'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorNotFound'
+
+security:
+  - BearerAuth: []
+
+paths:
+  # ================================================================
+  # NLU
+  # ================================================================
+  /api/v1/crm/parse:
+    post:
+      tags:
+        - NLU
+      summary: Parse raw text (Phase 1 — preview only)
+      description: |
+        Sends free-form sales text to Gemini NLU. Returns a structured preview of
+        intents, entities, pipeline updates, interactions, and actions for the user
+        to review before committing. No data is written to Firebase.
+      operationId: crmParse
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ParseRequest'
+      responses:
+        "200":
+          description: Parsed NLU result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParseResponse'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/crm/confirm:
+    post:
+      tags:
+        - NLU
+      summary: Confirm and persist NLU data (Phase 2 — write)
+      description: |
+        Accepts the (optionally user-edited) NLU result from `/crm/parse` and writes
+        it to Firebase. Upserts deals, logs activities, schedules actions, and
+        auto-links or creates Contact records for every entity_name found.
+      operationId: crmConfirm
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmRequest'
+      responses:
+        "200":
+          description: IDs of all written records
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfirmResponse'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+
+  # ================================================================
+  # Deals
+  # ================================================================
+  /api/v1/deals:
+    get:
+      tags:
+        - Deals
+      summary: List all deals for the organization
+      description: |
+        Returns all deals scoped to the authenticated user's org. Supports optional
+        filtering by pipeline stage and deal owner.
+      operationId: listDeals
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: stage
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "Filter by stage value (0–6, 成交, or 失敗)"
+          example: "2"
+        - name: owner
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by added_by (user ID)
+      responses:
+        "200":
+          description: List of deals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Deal'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/deals/{deal_id}:
+    get:
+      tags:
+        - Deals
+      summary: Get a deal with its activities
+      description: Returns a single deal record plus all associated activities embedded.
+      operationId: getDeal
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: deal_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deal with embedded activities
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DealWithActivities'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Deals
+      summary: Update a deal
+      description: |
+        Partially updates deal fields. If the `stage` field changes, a
+        `StageChangeEvent` is automatically logged. Returns `{"ok": true}` on success.
+      operationId: updateDeal
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: deal_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DealUpdate'
+      responses:
+        "200":
+          description: Update acknowledged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/deals/{deal_id}/activities:
+    get:
+      tags:
+        - Deals
+      summary: List activities for a deal
+      description: Returns all activity/interaction records linked to the given deal.
+      operationId: listDealActivities
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: deal_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of activities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Activity'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/deals/{deal_id}/stakeholders:
+    get:
+      tags:
+        - Deals
+      summary: List stakeholders for a deal
+      description: Returns all stakeholder records associated with the given deal.
+      operationId: listDealStakeholders
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: deal_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of stakeholders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Stakeholder'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags:
+        - Deals
+      summary: Add a stakeholder to a deal
+      description: Creates a new stakeholder record linked to the specified deal.
+      operationId: addDealStakeholder
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: deal_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StakeholderCreate'
+      responses:
+        "201":
+          description: Stakeholder created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StakeholderCreated'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+
+  # ================================================================
+  # Activities
+  # ================================================================
+  /api/v1/activities:
+    get:
+      tags:
+        - Activities
+      summary: List all activities for the organization
+      description: Returns all activity/interaction logs scoped to the authenticated user's org.
+      operationId: listActivities
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: List of activities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Activity'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/contacts/{contact_id}/activities:
+    get:
+      tags:
+        - Activities
+      summary: List activities for a contact
+      description: |
+        Returns all activities linked to the specified contact. Optionally filter
+        by `deal_id` to narrow results to a specific deal context.
+      operationId: listContactActivities
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: contact_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: deal_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Further filter activities by deal ID
+      responses:
+        "200":
+          description: List of activities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Activity'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+
+  # ================================================================
+  # Actions
+  # ================================================================
+  /api/v1/actions:
+    get:
+      tags:
+        - Actions
+      summary: List all actions for the organization
+      description: |
+        Returns all follow-up tasks scoped to the authenticated user's org.
+        Optionally filter by status (`pending` or `completed`).
+      operationId: listActions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pending, completed]
+          description: Filter by action status
+      responses:
+        "200":
+          description: List of actions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Action'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/actions/{action_id}:
+    put:
+      tags:
+        - Actions
+      summary: Update an action
+      description: |
+        Partially updates action fields (task detail, due date, status, entity name).
+        Use this endpoint to mark an action as `completed`.
+      operationId: updateAction
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: action_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActionUpdate'
+      responses:
+        "200":
+          description: Update acknowledged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/contacts/{contact_id}/actions:
+    get:
+      tags:
+        - Actions
+      summary: List actions for a contact
+      description: |
+        Returns all follow-up tasks linked to the specified contact.
+        Optionally filter by status (`pending` or `completed`).
+      operationId: listContactActions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: contact_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pending, completed]
+          description: Filter by action status
+      responses:
+        "200":
+          description: List of actions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Action'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+
+  # ================================================================
+  # Contacts
+  # ================================================================
+  /api/v1/contacts/{contact_id}/crm:
+    get:
+      tags:
+        - Contacts
+      summary: CRM view for a contact
+      description: |
+        Returns the CRM view for a contact, including associated deals and activities.
+
+        **Schema note:** If a `Contact` record exists, the response includes a `contact`
+        field (new schema). If only a legacy `Card` record exists, the response includes
+        a `card` field instead. Both variants include `deals` and `activities` arrays.
+      operationId: contactCrm
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: contact_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Contact ID (or legacy card_id for backward compatibility)
+      responses:
+        "200":
+          description: CRM view for the contact
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContactCrmResponse'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+  # ================================================================
+  # Products
+  # ================================================================
+  /api/v1/products:
+    get:
+      tags:
+        - Products
+      summary: List active products
+      description: Returns all products in Active or Beta status for the organization.
+      operationId: listProducts
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: List of products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags:
+        - Products
+      summary: Create a new product (admin only)
+      description: |
+        Creates a new product line. Requires the authenticated user to have admin
+        role in the organization. Returns 403 for non-admin users.
+      operationId: createProduct
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCreate'
+      responses:
+        "201":
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductCreated'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+
+  /api/v1/products/{product_id}:
+    put:
+      tags:
+        - Products
+      summary: Update a product (admin only)
+      description: |
+        Partially updates a product's name, status, or description. Requires admin role.
+        Returns 403 for non-admin users.
+      operationId: updateProduct
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductUpdate'
+      responses:
+        "200":
+          description: Update acknowledged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+
+  # ================================================================
+  # Pipeline
+  # ================================================================
+  /api/v1/pipeline/summary:
+    get:
+      tags:
+        - Pipeline
+      summary: Pipeline summary (admin only)
+      description: |
+        Returns aggregated deal pipeline statistics for the organization,
+        including deal counts by stage and total estimated value. Requires admin role.
+      operationId: pipelineSummary
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Pipeline summary statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PipelineSummary'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
