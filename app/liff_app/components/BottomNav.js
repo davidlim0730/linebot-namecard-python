@@ -1,4 +1,4 @@
-// BottomNav.js — Navigation component with 3 tabs (Cards, Team, Settings)
+// BottomNav.js — Navigation component with 4 tabs (Cards, CRM, Team, Settings)
 import { defineComponent } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
 
 export default defineComponent({
@@ -6,19 +6,18 @@ export default defineComponent({
   props: {
     currentTab: {
       type: String,
-      default: "cards"  // 'cards', 'team', 'settings'
+      default: "cards"  // 'cards', 'crm', 'team', 'settings'
     }
   },
   setup(props) {
     const tabs = [
-      { id: "cards", label: "名片", icon: "🗂️", path: "#/" },
-      { id: "team", label: "團隊", icon: "👥", path: "#/team" },
-      { id: "settings", label: "設定", icon: "⚙️", path: "#/settings" }
+      { id: "cards",    label: "名片", icon: "🗂️", path: "#/" },
+      { id: "crm",      label: "CRM",  icon: "📊", path: "#/crm" },
+      { id: "team",     label: "團隊", icon: "👥", path: "#/team" },
+      { id: "settings", label: "設定", icon: "⚙️", path: "#/settings" },
     ];
 
-    return {
-      tabs
-    };
+    return { tabs };
   },
   template: `
     <nav class="bottom-nav">
