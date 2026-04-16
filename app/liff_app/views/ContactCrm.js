@@ -65,7 +65,7 @@ export default defineComponent({
         key: a.id,
         style: "padding:12px;border-left:3px solid #FF6B00;background:#f5f5f5;border-radius:4px;margin-bottom:8px;",
       }, [
-        h("div", { style: "font-size:13px;color:#555;font-weight:500;" }, a.task_detail),
+        h("div", { style: "font-size:13px;color:#555;font-weight:500;" }, a.task_detail || "（無詳細內容）"),
         a.due_date ? h("div", { style: "font-size:12px;color:#999;margin-top:4px;" }, `到期：${a.due_date}`) : null,
       ].filter(Boolean));
     }
