@@ -6,6 +6,7 @@ from datetime import date
 from typing import List, Optional
 
 from ..repositories.card_repo import CardRepo
+from ..repositories.contact_repo import ContactRepo
 from ..repositories.deal_repo import DealRepo
 from ..repositories.product_repo import ProductRepo
 from ..gemini_utils import generate_gemini_text_complete
@@ -46,22 +47,22 @@ def fuzzy_match_entity(name: str, entity_list: List[str]) -> Optional[str]:
 def build_grounding_context(org_id: str) -> str:
     """
     Build grounding context string for Gemini NLU prompt.
-    Reads namecards (company field), deals (entity_name), and active products.
-    Deduplicates company names. Format is stable to benefit from Prompt Caching.
+    Reads contacts (display_name), deals (entity_name), and active products.
+    Deduplicates entity names. Format is stable to benefit from Prompt Caching.
     """
-    card_repo = CardRepo()
+    contact_repo = ContactRepo()
     deal_repo = DealRepo()
     product_repo = ProductRepo()
 
-    # Collect unique company names from namecards
-    cards = card_repo.list_all(org_id)
-    companies = {
-        card.company
-        for card in cards.values()
-        if card.company
+    # Collect unique display names from contacts
+    contacts = contact_repo.list_all(org_id)
+    contact_names = {
+        contact.display_name
+        for contact in contacts.values()
+        if contact.display_name
     }
 
-    # Also collect entity_names from active deals (may not be in namecards)
+    # Also collect entity_names from active deals (may not be in contacts)
     deals = deal_repo.list_all(org_id)
     deal_entities = {
         deal.entity_name
@@ -69,7 +70,7 @@ def build_grounding_context(org_id: str) -> str:
         if deal.entity_name
     }
 
-    all_entities = sorted(companies | deal_entities)
+    all_entities = sorted(contact_names | deal_entities)
 
     # Active products
     products = product_repo.list_active(org_id)
@@ -166,11 +167,35 @@ def parse_text(raw_text: str, org_id: str) -> NLUResult:
         return NLUResult()
 
 
+def auto_link_or_create_contact(entity_name: str, org_id: str) -> str:
+    """
+    Fuzzy-match entity_name to existing contacts (display_name + legal_name + aliases).
+    If found, return contact_id.
+    If not found, create a new company-type Contact via NLU and return new contact_id.
+    """
+    if not entity_name or not entity_name.strip():
+        # Create a placeholder contact
+        contact_repo = ContactRepo()
+        contact = contact_repo.create_from_nlu(org_id, "（未知）")
+        return contact.id
+
+    contact_repo = ContactRepo()
+    contact_id = contact_repo.find_by_name_fuzzy(org_id, entity_name)
+    if contact_id:
+        return contact_id
+
+    # Not found → create a new company-type Contact
+    contact = contact_repo.create_from_nlu(org_id, entity_name.strip())
+    return contact.id
+
+
 def auto_link_namecard(entity_name: str, org_id: str) -> Optional[str]:
     """
     Fuzzy-match entity_name to existing namecards (company field).
     Returns the card_id of the best match, or None if no match found.
     "First card wins" tie-breaking follows Firebase key lexicographic order.
+
+    DEPRECATED: Use auto_link_or_create_contact instead.
     """
     if not entity_name or not entity_name.strip():
         return None
