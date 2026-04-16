@@ -399,3 +399,28 @@ def test_get_valid_state_clears_and_returns_none_when_expired():
     result = get_valid_state("u2")
     assert result is None
     assert "u2" not in user_states
+
+
+@pytest.mark.asyncio
+async def test_handle_download_contact_sends_vcf_url():
+    """handle_download_contact 應回傳 .vcf URL，不再產生 QR Code 圖片"""
+    from app.line_handlers import handle_download_contact
+    from linebot.models import TextSendMessage
+    from unittest.mock import patch, AsyncMock, MagicMock
+
+    mock_event = MagicMock()
+    mock_event.reply_token = "token123"
+
+    card_data = {"name": "陳大明", "company": "ABC", "email": "chen@abc.com",
+                 "phone": "", "title": "", "address": "", "memo": ""}
+
+    with patch("app.line_handlers.firebase_utils.get_card_by_id", return_value=card_data), \
+         patch("app.line_handlers.config.CLOUD_RUN_URL", "https://bot.example.com"), \
+         patch("app.line_handlers.line_bot_api.reply_message", new_callable=AsyncMock) as mock_reply:
+        await handle_download_contact(mock_event, "user1", "org1", "card123", "陳大明")
+
+    mock_reply.assert_called_once()
+    sent_msg = mock_reply.call_args[0][1]
+    assert isinstance(sent_msg, TextSendMessage)
+    assert "/vcf/card123" in sent_msg.text
+    assert "user1" in sent_msg.text

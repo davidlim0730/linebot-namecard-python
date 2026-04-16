@@ -475,7 +475,7 @@ async def handle_delete_card(
 async def handle_download_contact(
         event: PostbackEvent, user_id: str, org_id: str,
         card_id: str, card_name: str):
-    """處理下載聯絡人 QR Code 的請求"""
+    """處理下載聯絡人的請求，回傳 .vcf 下載連結供一鍵加入通訊錄。"""
     try:
         card_data = firebase_utils.get_card_by_id(org_id, card_id)
         if not card_data:
@@ -484,28 +484,13 @@ async def handle_download_contact(
                 TextSendMessage(text='找不到該名片資料。'))
             return
 
-        qrcode_image = qrcode_utils.generate_vcard_qrcode(card_data)
-
-        image_url = firebase_utils.upload_qrcode_to_storage(
-            qrcode_image, user_id, card_id)
-
-        if not image_url:
-            await line_bot_api.reply_message(
-                event.reply_token,
-                TextSendMessage(text='生成 QR Code 時發生錯誤，請稍後再試。'))
-            return
-
-        instruction_text = qrcode_utils.get_qrcode_usage_instruction(card_name)
-
-        image_message = ImageSendMessage(
-            original_content_url=image_url,
-            preview_image_url=image_url
-        )
-        text_message = TextSendMessage(text=instruction_text)
+        base_url = config.CLOUD_RUN_URL or ""
+        vcf_url = f"{base_url}/vcf/{card_id}?user_id={user_id}"
 
         await line_bot_api.reply_message(
             event.reply_token,
-            [image_message, text_message])
+            TextSendMessage(text=f"點擊連結一鍵加入通訊錄：\n{vcf_url}")
+        )
 
     except Exception as e:
         print(f"Error in handle_download_contact: {e}")
