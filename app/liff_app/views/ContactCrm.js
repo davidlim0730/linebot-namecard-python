@@ -1,18 +1,24 @@
-// ContactCrm.js — CRM view of a single contact (deals + activities)
+// ContactCrm.js — CRM view of a single contact (deals + activities + actions)
 import { defineComponent, ref, onMounted, h } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
-import { getContactCrm } from "../api.js";
+import { getContactCrm, listContactActivities, listContactActions } from "../api.js";
 
 export default defineComponent({
   name: "ContactCrm",
   props: { cardId: String },
   setup(props) {
-    const data    = ref(null);
-    const loading = ref(true);
-    const error   = ref("");
+    const crmData  = ref(null);
+    const activities = ref([]);
+    const actions  = ref([]);
+    const loading  = ref(true);
+    const error    = ref("");
 
     onMounted(async () => {
       try {
-        data.value = await getContactCrm(props.cardId);
+        [crmData.value, activities.value, actions.value] = await Promise.all([
+          getContactCrm(props.cardId),
+          listContactActivities(props.cardId),
+          listContactActions(props.cardId, "pending"),
+        ]);
       } catch (e) {
         error.value = e.message || "載入失敗";
       } finally {
@@ -54,12 +60,22 @@ export default defineComponent({
       ]);
     }
 
+    function renderAction(a) {
+      return h("div", {
+        key: a.id,
+        style: "padding:12px;border-left:3px solid #FF6B00;background:#f5f5f5;border-radius:4px;margin-bottom:8px;",
+      }, [
+        h("div", { style: "font-size:13px;color:#555;font-weight:500;" }, a.task_detail),
+        a.due_date ? h("div", { style: "font-size:12px;color:#999;margin-top:4px;" }, `到期：${a.due_date}`) : null,
+      ].filter(Boolean));
+    }
+
     return () => {
       if (error.value)   return h("div", { style: "padding:16px;color:red;" }, `❌ ${error.value}`);
       if (loading.value) return h("div", { style: "padding:16px;text-align:center;color:#999;" }, "載入中…");
-      if (!data.value)   return h("div", { style: "padding:16px;color:red;" }, "找不到資料");
+      if (!crmData.value)   return h("div", { style: "padding:16px;color:red;" }, "找不到資料");
 
-      const { card, contact, deals, activities } = data.value;
+      const { card, contact, deals } = crmData.value;
       // Support both new Contact schema and legacy Card schema
       const entity = contact || card;
       const displayName = entity?.display_name || entity?.name || "（無名稱）";
@@ -91,11 +107,19 @@ export default defineComponent({
         ]),
 
         // Activities section
-        h("div", { style: "padding:16px;" }, [
-          h("h3", { style: "margin:0 0 12px 0;font-size:15px;" }, `💬 互動紀錄 (${activities.length})`),
-          activities.length > 0
-            ? activities.map(a => renderActivity(a))
+        h("div", { style: "padding:16px;border-bottom:1px solid #eee;" }, [
+          h("h3", { style: "margin:0 0 12px 0;font-size:15px;" }, `💬 互動紀錄 (${activities.value.length})`),
+          activities.value.length > 0
+            ? activities.value.map(a => renderActivity(a))
             : h("div", { style: "color:#999;font-size:13px;" }, "尚無互動紀錄"),
+        ]),
+
+        // Actions section
+        h("div", { style: "padding:16px;" }, [
+          h("h3", { style: "margin:0 0 12px 0;font-size:15px;" }, `📌 待辦事項 (${actions.value.length})`),
+          actions.value.length > 0
+            ? actions.value.map(a => renderAction(a))
+            : h("div", { style: "color:#999;font-size:13px;" }, "尚無待辦事項"),
         ]),
       ]);
     };
