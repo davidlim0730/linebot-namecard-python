@@ -59,7 +59,12 @@ export default defineComponent({
       if (loading.value) return h("div", { style: "padding:16px;text-align:center;color:#999;" }, "載入中…");
       if (!data.value)   return h("div", { style: "padding:16px;color:red;" }, "找不到資料");
 
-      const { card, deals, activities } = data.value;
+      const { card, contact, deals, activities } = data.value;
+      // Support both new Contact schema and legacy Card schema
+      const entity = contact || card;
+      const displayName = entity?.display_name || entity?.name || "（無名稱）";
+      const subTitle = [entity?.title, entity?.company || (contact && contact.contact_type === "company" ? contact.legal_name : null)].filter(Boolean).join(" · ");
+
       return h("div", { style: "background:#fff;" }, [
         // Header
         h("div", { style: "padding:16px;background:#0084FF;color:#fff;" }, [
@@ -67,8 +72,8 @@ export default defineComponent({
             onClick: () => { history.back(); },
             style: "background:rgba(255,255,255,0.2);color:#fff;border:none;padding:8px 12px;border-radius:4px;cursor:pointer;margin-bottom:12px;display:block;",
           }, "← 返回"),
-          h("h1", { style: "margin:0;font-size:22px;" }, card?.name || "（無名稱）"),
-          h("div", { style: "font-size:14px;opacity:0.85;margin-top:4px;" }, [card?.title, card?.company].filter(Boolean).join(" · ")),
+          h("h1", { style: "margin:0;font-size:22px;" }, displayName),
+          subTitle ? h("div", { style: "font-size:14px;opacity:0.85;margin-top:4px;" }, subTitle) : null,
         ]),
 
         // Deals section
