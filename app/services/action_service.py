@@ -5,6 +5,8 @@ from typing import List, Optional
 from ..models.action import Action
 from ..models.org import UserContext
 from ..repositories.action_repo import ActionRepo
+from ..repositories.deal_repo import DealRepo
+from .nlu_service import auto_link_or_create_contact
 
 
 class ActionService:
@@ -20,11 +22,23 @@ class ActionService:
 
         now = datetime.utcnow().isoformat() + "Z"
         action_id = str(uuid.uuid4())
+        entity_name = action_data.get("entity_name", "")
+        deal_id = action_data.get("deal_id")
+
+        # Resolve contact_id
+        contact_id = None
+        if deal_id:
+            deal = DealRepo().get(org_id, deal_id)
+            if deal and deal.company_contact_id:
+                contact_id = deal.company_contact_id
+        if not contact_id and entity_name:
+            contact_id = auto_link_or_create_contact(entity_name, org_id)
 
         data = {
             "org_id": org_id,
-            "deal_id": action_data.get("deal_id"),
-            "entity_name": action_data.get("entity_name", ""),
+            "deal_id": deal_id,
+            "contact_id": contact_id,
+            "entity_name": entity_name,
             "task_detail": action_data.get("task_detail", ""),
             "due_date": due_date,
             "status": "pending",

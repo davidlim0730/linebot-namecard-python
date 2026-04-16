@@ -6,6 +6,7 @@ from ..models.deal import Deal
 from ..models.org import UserContext
 from ..repositories.deal_repo import DealRepo
 from ..repositories.org_repo import OrgRepo
+from .nlu_service import auto_link_or_create_contact
 
 
 class DealService:
@@ -19,6 +20,9 @@ class DealService:
         entity_name = pipeline_data.get("entity_name", "")
         now = datetime.utcnow().isoformat() + "Z"
 
+        # Resolve company_contact_id from entity_name
+        company_contact_id = auto_link_or_create_contact(entity_name, org_id) if entity_name else None
+
         # Try to find an existing deal by entity_name
         existing_deals = self.deal_repo.list_by_entity_name(org_id, entity_name)
         existing_deal = existing_deals[0] if existing_deals else None
@@ -30,6 +34,8 @@ class DealService:
 
             update_fields = {k: v for k, v in pipeline_data.items() if v is not None}
             update_fields["updated_at"] = now
+            if company_contact_id:
+                update_fields["company_contact_id"] = company_contact_id
             self.deal_repo.update(org_id, deal_id, update_fields)
 
             if new_stage and new_stage != old_stage:
@@ -41,7 +47,7 @@ class DealService:
             deal_data = {
                 "org_id": org_id,
                 "entity_name": entity_name,
-                "card_id": pipeline_data.get("card_id"),
+                "company_contact_id": company_contact_id,
                 "stage": pipeline_data.get("stage", "0"),
                 "is_pending": pipeline_data.get("is_pending"),
                 "product_id": pipeline_data.get("product_id"),
@@ -52,7 +58,6 @@ class DealService:
                 "created_at": now,
                 "updated_at": now,
             }
-            # Remove None values
             deal_data = {k: v for k, v in deal_data.items() if v is not None}
             self.deal_repo.save(org_id, deal_id, deal_data)
             return self.deal_repo.get(org_id, deal_id)
