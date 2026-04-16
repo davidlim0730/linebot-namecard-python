@@ -190,7 +190,7 @@ async def handle_postback_event(event: PostbackEvent, user_id: str):
 
 💡 小提示：
 • 點擊名片可以編輯、加入備註
-• 使用「加入通訊錄」可下載 QR Code"""
+• 使用「加入通訊錄」可下載聯絡人"""
         await line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(text=help_text)
@@ -484,8 +484,13 @@ async def handle_download_contact(
                 TextSendMessage(text='找不到該名片資料。'))
             return
 
-        base_url = config.CLOUD_RUN_URL or ""
-        vcf_url = f"{base_url}/vcf/{card_id}?user_id={user_id}"
+        if not config.CLOUD_RUN_URL:
+            await line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text='系統設定錯誤，無法產生下載連結。請稍後重試。'))
+            return
+
+        vcf_url = f"{config.CLOUD_RUN_URL}/vcf/{card_id}?user_id={user_id}"
 
         await line_bot_api.reply_message(
             event.reply_token,
