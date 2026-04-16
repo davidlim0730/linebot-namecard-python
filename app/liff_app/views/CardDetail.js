@@ -45,6 +45,10 @@ export default defineComponent({
       window.location.hash = `#/cards/${props.cardId}/edit`;
     }
 
+    function goCrm() {
+      window.location.hash = `#/contacts/${props.cardId}/crm`;
+    }
+
     function goBack() {
       window.location.hash = "#/";
     }
@@ -70,6 +74,7 @@ export default defineComponent({
       loading,
       error,
       goEdit,
+      goCrm,
       goBack,
       getVisibleFields,
       fetchCard,
@@ -115,8 +120,11 @@ export default defineComponent({
           </div>
         </div>
 
-        <!-- Edit button -->
-        <button class="edit-button" @click="goEdit">✏️ 編輯名片</button>
+        <!-- Action buttons -->
+        <div class="action-buttons">
+          <button class="crm-button" @click="goCrm">📊 CRM 視角</button>
+          <button class="edit-button" @click="goEdit">✏️ 編輯名片</button>
+        </div>
       </div>
 
       <!-- Error state -->
@@ -266,6 +274,32 @@ export default defineComponent({
       color: var(--color-text-secondary);
       border-radius: var(--radius-sm);
       white-space: nowrap;
+    }
+
+    /* ========== Action Buttons ========== */
+    .action-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-12);
+    }
+
+    .crm-button {
+      width: 100%;
+      padding: var(--space-16);
+      background: white;
+      color: var(--color-primary);
+      border: 1.5px solid var(--color-primary);
+      border-radius: var(--radius-md);
+      font-family: var(--font-body);
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.15s ease, transform 0.1s ease;
+    }
+
+    .crm-button:active {
+      background: var(--color-bg-2);
+      transform: scale(0.98);
     }
 
     /* ========== Edit Button ========== */
