@@ -6,7 +6,7 @@ from ..models.activity import Activity
 from ..models.org import UserContext
 from ..repositories.activity_repo import ActivityRepo
 from ..repositories.deal_repo import DealRepo
-from .nlu_service import auto_link_namecard, auto_link_or_create_contact
+from .nlu_service import auto_link_or_create_contact
 
 
 class ActivityService:

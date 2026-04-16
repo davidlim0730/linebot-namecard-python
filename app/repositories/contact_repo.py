@@ -1,7 +1,7 @@
 from firebase_admin import db
 from .. import config
 from ..models.card import Contact
-from typing import Optional, Dict, List
+from typing import Optional, Dict
 import uuid
 from datetime import datetime
 from difflib import SequenceMatcher
@@ -61,7 +61,8 @@ class ContactRepo:
         if company_name:
             data["memo"] = f"所屬公司: {company_name}"
         self.save(org_id, contact_id, data)
-        return Contact(id=contact_id, added_by="system", created_at=now, **{k: v for k, v in data.items() if k != "added_by" and k != "created_at"})
+        extra = {k: v for k, v in data.items() if k not in ("added_by", "created_at")}
+        return Contact(id=contact_id, added_by="system", created_at=now, **extra)
 
     def find_by_name_fuzzy(self, org_id: str, entity_name: str) -> Optional[str]:
         """比對 display_name + legal_name + aliases，回傳 contact_id 或 None"""

@@ -136,16 +136,20 @@ class TestActivityService:
         repo.list_all.return_value = {"a1": _activity()}
         return ActivityService(repo), repo
 
-    @patch("app.services.activity_service.auto_link_namecard", return_value="card-123")
-    def test_log_activity_auto_links_namecard(self, mock_link):
+    @patch("app.services.activity_service.auto_link_or_create_contact", return_value="contact-123")
+    @patch("app.services.activity_service.DealRepo")
+    def test_log_activity_auto_links_namecard(self, mock_deal_repo, mock_link):
+        mock_deal_repo.return_value.get.return_value = None
         svc, repo = self._make()
         svc.log_activity("org1", {"entity_name": "台積電", "raw_transcript": "test"}, _user())
         assert repo.save.called
         saved_data = repo.save.call_args[0][2]
         assert saved_data["entity_name"] == "台積電"
 
-    @patch("app.services.activity_service.auto_link_namecard", return_value=None)
-    def test_log_activity_no_namecard_match(self, mock_link):
+    @patch("app.services.activity_service.auto_link_or_create_contact", return_value="contact-new")
+    @patch("app.services.activity_service.DealRepo")
+    def test_log_activity_no_namecard_match(self, mock_deal_repo, mock_link):
+        mock_deal_repo.return_value.get.return_value = None
         svc, repo = self._make()
         result = svc.log_activity("org1", {"entity_name": "未知客戶", "raw_transcript": "test"}, _user())
         assert repo.save.called
