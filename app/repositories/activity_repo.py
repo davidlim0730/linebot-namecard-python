@@ -47,6 +47,11 @@ class ActivityRepo:
         ]
         return sorted(activities, key=lambda a: a.created_at, reverse=True)
 
+    def list_by_contact_id(self, org_id: str, contact_id: str) -> List[Activity]:
+        all_activities = self.list_all(org_id)
+        activities = [a for a in all_activities.values() if a.contact_id == contact_id]
+        return sorted(activities, key=lambda a: a.created_at or "", reverse=True)
+
     def save(self, org_id: str, activity_id: str, activity_data: dict) -> bool:
         """Create or overwrite an activity"""
         try:
@@ -75,7 +80,7 @@ class ActivityRepo:
         """Convert Firebase dict to Activity model"""
         d = dict(data)
         allowed = {
-            "org_id", "deal_id", "entity_name", "raw_transcript",
+            "org_id", "deal_id", "contact_id", "entity_name", "raw_transcript",
             "ai_key_insights", "sentiment", "is_human_corrected",
             "edit_log", "added_by", "created_at"
         }

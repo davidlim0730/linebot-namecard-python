@@ -43,6 +43,11 @@ class DealRepo:
         all_deals = self.list_all(org_id)
         return [deal for deal in all_deals.values() if deal.stage == stage]
 
+    def list_by_company_contact_id(self, org_id: str, contact_id: str) -> List[Deal]:
+        all_deals = self.list_all(org_id)
+        deals = [d for d in all_deals.values() if d.company_contact_id == contact_id]
+        return sorted(deals, key=lambda d: d.created_at or "", reverse=True)
+
     def save(self, org_id: str, deal_id: str, deal_data: dict) -> bool:
         """Create or overwrite a deal"""
         try:
@@ -98,8 +103,10 @@ class DealRepo:
         import re
         d = dict(data)
         allowed = {
-            "org_id", "entity_name", "card_id", "stage", "is_pending",
-            "product_id", "est_value", "next_action_date", "status_summary",
+            "org_id", "entity_name",
+            "company_contact_id", "contract_entity_id", "poc_contact_id",
+            "stage", "is_pending", "product_id", "est_value",
+            "next_action_date", "status_summary",
             "added_by", "created_at", "updated_at"
         }
         filtered = {k: v for k, v in d.items() if k in allowed}

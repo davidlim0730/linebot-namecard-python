@@ -71,8 +71,8 @@ class StakeholderRepo:
         """Convert Firebase dict to Stakeholder model"""
         d = dict(data)
         allowed = {
-            "org_id", "deal_id", "name", "title", "role", "attitude",
-            "email", "phone", "notes", "added_by", "created_at"
+            "org_id", "deal_id", "contact_id", "name", "title", "role", "attitude",
+            "is_champion", "email", "phone", "notes", "added_by", "created_at"
         }
         filtered = {k: v for k, v in d.items() if k in allowed}
         return Stakeholder(id=stakeholder_id, **filtered)

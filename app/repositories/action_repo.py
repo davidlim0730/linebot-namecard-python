@@ -61,6 +61,11 @@ class ActionRepo:
         ]
         return sorted(actions, key=lambda a: a.due_date)
 
+    def list_by_contact_id(self, org_id: str, contact_id: str) -> List[Action]:
+        all_actions = self.list_all(org_id)
+        actions = [a for a in all_actions.values() if a.contact_id == contact_id]
+        return sorted(actions, key=lambda a: a.due_date or "", reverse=True)
+
     def save(self, org_id: str, action_id: str, action_data: dict) -> bool:
         """Create or overwrite an action"""
         try:
@@ -90,7 +95,7 @@ class ActionRepo:
         import re
         d = dict(data)
         allowed = {
-            "org_id", "deal_id", "entity_name", "task_detail",
+            "org_id", "deal_id", "contact_id", "entity_name", "task_detail",
             "due_date", "status", "added_by", "created_at"
         }
         filtered = {k: v for k, v in d.items() if k in allowed}
