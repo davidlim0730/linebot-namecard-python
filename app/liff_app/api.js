@@ -146,6 +146,20 @@ export function getContactCrm(cardId) {
   return request("GET", `/api/v1/contacts/${cardId}/crm`);
 }
 
+export function listContactActivities(contactId, dealId = null) {
+  const params = new URLSearchParams();
+  if (dealId) params.set("deal_id", dealId);
+  const qs = params.toString();
+  return request("GET", `/api/v1/contacts/${contactId}/activities${qs ? "?" + qs : ""}`);
+}
+
+export function listContactActions(contactId, status = null) {
+  const params = new URLSearchParams();
+  if (status) params.set("status", status);
+  const qs = params.toString();
+  return request("GET", `/api/v1/contacts/${contactId}/actions${qs ? "?" + qs : ""}`);
+}
+
 // Org endpoints
 export function getOrg() {
   return request("GET", "/api/v1/org");
