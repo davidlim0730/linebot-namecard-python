@@ -7,7 +7,8 @@ class Action(BaseModel):
     id: str = Field(..., description="Action ID (Firebase key)")
     org_id: str = Field(..., description="Organization ID")
     deal_id: Optional[str] = Field(None, description="Associated deal ID (optional)")
-    entity_name: str = Field(..., description="Customer/Partner name (for search if deal_id is null)")
+    contact_id: Optional[str] = Field(None, description="Associated contact ID (optional)")
+    entity_name: Optional[str] = Field(None, description="Customer/Partner name (for search if deal_id is null)")
     task_detail: str = Field(..., description="Clear, actionable task description")
     due_date: Optional[str] = Field(None, description="YYYY-MM-DD format (optional, may be null)")
     status: str = Field(default="pending", description="pending or completed")
@@ -21,6 +22,7 @@ class ActionCreate(BaseModel):
     task_detail: str
     due_date: str  # YYYY-MM-DD
     deal_id: Optional[str] = None
+    contact_id: Optional[str] = None
 
 
 class ActionUpdate(BaseModel):

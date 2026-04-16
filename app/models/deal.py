@@ -8,7 +8,9 @@ class Deal(BaseModel):
     id: str = Field(..., description="Deal ID (Firebase key)")
     org_id: str = Field(..., description="Organization ID")
     entity_name: str = Field(..., description="Customer/Partner name")
-    card_id: Optional[str] = Field(None, description="Associated Contact card ID (optional)")
+    company_contact_id: Optional[str] = Field(None, description="Company Contact FK")
+    contract_entity_id: Optional[str] = Field(None, description="Contract entity FK")
+    poc_contact_id: Optional[str] = Field(None, description="Point of contact FK")
     stage: str = Field(..., description="Stage: 0-6, 成交, or 失敗")
     is_pending: Optional[bool] = Field(None, description="Is deal on hold")
     product_id: Optional[str] = Field(None, description="Product ID")
@@ -40,7 +42,9 @@ class DealCreate(BaseModel):
     stage: str = "0"
     is_pending: Optional[bool] = None
     status_summary: str = ""
-    card_id: Optional[str] = None
+    company_contact_id: Optional[str] = None
+    contract_entity_id: Optional[str] = None
+    poc_contact_id: Optional[str] = None
 
 
 class DealUpdate(BaseModel):
@@ -52,4 +56,6 @@ class DealUpdate(BaseModel):
     stage: Optional[str] = None
     is_pending: Optional[bool] = None
     status_summary: Optional[str] = None
-    card_id: Optional[str] = None
+    company_contact_id: Optional[str] = None
+    contract_entity_id: Optional[str] = None
+    poc_contact_id: Optional[str] = None

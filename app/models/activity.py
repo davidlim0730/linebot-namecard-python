@@ -7,7 +7,8 @@ class Activity(BaseModel):
     id: str = Field(..., description="Activity ID (Firebase key)")
     org_id: str = Field(..., description="Organization ID")
     deal_id: Optional[str] = Field(None, description="Associated deal ID (optional)")
-    entity_name: str = Field(..., description="Customer/Partner name (for search if deal_id is null)")
+    contact_id: Optional[str] = Field(None, description="Associated contact ID (optional)")
+    entity_name: Optional[str] = Field(None, description="Customer/Partner name (for search if deal_id is null)")
     raw_transcript: str = Field(..., description="Original input text (preserved)")
     ai_key_insights: List[str] = Field(default_factory=list, description="3 key insights (Chinese, max 30 chars each)")
     sentiment: str = Field(default="Neutral", description="Positive, Neutral, or Negative")
@@ -24,6 +25,7 @@ class ActivityCreate(BaseModel):
     ai_key_insights: List[str] = Field(default_factory=list)
     sentiment: str = "Neutral"
     deal_id: Optional[str] = None
+    contact_id: Optional[str] = None
 
 
 class ActivityUpdate(BaseModel):

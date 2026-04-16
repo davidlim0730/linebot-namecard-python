@@ -13,6 +13,8 @@ class Stakeholder(BaseModel):
     attitude: Optional[str] = Field(None, description="Supportive, Neutral, or Skeptical")
     email: Optional[str] = Field(None, description="Email address")
     phone: Optional[str] = Field(None, description="Phone number")
+    contact_id: Optional[str] = Field(None, description="Associated contact ID (optional)")
+    is_champion: bool = Field(default=False, description="Whether this stakeholder is the champion")
     notes: Optional[str] = Field(None, description="Additional notes")
     added_by: str = Field(..., description="User ID who added this stakeholder")
     created_at: str = Field(..., description="ISO 8601 timestamp")
@@ -27,6 +29,8 @@ class StakeholderCreate(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     notes: Optional[str] = None
+    contact_id: Optional[str] = None
+    is_champion: bool = False
 
 
 class StakeholderUpdate(BaseModel):
@@ -38,3 +42,5 @@ class StakeholderUpdate(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     notes: Optional[str] = None
+    contact_id: Optional[str] = None
+    is_champion: Optional[bool] = None
