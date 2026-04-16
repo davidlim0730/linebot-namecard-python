@@ -8,7 +8,7 @@ from ..models.org import UserContext
 from ..models.deal import DealUpdate
 from ..models.action import ActionUpdate
 from ..services.auth_service import AuthService, AuthError
-from ..services.nlu_service import parse_text
+from ..services.nlu_service import parse_text, auto_link_or_create_contact
 from ..services.deal_service import DealService
 from ..services.activity_service import ActivityService
 from ..services.action_service import ActionService
@@ -17,6 +17,7 @@ from ..repositories.activity_repo import ActivityRepo
 from ..repositories.action_repo import ActionRepo
 from ..repositories.org_repo import OrgRepo
 from ..repositories.card_repo import CardRepo
+from ..repositories.contact_repo import ContactRepo
 from ..repositories.product_repo import ProductRepo
 from ..repositories.stakeholder_repo import StakeholderRepo
 
@@ -33,6 +34,7 @@ deal_repo = DealRepo()
 activity_repo = ActivityRepo()
 action_repo = ActionRepo()
 card_repo = CardRepo()
+contact_repo = ContactRepo()
 product_repo = ProductRepo()
 stakeholder_repo = StakeholderRepo()
 
@@ -96,26 +98,55 @@ async def crm_confirm(body: ConfirmRequest, user: UserContext = Depends(get_curr
         "pipelines_updated": [],
         "interactions_logged": [],
         "actions_scheduled": [],
+        "contacts_upserted": [],
     }
 
-    # Upsert pipelines
+    # 前置：批次解析所有 entity_name → contact_id，避免重複建立
+    all_entity_names = set()
     for pipeline in data.get("pipelines", []):
+        if pipeline.get("entity_name"):
+            all_entity_names.add(pipeline["entity_name"])
+    for interaction in data.get("interactions", []):
+        if interaction.get("entity_name"):
+            all_entity_names.add(interaction["entity_name"])
+    for action in data.get("actions", []):
+        if action.get("entity_name"):
+            all_entity_names.add(action["entity_name"])
+
+    entity_contact_map: dict = {}
+    for entity_name in all_entity_names:
+        contact_id = auto_link_or_create_contact(entity_name, user.org_id)
+        entity_contact_map[entity_name] = contact_id
+        if contact_id not in written["contacts_upserted"]:
+            written["contacts_upserted"].append(contact_id)
+
+    # Upsert pipelines（注入 company_contact_id）
+    for pipeline in data.get("pipelines", []):
+        entity_name = pipeline.get("entity_name", "")
+        if entity_name and entity_name in entity_contact_map:
+            pipeline["company_contact_id"] = entity_contact_map[entity_name]
         deal = deal_service.upsert_deal(user.org_id, pipeline, user)
         if deal:
             written["pipelines_updated"].append(deal.id)
 
-    # Log interactions
+    # Log interactions（注入 contact_id）
     for interaction in data.get("interactions", []):
         if not interaction.get("raw_transcript"):
             continue
+        entity_name = interaction.get("entity_name", "")
+        if entity_name and entity_name in entity_contact_map:
+            interaction["contact_id"] = entity_contact_map[entity_name]
         activity = activity_service.log_activity(user.org_id, interaction, user)
         if activity:
             written["interactions_logged"].append(activity.id)
 
-    # Schedule actions
+    # Schedule actions（注入 contact_id）
     for action in data.get("actions", []):
         if not action.get("due_date"):
             continue
+        entity_name = action.get("entity_name", "")
+        if entity_name and entity_name in entity_contact_map:
+            action["contact_id"] = entity_contact_map[entity_name]
         result = action_service.schedule_action(user.org_id, action, user)
         if result:
             written["actions_scheduled"].append(result.id)
@@ -302,6 +333,17 @@ async def pipeline_summary(user: UserContext = Depends(get_current_user)):
 
 @router.get("/contacts/{card_id}/crm")
 async def contact_crm(card_id: str, user: UserContext = Depends(get_current_user)):
+    # Try ContactRepo first, fallback to CardRepo for backward compat
+    contact = contact_repo.get(user.org_id, card_id)
+    if contact:
+        deals = deal_repo.list_by_company_contact_id(user.org_id, card_id)
+        activities = activity_repo.list_by_contact_id(user.org_id, card_id)
+        return {
+            "contact": contact.model_dump(),
+            "deals": [d.model_dump() for d in deals],
+            "activities": [a.model_dump() for a in activities],
+        }
+    # Fallback: legacy card_repo lookup
     card = card_repo.get(user.org_id, card_id)
     if not card:
         raise HTTPException(status_code=404, detail={"error": "not_found"})
