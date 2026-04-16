@@ -43,10 +43,12 @@ async def download_vcf(card_id: str, user_id: str):
     # Generate vCard string
     vcard_str = generate_vcard_string(card.model_dump())
     name = card.name or 'contact'
+    # Sanitize filename: remove double quotes, newlines, and carriage returns
+    sanitized_name = name.replace('"', '').replace('\n', '').replace('\r', '')
 
     # Return with proper headers
     return Response(
         content=vcard_str,
         media_type="text/vcard",
-        headers={"Content-Disposition": f'attachment; filename="{name}.vcf"'}
+        headers={"Content-Disposition": f'attachment; filename="{sanitized_name}.vcf"'}
     )
