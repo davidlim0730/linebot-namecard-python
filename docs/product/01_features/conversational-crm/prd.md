@@ -1,6 +1,6 @@
 # PRD — Conversational CRM
 
-**狀態**：後端已完成 / LIFF 前端開發中  
+**狀態**：後端已完成（含 CRM Schema Migration）/ LIFF 前端開發中
 **負責人**：David Lin  
 **計畫文件**：[docs/superpowers/plans/conversational-crm.md](../../superpowers/plans/conversational-crm.md)
 
@@ -48,18 +48,22 @@
 | 功能 | 說明 | 實作位置 |
 |------|------|---------|
 | `parse_text` | 呼叫 Gemini，注入 Grounding Context | `services/nlu_service.py` |
-| `build_grounding_context` | 從 Firebase 讀取 namecard + deals，格式化為 prompt | `services/nlu_service.py` |
+| `build_grounding_context` | 從 Firebase 讀取 contacts（display_name）+ deals，格式化為 prompt | `services/nlu_service.py` |
 | `fuzzy_match_entity` | difflib，threshold 0.4，精確 → 包含 → 相似 | `services/nlu_service.py` |
-| `auto_link_namecard` | fuzzy match 到現有 namecard，回傳 card_id | `services/nlu_service.py` |
+| `auto_link_or_create_contact` | fuzzy match contacts（display_name + legal_name + aliases），找不到則建立公司型 Contact | `services/nlu_service.py` |
+| `auto_link_namecard` | deprecated shim，保留向下相容 | `services/nlu_service.py` |
 
 ### 2. CRM 資料模型（後端，已完成）
 
+> **Schema Migration 完成（2026-04-16）**：namecard/ → contacts/，Contact-centric 架構，Deal/Activity/Action 改用 FK。
+
 | Model | 重點欄位 |
 |-------|---------|
-| `Deal` | entity_name, stage(0–6/成交/失敗), est_value, next_action_date, status_summary |
-| `Activity` | raw_transcript, ai_key_insights[3], sentiment, is_human_corrected |
-| `Action` | task_detail, due_date, status(pending/completed) |
-| `Stakeholder` | name, role(Champion/DecisionMaker/Gatekeeper), attitude |
+| `Contact` | contact_type(company/person), display_name, legal_name, aliases[], parent_company_id, source |
+| `Deal` | company_contact_id(FK), poc_contact_id(FK), entity_name(cache), stage(0–6/成交/失敗), est_value |
+| `Activity` | contact_id(FK), deal_id(FK), raw_transcript, ai_key_insights[3], sentiment |
+| `Action` | contact_id(FK), deal_id(FK), task_detail, due_date, status(pending/completed) |
+| `Stakeholder` | contact_id(FK), deal_id(FK), role(Champion/DecisionMaker/Gatekeeper), is_champion |
 | `Product` | name, status(Active/Beta/Sunset) |
 
 ### 3. API 端點（後端，已完成）
@@ -146,9 +150,11 @@ GET  /api/v1/contacts/{id}/crm      ← 聯絡人 CRM 視角
 
 ## 技術決策記錄
 
-- **Firebase Realtime DB**（非 Firestore）：與現有 namecard 資料同庫，CRUD 沿用 `card_repo.py` 模式
-- **Grounding Context**：每次 NLU 呼叫注入現有 namecard（company 欄位）+ deals（entity_name），提升 entity 識別準確度
-- **Prompt Caching**：`build_grounding_context()` 輸出格式固定，減少 Gemini token 費用
+- **Firebase Realtime DB**（非 Firestore）：與現有 namecard 資料同庫，CRUD 沿用 `contact_repo.py` 模式
+- **Contact-centric Schema**：一張 contacts 表（contact_type 區分公司/人員），Deal/Activity/Action 使用 FK，對齊 Twenty HQ Logical Domain Schema
+- **NLU aliases**：Contact 有 aliases[] 陣列，fuzzy match 支援「TSMC / 台積 / 積電」→ 同一 Contact
+- **Grounding Context**：每次 NLU 呼叫注入現有 contacts（display_name）+ deals（entity_name），提升 entity 識別準確度
+- **Migration Script**：`scripts/migrate_namecard_to_contacts.py` 支援 dry-run，5 phase 完整 backfill
 - **Cloud Run 不變**：同 `linebot-namecard-python` 服務，不另開新服務
 
 ---
