@@ -50,8 +50,11 @@ async def liff_index():
     _index = os.path.join(os.path.dirname(__file__), "liff_app", "index.html")
     if not os.path.isfile(_index):
         return HTMLResponse("<html><body>LIFF app not found</body></html>", status_code=404)
+    import time
+    v = str(int(time.time()))
     with open(_index) as f:
         html = f.read().replace("YOUR_LIFF_ID_HERE", config.LIFF_ID)
+    html = html.replace(".css", f".css?v={v}")
     return HTMLResponse(html)
 
 

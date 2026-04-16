@@ -25,7 +25,7 @@ export default defineComponent({
         editData.value = {
           stage: d.stage,
           est_value: d.est_value,
-          next_action_date: d.next_action_date ? d.next_action_date.split("T")[0] : null,
+          next_action_date: d.next_action_date ? d.next_action_date.substring(0, 10) : null,
         };
       } catch (e) {
         error.value = e.message || "載入失敗";
