@@ -12,6 +12,7 @@ from ..models.org import UserContext
 from ..models.card import CardUpdate
 from ..repositories.org_repo import OrgRepo
 from ..repositories.card_repo import CardRepo
+from .. import firebase_utils
 
 router = APIRouter(prefix="/api")
 security = HTTPBearer(auto_error=False)
@@ -171,7 +172,15 @@ async def list_members(user: UserContext = Depends(get_current_user)):
     org = org_repo.get(user.org_id)
     if not org:
         raise HTTPException(status_code=404, detail={"error": "not_found"})
-    return [m.model_dump() for m in org.members]
+    members = []
+    for m in org.members:
+        member_data = m.model_dump()
+        if not member_data.get("display_name"):
+            cached_name = firebase_utils.get_cached_display_name(m.user_id)
+            if cached_name:
+                member_data["display_name"] = cached_name
+        members.append(member_data)
+    return members
 
 
 @router.patch("/v1/org/members/{target_user_id}")
