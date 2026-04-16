@@ -329,6 +329,32 @@ async def pipeline_summary(user: UserContext = Depends(get_current_user)):
     return summary
 
 
+# ---- Contact-centric endpoints ----
+
+@router.get("/contacts/{contact_id}/activities")
+async def list_contact_activities(
+    contact_id: str,
+    deal_id: Optional[str] = None,
+    user: UserContext = Depends(get_current_user),
+):
+    activities = activity_repo.list_by_contact_id(user.org_id, contact_id)
+    if deal_id is not None:
+        activities = [a for a in activities if a.deal_id == deal_id]
+    return [a.model_dump() for a in activities]
+
+
+@router.get("/contacts/{contact_id}/actions")
+async def list_contact_actions(
+    contact_id: str,
+    status: Optional[str] = None,
+    user: UserContext = Depends(get_current_user),
+):
+    actions = action_repo.list_by_contact_id(user.org_id, contact_id)
+    if status is not None:
+        actions = [a for a in actions if a.status == status]
+    return [a.model_dump() for a in actions]
+
+
 # ---- Contact CRM view ----
 
 @router.get("/contacts/{card_id}/crm")
