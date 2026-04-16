@@ -113,7 +113,7 @@ def create_org(user_id: str, org_name: str) -> str:
         db.reference(f"user_org_map/{user_id}").set(org_id)
         return org_id
     except Exception as e:
-        _log_firebase_event("firebase_write_error", f"organizations/{f'org_{uuid.uuid4().hex[:8]}'}", str(e))
+        _log_firebase_event("firebase_write_error", f"organizations/{org_id}", str(e))
         print(f"Error creating org: {e}")
         return None
 
