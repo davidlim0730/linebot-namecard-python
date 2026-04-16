@@ -1,11 +1,13 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 import google.generativeai as genai
 import firebase_admin
 from firebase_admin import credentials
 import os
 import json
 import logging
+from pydantic import ValidationError
 
 from . import config
 from .bot_instance import close_session
@@ -41,6 +43,27 @@ app.include_router(internal_router)
 app.include_router(liff_router)
 app.include_router(crm_router)
 app.include_router(vcf_router)
+
+
+@app.exception_handler(ValidationError)
+async def validation_exception_handler(request: Request, exc: ValidationError):
+    """Catch Pydantic validation errors and return detailed error info"""
+    logger.error(f"Validation error on {request.url.path}: {exc}")
+    errors = []
+    for error in exc.errors():
+        errors.append({
+            "field": ".".join(str(x) for x in error["loc"]),
+            "type": error["type"],
+            "message": error["msg"]
+        })
+    return JSONResponse(
+        status_code=400,
+        content={
+            "error": "validation_failed",
+            "detail": "Data validation failed",
+            "errors": errors
+        }
+    )
 
 
 @app.get("/liff/", include_in_schema=False)

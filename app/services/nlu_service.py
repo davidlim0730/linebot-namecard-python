@@ -95,6 +95,35 @@ def build_grounding_context(org_id: str) -> str:
     return "\n".join(lines)
 
 
+def _validate_and_normalize_dates(data: dict) -> dict:
+    """
+    Validate and normalize dates in NLU result to YYYY-MM-DD format.
+    Logs warnings for malformed dates but allows parsing to proceed.
+    """
+    import re
+
+    date_fields = ["next_action_date", "due_date"]
+    date_pattern = re.compile(r'^\d{4}-\d{2}-\d{2}$')
+
+    # Check pipelines
+    for pipeline in data.get("pipelines", []):
+        if "next_action_date" in pipeline and pipeline["next_action_date"]:
+            date_str = str(pipeline["next_action_date"]).strip()
+            if not date_pattern.match(date_str):
+                logger.warning(f"Invalid next_action_date format '{date_str}', expected YYYY-MM-DD")
+                pipeline["next_action_date"] = None
+
+    # Check actions
+    for action in data.get("actions", []):
+        if "due_date" in action and action["due_date"]:
+            date_str = str(action["due_date"]).strip()
+            if not date_pattern.match(date_str):
+                logger.warning(f"Invalid due_date format '{date_str}', expected YYYY-MM-DD")
+                action["due_date"] = None
+
+    return data
+
+
 def parse_text(raw_text: str, org_id: str) -> NLUResult:
     """
     Parse a natural language CRM report via Gemini NLU.
@@ -124,12 +153,16 @@ def parse_text(raw_text: str, org_id: str) -> NLUResult:
     try:
         response = generate_gemini_text_complete(prompt_parts)
         data = json.loads(response.text)
+        data = _validate_and_normalize_dates(data)
         return NLUResult(**data)
     except json.JSONDecodeError as e:
         logger.warning("Gemini returned non-JSON response: %s", e)
         return NLUResult()
     except Exception as e:
-        logger.error("NLU parse failed (schema or API error): %s", e)
+        logger.error("NLU parse failed: %s", str(e))
+        logger.error("Exception type: %s", type(e).__name__)
+        if 'data' in locals():
+            logger.error("Failed data: %s", json.dumps(data, indent=2, ensure_ascii=False, default=str))
         return NLUResult()
 
 

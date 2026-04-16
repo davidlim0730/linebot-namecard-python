@@ -13,11 +13,11 @@ class Deal(BaseModel):
     is_pending: Optional[bool] = Field(None, description="Is deal on hold")
     product_id: Optional[str] = Field(None, description="Product ID")
     est_value: Optional[int] = Field(None, description="Estimated value in TWD")
-    next_action_date: Optional[str] = Field(None, description="YYYY-MM-DD format")
-    status_summary: str = Field(..., description="One-line status summary (Chinese)")
-    added_by: str = Field(..., description="User ID who created this deal")
-    created_at: str = Field(..., description="ISO 8601 timestamp")
-    updated_at: str = Field(..., description="ISO 8601 timestamp")
+    next_action_date: Optional[str] = Field(None, description="YYYY-MM-DD format (optional, may be null)")
+    status_summary: str = Field(default="", description="One-line status summary (Chinese)")
+    added_by: Optional[str] = Field(None, description="User ID who created this deal")
+    created_at: Optional[str] = Field(None, description="ISO 8601 timestamp")
+    updated_at: Optional[str] = Field(None, description="ISO 8601 timestamp")
 
 
 class StageChangeEvent(BaseModel):

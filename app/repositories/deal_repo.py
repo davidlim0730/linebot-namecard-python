@@ -94,7 +94,8 @@ class DealRepo:
         return sorted(events, key=lambda e: e.created_at, reverse=True)
 
     def _to_deal(self, deal_id: str, data: dict) -> Deal:
-        """Convert Firebase dict to Deal model"""
+        """Convert Firebase dict to Deal model with type conversion and cleaning"""
+        import re
         d = dict(data)
         allowed = {
             "org_id", "entity_name", "card_id", "stage", "is_pending",
@@ -102,6 +103,34 @@ class DealRepo:
             "added_by", "created_at", "updated_at"
         }
         filtered = {k: v for k, v in d.items() if k in allowed}
+
+        # Type conversion and normalization
+        # est_value: ensure it's an integer (or None)
+        if "est_value" in filtered and filtered["est_value"] is not None:
+            try:
+                filtered["est_value"] = int(filtered["est_value"])
+            except (ValueError, TypeError):
+                filtered["est_value"] = None
+
+        # is_pending: ensure it's a boolean
+        if "is_pending" in filtered and filtered["is_pending"] is not None:
+            if isinstance(filtered["is_pending"], str):
+                filtered["is_pending"] = filtered["is_pending"].lower() in ("true", "1", "yes")
+            else:
+                filtered["is_pending"] = bool(filtered["is_pending"])
+
+        # Validate and normalize next_action_date format (YYYY-MM-DD)
+        if "next_action_date" in filtered and filtered["next_action_date"]:
+            date_str = str(filtered["next_action_date"]).strip()
+            # If date format is invalid or empty, set to None
+            if not date_str or not re.match(r'^\d{4}-\d{2}-\d{2}$', date_str):
+                filtered["next_action_date"] = None
+
+        # Ensure required fields have safe defaults
+        filtered.setdefault("entity_name", "（未知客戶）")
+        filtered.setdefault("stage", "0")
+        filtered.setdefault("status_summary", "")
+
         return Deal(id=deal_id, **filtered)
 
     def _to_stage_change_event(self, event_id: str, data: dict) -> StageChangeEvent:

@@ -86,11 +86,25 @@ class ActionRepo:
             return False
 
     def _to_action(self, action_id: str, data: dict) -> Action:
-        """Convert Firebase dict to Action model"""
+        """Convert Firebase dict to Action model with type conversion and cleaning"""
+        import re
         d = dict(data)
         allowed = {
             "org_id", "deal_id", "entity_name", "task_detail",
             "due_date", "status", "added_by", "created_at"
         }
         filtered = {k: v for k, v in d.items() if k in allowed}
+
+        # Validate and normalize due_date format (YYYY-MM-DD)
+        if "due_date" in filtered and filtered["due_date"]:
+            date_str = str(filtered["due_date"]).strip()
+            # If date format is invalid or empty, set to None
+            if not date_str or not re.match(r'^\d{4}-\d{2}-\d{2}$', date_str):
+                filtered["due_date"] = None
+
+        # Ensure required fields have safe defaults
+        filtered.setdefault("entity_name", "（未知）")
+        filtered.setdefault("task_detail", "（無詳情）")
+        filtered.setdefault("status", "pending")
+
         return Action(id=action_id, **filtered)

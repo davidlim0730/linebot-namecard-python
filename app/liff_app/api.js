@@ -32,7 +32,15 @@ async function request(method, path, body) {
 
   if (res.status === 204) return null;
   const data = await res.json();
-  if (!res.ok) throw Object.assign(new Error(data.error || "request_failed"), { status: res.status, data });
+  if (!res.ok) {
+    // Extract error message, preferring detail > message > error
+    let errorMsg = data.detail || data.message || data.error || "request_failed";
+    // If detail is an object, stringify it
+    if (typeof errorMsg === 'object') {
+      errorMsg = JSON.stringify(errorMsg);
+    }
+    throw Object.assign(new Error(errorMsg), { status: res.status, data });
+  }
   return data;
 }
 

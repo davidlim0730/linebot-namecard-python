@@ -13,8 +13,8 @@ class Activity(BaseModel):
     sentiment: str = Field(default="Neutral", description="Positive, Neutral, or Negative")
     is_human_corrected: bool = Field(default=False, description="Whether user has edited this activity")
     edit_log: Optional[str] = Field(None, description="JSON string of edit history (if corrected)")
-    added_by: str = Field(..., description="User ID who logged this activity")
-    created_at: str = Field(..., description="ISO 8601 timestamp")
+    added_by: Optional[str] = Field(None, description="User ID who logged this activity")
+    created_at: Optional[str] = Field(None, description="ISO 8601 timestamp")
 
 
 class ActivityCreate(BaseModel):

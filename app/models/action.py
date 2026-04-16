@@ -9,7 +9,7 @@ class Action(BaseModel):
     deal_id: Optional[str] = Field(None, description="Associated deal ID (optional)")
     entity_name: str = Field(..., description="Customer/Partner name (for search if deal_id is null)")
     task_detail: str = Field(..., description="Clear, actionable task description")
-    due_date: str = Field(..., description="YYYY-MM-DD format")
+    due_date: Optional[str] = Field(None, description="YYYY-MM-DD format (optional, may be null)")
     status: str = Field(default="pending", description="pending or completed")
     added_by: str = Field(..., description="User ID who created this action")
     created_at: str = Field(..., description="ISO 8601 timestamp")
