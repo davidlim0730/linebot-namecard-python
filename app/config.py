@@ -18,6 +18,7 @@ GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 FIREBASE_URL = os.environ.get("FIREBASE_URL")
 FIREBASE_STORAGE_BUCKET = os.environ.get("FIREBASE_STORAGE_BUCKET")
 NAMECARD_PATH = "namecard"
+CONTACT_PATH = "contacts"
 GOOGLE_SHEET_ID = os.environ.get("GOOGLE_SHEET_ID")
 DEFAULT_ORG_ID = os.environ.get("DEFAULT_ORG_ID", "org_default")
 LINE_OA_ID = os.environ.get("LINE_OA_ID")  # e.g. "@abc123", used for upgrade button
