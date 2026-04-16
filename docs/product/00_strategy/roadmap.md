@@ -102,7 +102,7 @@
 
 ## Phase 4 — Conversational CRM
 
-**狀態**：後端已完成，LIFF 前端開發中
+**狀態**：✅ 完成
 
 > 透過 AI 讓業務人員在 LINE 上用說話完成所有 CRM 操作。主介面升級為 LIFF App，LINE Chat 保留推播通知與名片上傳。
 
@@ -118,13 +118,13 @@
 - [x] **Rich Menu 重設計**：業務版（6 格）+ 主管版（含 Pipeline 總覽）
 - [x] **LINE Chat 快速指令**：`「我的待辦」`、`「查 [名稱]」`、`「pipeline」`（admin）
 
-### LIFF 前端（待完成）
-- [ ] **CrmInput**：意識流輸入 → NLU 預覽 → 確認寫入（`#/crm`）
-- [ ] **DealList / DealDetail**：Pipeline Kanban + 案件詳情 + Stakeholders（`#/deals`）
-- [ ] **ActionList**：今日 / 本週 / 全部待辦，一鍵完成（`#/actions`）
-- [ ] **ContactCrm**：聯絡人 CRM 視角（deals + activities timeline）（`#/contacts/:id/crm`）
-- [ ] **ManagerPipeline**：主管 team pipeline 儀表板（`#/pipeline`，admin only）
-- [ ] **ProductList**：產品線管理（`#/products`，admin only）
+### LIFF 前端（已完成）
+- [x] **CrmInput**：意識流輸入 → NLU 預覽 → 確認寫入（`#/crm`）
+- [x] **DealList / DealDetail**：Pipeline Kanban + 案件詳情 + Stakeholders（`#/deals`）
+- [x] **ActionList**：今日 / 本週 / 全部待辦，一鍵完成（`#/actions`）
+- [x] **ContactCrm**：聯絡人 CRM 視角（deals + activities timeline）（`#/contacts/:id/crm`）
+- [x] **ManagerPipeline**：主管 team pipeline 儀表板（`#/pipeline`，admin only）
+- [x] **ProductList**：產品線管理（`#/products`，admin only）
 
 ### 驗收標準
 - 意識流輸入 → NLU 解析 → 預覽確認 → Firebase 寫入 → LIFF 顯示
