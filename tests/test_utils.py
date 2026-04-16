@@ -117,6 +117,7 @@ def test_write_feedback_writes_to_correct_path():
 
     write_feedback(org_id, user_id, timestamp, feedback_data, mock_db)
 
-    expected_path = f'feedback/{org_id}/{user_id}/{timestamp}'
+    safe_timestamp = timestamp.replace(":", "_").replace(".", "_")
+    expected_path = f'feedback/{org_id}/{user_id}/{safe_timestamp}'
     mock_db.reference.assert_called_once_with(expected_path)
     mock_ref.set.assert_called_once_with(feedback_data)
