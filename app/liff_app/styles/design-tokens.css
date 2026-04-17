@@ -38,6 +38,21 @@
   --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
 
+  /* ====== CRM SEMANTIC COLORS ====== */
+  --color-deal: #0084FF;        /* Deal / 案件 left-accent */
+  --color-activity: #31A24C;    /* Activity / 互動 left-accent */
+  --color-action: #FF6B00;      /* Action / 待辦 left-accent */
+
+  /* ====== ALIASES (convenience) ====== */
+  --color-surface: #F8FAFC;     /* Page background alias */
+  --color-card: #ffffff;        /* Card background alias */
+  --radius-card: 12px;          /* Card border radius */
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.08);  /* Card shadow */
+
+  /* ====== LAYOUT ====== */
+  --header-height: 56px;
+  --bottom-nav-height: 56px;
+
   /* ====== SPACING SCALE (8px base) ====== */
   --space-2: 2px;
   --space-4: 4px;
