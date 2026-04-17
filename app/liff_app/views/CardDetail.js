@@ -241,14 +241,14 @@ export default defineComponent({
 
     .crm-button {
       width: 100%;
-      padding: var(--space-16);
+      padding: 18px 20px;
       background: white;
       color: var(--color-primary);
-      border: 1.5px solid var(--color-primary);
+      border: 2px solid var(--color-primary);
       border-radius: var(--radius-md);
       font-family: var(--font-body);
       font-weight: 600;
-      font-size: 14px;
+      font-size: 16px;
       cursor: pointer;
       transition: background 0.15s ease, transform 0.1s ease;
     }
@@ -261,14 +261,14 @@ export default defineComponent({
     /* ========== Edit Button ========== */
     .edit-button {
       width: 100%;
-      padding: var(--space-16);
+      padding: 18px 20px;
       background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
       color: white;
       border: none;
       border-radius: var(--radius-md);
       font-family: var(--font-body);
       font-weight: 600;
-      font-size: 14px;
+      font-size: 16px;
       cursor: pointer;
       transition: transform 0.1s ease, box-shadow 0.2s ease;
       box-shadow: var(--shadow-md);

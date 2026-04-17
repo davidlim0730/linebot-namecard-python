@@ -52,7 +52,7 @@ def _member_areas() -> list:
         {"bounds": {"x":    0, "y": 421, "width": 833, "height": 422},
          "action": _uri_or_message(_liff("#/"),        "名片管理")},
         {"bounds": {"x":  833, "y": 421, "width": 833, "height": 422},
-         "action": _uri_or_message(_liff("#/"),        "查聯絡人")},
+         "action": {"type": "message", "text": "新增"}},
         {"bounds": {"x": 1666, "y": 421, "width": 834, "height": 422},
          "action": {"type": "message", "text": "團隊"}},
     ]

@@ -87,7 +87,14 @@ export default defineComponent({
           h("div", { style: "display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;" }, [
             h("div", { class: "crm-section-title" }, `📊 案件 (${deals.length})`),
             h("button", {
-              onClick: () => { window.location.hash = `#/crm`; },
+              onClick: () => {
+                const params = new URLSearchParams();
+                if (displayName) params.set("contact", displayName);
+                const company = entity?.company || (contact?.contact_type === "company" ? contact.legal_name : null);
+                if (company) params.set("company", company);
+                if (entity?.id) params.set("contact_id", entity.id);
+                window.location.hash = `#/crm?${params.toString()}`;
+              },
               style: "padding:6px 12px;background:var(--color-primary);color:#fff;border:none;border-radius:var(--radius-md);font-size:12px;cursor:pointer;",
             }, "+ 新增案件"),
           ]),

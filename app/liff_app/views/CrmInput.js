@@ -5,7 +5,14 @@ import { crmParse, crmConfirm } from "../api.js?v=3";
 export default defineComponent({
   name: "CrmInput",
   setup() {
-    const rawText = ref("");
+    // Pre-fill from URL query params (contact, company, contact_id)
+    const urlParams = new URLSearchParams(window.location.hash.split("?")[1] || "");
+    const prefillContact = urlParams.get("contact") || "";
+    const prefillCompany = urlParams.get("company") || "";
+    const prefillContactId = urlParams.get("contact_id") || "";
+
+    const prefillHint = [prefillContact, prefillCompany].filter(Boolean).join("／");
+    const rawText = ref(prefillHint ? `[${prefillHint}] ` : "");
     const parseResult = ref(null);
     const parseLoading = ref(false);
     const parseError = ref("");
