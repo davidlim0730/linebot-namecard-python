@@ -12,7 +12,7 @@ export default defineComponent({
   setup(props) {
     const tabs = [
       { id: "cards",    label: "名片", icon: "🗂️", path: "#/" },
-      { id: "crm",      label: "CRM",  icon: "📊", path: "#/crm" },
+      { id: "crm",      label: "CRM",  icon: "📊", path: "#/deals" },
       { id: "team",     label: "團隊", icon: "👥", path: "#/team" },
       { id: "settings", label: "設定", icon: "⚙️", path: "#/settings" },
     ];

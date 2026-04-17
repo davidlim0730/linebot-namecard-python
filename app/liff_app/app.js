@@ -32,7 +32,7 @@ import Header from "./components/Header.js?v=3";
 
 function parseRoute(hash) {
   const path = hash.replace(/^#/, "") || "/";
-  if (path === "/crm")      return { view: "CrmInput", tab: "cards" };
+  if (path === "/crm")      return { view: "CrmInput", tab: "crm" };
   if (path === "/deals")    return { view: "DealList", tab: "crm" };
   if (path === "/actions")  return { view: "ActionList", tab: "cards" };
   if (path === "/pipeline") return { view: "ManagerPipeline", tab: "cards" };
@@ -143,16 +143,16 @@ const App = defineComponent({
         else currentView = h(CardList);
 
         // 只在主視圖展示 BottomNav（避免在詳細頁面疊加）
-        const showBottomNav = view === "CardList" || view === "TeamPage" || view === "SettingsPage" || view === "CrmInput" || view === "DealList" || view === "ActionList" || view === "ManagerPipeline" || view === "ProductList";
+        const showBottomNav = view === "CardList" || view === "TeamPage" || view === "SettingsPage" || view === "DealList" || view === "ActionList" || view === "ManagerPipeline" || view === "ProductList";
 
         // Determine header config based on route
         const headerConfigs = {
           "CardList":        { title: "🗂️ 名片", actionLabel: null },
-          "DealList":        { title: "📊 CRM", actionLabel: "+ 新增", onAction: () => { window.location.hash = "#/crm"; } },
+          "DealList":        { title: "📊 CRM", actionLabel: "✏️ 記錄", onAction: () => { window.location.hash = "#/crm"; }, secondaryActionLabel: "📌 待辦", onSecondaryAction: () => { window.location.hash = "#/actions"; } },
           "ActionList":      { title: "📌 待辦", actionLabel: null },
           "TeamPage":        { title: "👥 團隊", actionLabel: null },
           "SettingsPage":    { title: "⚙️ 設定", actionLabel: null },
-          "CrmInput":        { title: "新增 CRM 記錄" },
+          "CrmInput":        { title: "✏️ 記錄互動", showBack: true },
           "DealDetail":      { title: "案件詳情", showBack: true },
           "CardDetail":      { title: "名片詳情", showBack: true },
           "CardEdit":        { title: "編輯名片", showBack: true },
@@ -166,6 +166,8 @@ const App = defineComponent({
           showBack: hConfig.showBack || false,
           actionLabel: hConfig.actionLabel || "",
           onAction: hConfig.onAction || null,
+          secondaryActionLabel: hConfig.secondaryActionLabel || "",
+          onSecondaryAction: hConfig.onSecondaryAction || null,
         });
 
         return h("div", { style: "display:flex;flex-direction:column;height:100vh;" }, [

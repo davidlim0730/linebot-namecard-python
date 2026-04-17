@@ -7,6 +7,8 @@ export default defineComponent({
     showBack: { type: Boolean, default: false },
     actionLabel: { type: String, default: "" },
     onAction: { type: Function, default: null },
+    secondaryActionLabel: { type: String, default: "" },
+    onSecondaryAction: { type: Function, default: null },
   },
   setup(props) {
     return () => h("div", { class: "app-header" }, [
@@ -17,6 +19,9 @@ export default defineComponent({
           }, "←")
         : null,
       h("div", { class: "app-header-title" }, props.title),
+      props.secondaryActionLabel && props.onSecondaryAction
+        ? h("button", { class: "app-header-action", style: "background:var(--color-bg-3);color:var(--color-text-primary);margin-right:6px;", onClick: props.onSecondaryAction }, props.secondaryActionLabel)
+        : null,
       props.actionLabel && props.onAction
         ? h("button", {
             class: "app-header-action",
