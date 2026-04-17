@@ -9,7 +9,7 @@ import CrmInput from "./views/CrmInput.js";
 import DealList from "./views/DealList.js";
 import DealDetail from "./views/DealDetail.js";
 import ActionList from "./views/ActionList.js";
-import ContactCrm from "./views/ContactCrm.js";
+import ContactCrm from "./views/ContactCrm.js?v=2";
 import ManagerPipeline from "./views/ManagerPipeline.js";
 import ProductList from "./views/ProductList.js";
 import TeamPage from "./views/TeamPage.js";
