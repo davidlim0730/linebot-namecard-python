@@ -740,7 +740,8 @@ async def handle_join(event: MessageEvent, user_id: str, msg: str):
         return
 
     from datetime import datetime
-    if datetime.fromisoformat(invite['expires_at']) < datetime.now():
+    expires_at = invite.get('expires_at')
+    if expires_at and datetime.fromisoformat(expires_at) < datetime.now():
         await line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(text='此邀請碼已過期，請請管理員重新產生。'))

@@ -58,3 +58,4 @@ firebase-debug.log
 
 # Git worktrees
 .worktrees/
+.superpowers/
