@@ -31,7 +31,7 @@ import Header from "./components/Header.js?v=3";
 // #/cards/:id/edit → CardEdit
 
 function parseRoute(hash) {
-  const path = hash.replace(/^#/, "") || "/";
+  const path = (hash.replace(/^#/, "") || "/").split("?")[0];
   if (path === "/crm")      return { view: "CrmInput", tab: "crm" };
   if (path === "/deals")    return { view: "DealList", tab: "crm" };
   if (path === "/actions")  return { view: "ActionList", tab: "crm" };

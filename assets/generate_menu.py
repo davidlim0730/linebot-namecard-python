@@ -18,10 +18,20 @@ draw.line([(833, 80), (833, height - 80)], fill=line_color, width=3)
 draw.line([(1666, 80), (1666, height - 80)], fill=line_color, width=3)
 draw.line([(80, row_mid), (width - 80, row_mid)], fill=line_color, width=3)
 
-try:
-    font_main = ImageFont.truetype("/System/Library/Fonts/PingFang.ttc", 68, index=0)
-    font_sub  = ImageFont.truetype("/System/Library/Fonts/PingFang.ttc", 40, index=0)
-except IOError:
+FONT_CANDIDATES = [
+    "/System/Library/Fonts/STHeiti Medium.ttc",
+    "/System/Library/Fonts/STHeiti Light.ttc",
+    "/Library/Fonts/Arial Unicode.ttf",
+]
+font_main = font_sub = None
+for path in FONT_CANDIDATES:
+    try:
+        font_main = ImageFont.truetype(path, 68)
+        font_sub  = ImageFont.truetype(path, 40)
+        break
+    except IOError:
+        continue
+if font_main is None:
     font_main = ImageFont.load_default()
     font_sub  = ImageFont.load_default()
 
