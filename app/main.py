@@ -103,7 +103,7 @@ async def admin_spa_catchall(full_path: str):
     index = _admin_dist / "index.html"
     if index.exists():
         return FileResponse(str(index))
-    return {"detail": "Admin app not built"}
+    return JSONResponse({"detail": "Admin app not built"}, status_code=404)
 
 
 @app.on_event("startup")

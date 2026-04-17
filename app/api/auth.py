@@ -1,12 +1,12 @@
 import asyncio
 import secrets
 import httpx
+from urllib.parse import urlencode
 from fastapi import APIRouter, Cookie, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
 from app import config
 from app.services.auth_service import create_access_token, create_refresh_token, verify_token
 from app.firebase_utils import ensure_user_org, get_user_org_id
-import jwt
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -16,6 +16,8 @@ LINE_VERIFY_URL = "https://api.line.me/oauth2/v2.1/verify"
 
 
 def _get_callback_url(request: Request) -> str:
+    if config.CLOUD_RUN_URL:
+        return f"{config.CLOUD_RUN_URL.rstrip('/')}/api/auth/line-login/callback"
     base = str(request.base_url).rstrip("/")
     return f"{base}/api/auth/line-login/callback"
 
@@ -29,13 +31,13 @@ async def authorize(request: Request, response: Response):
         max_age=300
     )
     callback_url = _get_callback_url(request)
-    params = (
-        f"response_type=code"
-        f"&client_id={config.LINE_LOGIN_CHANNEL_ID}"
-        f"&redirect_uri={callback_url}"
-        f"&state={state}"
-        f"&scope=profile+openid"
-    )
+    params = urlencode({
+        "response_type": "code",
+        "client_id": config.LINE_LOGIN_CHANNEL_ID,
+        "redirect_uri": callback_url,
+        "state": state,
+        "scope": "profile openid",
+    })
     return RedirectResponse(f"{LINE_AUTHORIZE_URL}?{params}")
 
 
@@ -50,7 +52,7 @@ async def callback(
     if not line_login_state or state != line_login_state:
         raise HTTPException(status_code=400, detail="CSRF state mismatch")
 
-    response.delete_cookie("line_login_state")
+    response.delete_cookie("line_login_state", httponly=True, secure=True, samesite="lax")
 
     if not code:
         raise HTTPException(status_code=400, detail="Missing authorization code")
@@ -137,5 +139,5 @@ async def refresh(admin_refresh: str = Cookie(default="")):
 
 @router.post("/logout")
 async def logout(response: Response):
-    response.delete_cookie("admin_refresh")
+    response.delete_cookie("admin_refresh", httponly=True, secure=True, samesite="lax")
     return {"ok": True}
