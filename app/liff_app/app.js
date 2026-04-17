@@ -7,6 +7,7 @@ import CardDetail from "./views/CardDetail.js?v=3";
 import CardEdit from "./views/CardEdit.js?v=3";
 import CrmInput from "./views/CrmInput.js?v=3";
 import DealList from "./views/DealList.js?v=3";
+import DealCreate from "./views/DealCreate.js?v=3";
 import DealDetail from "./views/DealDetail.js?v=3";
 import ActionList from "./views/ActionList.js?v=3";
 import ContactCrm from "./views/ContactCrm.js?v=3";
@@ -34,6 +35,7 @@ function parseRoute(hash) {
   const path = (hash.replace(/^#/, "") || "/").split("?")[0];
   if (path === "/crm")      return { view: "CrmInput", tab: "crm" };
   if (path === "/deals")    return { view: "DealList", tab: "crm" };
+  if (path === "/deals/new") return { view: "DealCreate", tab: "crm" };
   if (path === "/actions")  return { view: "ActionList", tab: "crm" };
   if (path === "/pipeline") return { view: "ManagerPipeline", tab: "cards" };
   if (path === "/products") return { view: "ProductList", tab: "cards" };
@@ -131,6 +133,7 @@ const App = defineComponent({
         let currentView;
         if (view === "CrmInput")       currentView = h(CrmInput);
         else if (view === "DealList")       currentView = h(DealList);
+        else if (view === "DealCreate")     currentView = h(DealCreate);
         else if (view === "DealDetail")     currentView = h(DealDetail, { dealId });
         else if (view === "ActionList")     currentView = h(ActionList);
         else if (view === "ContactCrm")     currentView = h(ContactCrm, { cardId });
@@ -153,6 +156,7 @@ const App = defineComponent({
           "TeamPage":        { title: "👥 團隊", actionLabel: null },
           "SettingsPage":    { title: "⚙️ 設定", actionLabel: null },
           "CrmInput":        { title: "📊 CRM", actionLabel: null },
+          "DealCreate":      { title: "新增案件", showBack: true },
           "DealDetail":      { title: "案件詳情", showBack: true },
           "CardDetail":      { title: "名片詳情", showBack: true },
           "CardEdit":        { title: "編輯名片", showBack: true },

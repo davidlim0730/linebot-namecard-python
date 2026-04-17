@@ -96,6 +96,10 @@ export function getDeal(id) {
   return request("GET", `/api/v1/deals/${id}`);
 }
 
+export function createDeal(body) {
+  return request("POST", `/api/v1/deals`, body);
+}
+
 export function updateDeal(id, body) {
   return request("PUT", `/api/v1/deals/${id}`, body);
 }

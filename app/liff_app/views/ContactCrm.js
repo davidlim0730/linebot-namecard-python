@@ -88,12 +88,12 @@ export default defineComponent({
             h("div", { class: "crm-section-title" }, `📊 案件 (${deals.length})`),
             h("button", {
               onClick: () => {
-                const params = new URLSearchParams();
-                if (displayName) params.set("contact", displayName);
+                const p = new URLSearchParams();
                 const company = entity?.company || (contact?.contact_type === "company" ? contact.legal_name : null);
-                if (company) params.set("company", company);
-                if (entity?.id) params.set("contact_id", entity.id);
-                window.location.hash = `#/crm?${params.toString()}`;
+                if (company) p.set("company", company);
+                if (displayName) p.set("contact", displayName);
+                if (entity?.id) p.set("contact_id", entity.id);
+                window.location.hash = `#/deals/new?${p.toString()}`;
               },
               style: "padding:6px 12px;background:var(--color-primary);color:#fff;border:none;border-radius:var(--radius-md);font-size:12px;cursor:pointer;",
             }, "+ 新增案件"),

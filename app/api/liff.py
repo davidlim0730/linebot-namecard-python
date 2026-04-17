@@ -12,6 +12,10 @@ from ..models.org import UserContext
 from ..models.card import CardUpdate
 from ..repositories.org_repo import OrgRepo
 from ..repositories.card_repo import CardRepo
+from ..repositories.deal_repo import DealRepo
+from ..repositories.stakeholder_repo import StakeholderRepo
+from ..models.deal import DealCreate
+from ..models.stakeholder import StakeholderCreate
 from .. import firebase_utils
 
 router = APIRouter(prefix="/api")
@@ -27,6 +31,8 @@ _card_repo = CardRepo()
 card_service = CardService(_card_repo, org_repo)
 tag_service = TagService(org_repo, _card_repo)
 org_service = OrgService(org_repo)
+_deal_repo = DealRepo()
+_stakeholder_repo = StakeholderRepo()
 
 
 async def get_current_user(
@@ -194,6 +200,37 @@ async def update_member_role(
     except OrgPermError:
         raise HTTPException(status_code=403, detail={"error": "forbidden"})
     return {"ok": True}
+
+
+@router.post("/v1/deals")
+async def create_deal(
+    body: DealCreate,
+    user: UserContext = Depends(get_current_user),
+):
+    import uuid
+    from datetime import datetime, timezone
+    deal_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    deal_data = body.model_dump()
+    deal_data.update({"id": deal_id, "org_id": user.org_id, "added_by": user.user_id, "created_at": now, "updated_at": now})
+    _deal_repo.save(user.org_id, deal_id, deal_data)
+    return {"id": deal_id, **deal_data}
+
+
+@router.post("/v1/deals/{deal_id}/stakeholders")
+async def add_stakeholder_liff(
+    deal_id: str,
+    body: StakeholderCreate,
+    user: UserContext = Depends(get_current_user),
+):
+    import uuid
+    from datetime import datetime, timezone
+    sk_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    sk_data = body.model_dump()
+    sk_data.update({"id": sk_id, "org_id": user.org_id, "deal_id": deal_id, "added_by": user.user_id, "created_at": now})
+    _stakeholder_repo.save(user.org_id, sk_id, sk_data)
+    return {"id": sk_id, **sk_data}
 
 
 @router.post("/v1/org/invite")
