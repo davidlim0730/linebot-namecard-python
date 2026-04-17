@@ -34,7 +34,7 @@ function parseRoute(hash) {
   const path = hash.replace(/^#/, "") || "/";
   if (path === "/crm")      return { view: "CrmInput", tab: "crm" };
   if (path === "/deals")    return { view: "DealList", tab: "crm" };
-  if (path === "/actions")  return { view: "ActionList", tab: "cards" };
+  if (path === "/actions")  return { view: "ActionList", tab: "crm" };
   if (path === "/pipeline") return { view: "ManagerPipeline", tab: "cards" };
   if (path === "/products") return { view: "ProductList", tab: "cards" };
   if (path === "/team")     return { view: "TeamPage", tab: "team" };
@@ -143,16 +143,16 @@ const App = defineComponent({
         else currentView = h(CardList);
 
         // 只在主視圖展示 BottomNav（避免在詳細頁面疊加）
-        const showBottomNav = view === "CardList" || view === "TeamPage" || view === "SettingsPage" || view === "DealList" || view === "ActionList" || view === "ManagerPipeline" || view === "ProductList";
+        const showBottomNav = view === "CardList" || view === "TeamPage" || view === "SettingsPage" || view === "DealList" || view === "ActionList" || view === "CrmInput" || view === "ManagerPipeline" || view === "ProductList";
 
         // Determine header config based on route
         const headerConfigs = {
           "CardList":        { title: "🗂️ 名片", actionLabel: null },
-          "DealList":        { title: "📊 CRM", actionLabel: "✏️ 記錄", onAction: () => { window.location.hash = "#/crm"; }, secondaryActionLabel: "📌 待辦", onSecondaryAction: () => { window.location.hash = "#/actions"; } },
-          "ActionList":      { title: "📌 待辦", actionLabel: null },
+          "DealList":        { title: "📊 CRM", actionLabel: null },
+          "ActionList":      { title: "📊 CRM", actionLabel: null },
           "TeamPage":        { title: "👥 團隊", actionLabel: null },
           "SettingsPage":    { title: "⚙️ 設定", actionLabel: null },
-          "CrmInput":        { title: "✏️ 記錄互動", showBack: true },
+          "CrmInput":        { title: "📊 CRM", actionLabel: null },
           "DealDetail":      { title: "案件詳情", showBack: true },
           "CardDetail":      { title: "名片詳情", showBack: true },
           "CardEdit":        { title: "編輯名片", showBack: true },
@@ -170,8 +170,21 @@ const App = defineComponent({
           onSecondaryAction: hConfig.onSecondaryAction || null,
         });
 
+        const crmViews = ["CrmInput", "DealList", "ActionList"];
+        const crmTabBar = crmViews.includes(view) ? h("div", {
+          style: "display:flex;background:#fff;border-bottom:1px solid #eee;flex-shrink:0;"
+        }, [
+          { label: "📊 案件", hash: "#/deals", active: view === "DealList" },
+          { label: "✏️ 記錄", hash: "#/crm",   active: view === "CrmInput" },
+          { label: "📌 待辦", hash: "#/actions", active: view === "ActionList" },
+        ].map(tab => h("a", {
+          href: tab.hash,
+          style: `flex:1;text-align:center;padding:10px 4px;font-size:13px;font-weight:${tab.active ? "600" : "400"};color:${tab.active ? "var(--color-primary)" : "#666"};text-decoration:none;border-bottom:${tab.active ? "2px solid var(--color-primary)" : "2px solid transparent"};`
+        }, tab.label))) : null;
+
         return h("div", { style: "display:flex;flex-direction:column;height:100vh;" }, [
           headerEl,
+          crmTabBar,
           h("div", { style: "flex:1;overflow-y:auto;padding-bottom:" + (showBottomNav ? "56px" : "0") + ";" }, currentView),
           h(Toast, {
             message: toastMessage.value,
