@@ -1,7 +1,7 @@
 // CardDetail.js — read-only card detail with edit button
 // Migrated to template syntax with design system tokens
 import { defineComponent, ref, onMounted, onUnmounted, inject } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
-import { getCard } from "../api.js";
+import { getCard } from "../api.js?v=3";
 
 const FIELD_LABELS = {
   name: "姓名",
@@ -83,12 +83,6 @@ export default defineComponent({
 
   template: `
     <div class="page-container card-detail-page">
-      <!-- Header with back button -->
-      <div class="card-detail-header">
-        <button class="back-button" @click="goBack">←</button>
-        <h2 class="header-title">名片詳情</h2>
-      </div>
-
       <!-- Loading state -->
       <div v-if="loading" class="card-detail-loading">
         <p>載入中...</p>
@@ -136,44 +130,6 @@ export default defineComponent({
   `,
 
   styles: `
-    /* ========== Header ========== */
-    .card-detail-header {
-      display: flex;
-      align-items: center;
-      gap: var(--space-12);
-      padding: var(--space-16) 0;
-      margin-bottom: var(--space-24);
-      border-bottom: 1px solid var(--color-bg-3);
-    }
-
-    .back-button {
-      background: none;
-      border: none;
-      color: var(--color-primary);
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 20px;
-      padding: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 32px;
-      height: 32px;
-      transition: opacity 0.2s ease;
-    }
-
-    .back-button:active {
-      opacity: 0.7;
-    }
-
-    .header-title {
-      font-family: var(--font-headline);
-      font-size: 16px;
-      font-weight: 700;
-      color: var(--color-text-primary);
-      margin: 0;
-    }
-
     /* ========== Card Header Info ========== */
     .card-header-info {
       text-align: center;
