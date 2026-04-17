@@ -1,6 +1,6 @@
 // ContactCrm.js — CRM view of a single contact (deals + activities + actions)
 import { defineComponent, ref, onMounted, h } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
-import { getContactCrm, listContactActivities, listContactActions } from "../api.js?v=2";
+import { getContactCrm, listContactActivities, listContactActions } from "../api.js?v=3";
 
 export default defineComponent({
   name: "ContactCrm",
@@ -29,44 +29,38 @@ export default defineComponent({
     function renderDeal(deal) {
       return h("div", {
         key: deal.id,
+        class: "left-accent-deal",
+        style: "cursor:pointer;",
         onClick: () => { window.location.hash = `#/deals/${deal.id}`; },
-        style: `
-          background:#f5f5f5;
-          padding:12px;
-          border-radius:4px;
-          margin-bottom:8px;
-          cursor:pointer;
-          border-left:3px solid #0084FF;
-        `,
       }, [
-        h("div", { style: "font-weight:600;font-size:14px;" }, deal.entity_name || "（無名稱）"),
-        h("div", { style: "font-size:13px;color:#666;margin-top:4px;" }, [
-          `Stage: ${deal.stage}`,
-          deal.est_value ? ` · NT$${deal.est_value.toLocaleString()}` : "",
-        ]),
-        deal.status_summary ? h("div", { style: "font-size:12px;color:#999;margin-top:4px;" }, deal.status_summary) : null,
+        h("div", { style: "font-weight:600;font-size:14px;color:var(--color-text-primary);" }, deal.entity_name || "（無名稱）"),
+        h("div", { style: "font-size:12px;color:var(--color-text-secondary);margin-top:4px;display:flex;gap:8px;" }, [
+          h("span", { class: "stage-badge" }, `Stage: ${deal.stage}`),
+          deal.est_value ? h("span", {}, `NT$${deal.est_value.toLocaleString()}`) : null,
+        ].filter(Boolean)),
+        deal.status_summary ? h("div", { style: "font-size:12px;color:var(--color-text-secondary);margin-top:4px;" }, deal.status_summary) : null,
       ].filter(Boolean));
     }
 
     function renderActivity(a) {
       return h("div", {
         key: a.id,
-        style: "padding:12px;border-left:3px solid #31A24C;background:#f5f5f5;border-radius:4px;margin-bottom:8px;",
+        class: "left-accent-activity",
       }, [
         a.ai_key_insights && a.ai_key_insights.length > 0
-          ? h("div", { style: "font-size:13px;color:#555;" }, a.ai_key_insights.map((ins, i) => h("div", { key: i }, `• ${ins}`)))
-          : h("div", { style: "font-size:13px;color:#888;" }, a.raw_transcript?.slice(0, 80) || "（無內容）"),
-        h("div", { style: "font-size:12px;color:#999;margin-top:4px;" }, new Date(a.created_at).toLocaleString()),
+          ? h("div", { style: "font-size:13px;color:var(--color-text-primary);" }, a.ai_key_insights.map((ins, i) => h("div", { key: i }, `• ${ins}`)))
+          : h("div", { style: "font-size:13px;color:var(--color-text-secondary);" }, a.raw_transcript?.slice(0, 80) || "（無內容）"),
+        h("div", { style: "font-size:12px;color:var(--color-text-secondary);margin-top:4px;" }, new Date(a.created_at).toLocaleString()),
       ]);
     }
 
     function renderAction(a) {
       return h("div", {
         key: a.id,
-        style: "padding:12px;border-left:3px solid #FF6B00;background:#f5f5f5;border-radius:4px;margin-bottom:8px;",
+        class: "left-accent-action",
       }, [
-        h("div", { style: "font-size:13px;color:#555;font-weight:500;" }, a.task_detail || "（無詳細內容）"),
-        a.due_date ? h("div", { style: "font-size:12px;color:#999;margin-top:4px;" }, `到期：${a.due_date}`) : null,
+        h("div", { style: "font-size:13px;color:var(--color-text-primary);font-weight:500;" }, a.task_detail || "（無詳細內容）"),
+        a.due_date ? h("div", { style: "font-size:12px;color:var(--color-text-secondary);margin-top:4px;" }, `到期：${a.due_date}`) : null,
       ].filter(Boolean));
     }
 
@@ -81,45 +75,41 @@ export default defineComponent({
       const displayName = entity?.display_name || entity?.name || "（無名稱）";
       const subTitle = [entity?.title, entity?.company || (contact && contact.contact_type === "company" ? contact.legal_name : null)].filter(Boolean).join(" · ");
 
-      return h("div", { style: "background:#fff;" }, [
-        // Header
-        h("div", { style: "padding:16px;background:#0084FF;color:#fff;" }, [
-          h("button", {
-            onClick: () => { history.back(); },
-            style: "background:rgba(255,255,255,0.2);color:#fff;border:none;padding:8px 12px;border-radius:4px;cursor:pointer;margin-bottom:12px;display:block;",
-          }, "← 返回"),
-          h("h1", { style: "margin:0;font-size:22px;" }, displayName),
-          subTitle ? h("div", { style: "font-size:14px;opacity:0.85;margin-top:4px;" }, subTitle) : null,
+      return h("div", { style: "background:var(--color-surface);padding-bottom:24px;" }, [
+        // Hero row
+        h("div", { style: "padding:16px;background:var(--color-primary);color:#fff;" }, [
+          h("div", { style: "font-size:20px;font-weight:700;" }, displayName),
+          subTitle ? h("div", { style: "font-size:13px;opacity:0.85;margin-top:4px;" }, subTitle) : null,
         ]),
 
         // Deals section
-        h("div", { style: "padding:16px;border-bottom:1px solid #eee;" }, [
+        h("div", { class: "card", style: "margin:12px 16px;" }, [
           h("div", { style: "display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;" }, [
-            h("h3", { style: "margin:0;font-size:15px;" }, `📊 案件 (${deals.length})`),
+            h("div", { class: "crm-section-title" }, `📊 案件 (${deals.length})`),
             h("button", {
               onClick: () => { window.location.hash = `#/crm`; },
-              style: "padding:6px 12px;background:#0084FF;color:#fff;border:none;border-radius:4px;font-size:12px;cursor:pointer;",
+              style: "padding:6px 12px;background:var(--color-primary);color:#fff;border:none;border-radius:var(--radius-md);font-size:12px;cursor:pointer;",
             }, "+ 新增案件"),
           ]),
           deals.length > 0
             ? deals.map(d => renderDeal(d))
-            : h("div", { style: "color:#999;font-size:13px;" }, "尚無案件"),
+            : h("div", { class: "empty-state-text" }, "尚無案件"),
         ]),
 
         // Activities section
-        h("div", { style: "padding:16px;border-bottom:1px solid #eee;" }, [
-          h("h3", { style: "margin:0 0 12px 0;font-size:15px;" }, `💬 互動紀錄 (${activities.value.length})`),
+        h("div", { class: "card", style: "margin:0 16px 12px;" }, [
+          h("div", { class: "crm-section-title", style: "margin-bottom:12px;" }, `💬 互動紀錄 (${activities.value.length})`),
           activities.value.length > 0
             ? activities.value.map(a => renderActivity(a))
-            : h("div", { style: "color:#999;font-size:13px;" }, "尚無互動紀錄"),
+            : h("div", { class: "empty-state-text" }, "尚無互動紀錄"),
         ]),
 
         // Actions section
-        h("div", { style: "padding:16px;" }, [
-          h("h3", { style: "margin:0 0 12px 0;font-size:15px;" }, `📌 待辦事項 (${actions.value.length})`),
+        h("div", { class: "card", style: "margin:0 16px 12px;" }, [
+          h("div", { class: "crm-section-title", style: "margin-bottom:12px;" }, `📌 待辦事項 (${actions.value.length})`),
           actions.value.length > 0
             ? actions.value.map(a => renderAction(a))
-            : h("div", { style: "color:#999;font-size:13px;" }, "尚無待辦事項"),
+            : h("div", { class: "empty-state-text" }, "尚無待辦事項"),
         ]),
       ]);
     };

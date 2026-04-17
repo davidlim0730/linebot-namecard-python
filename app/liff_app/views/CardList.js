@@ -1,6 +1,6 @@
 // CardList.js — 名片列表頁面，包含搜尋、篩選、Skeleton loading、FAB
 import { defineComponent, ref, onMounted, onUnmounted, inject } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
-import { listCards, listTags } from "../api.js";
+import { listCards, listTags } from "../api.js?v=3";
 
 export default defineComponent({
   name: "CardList",

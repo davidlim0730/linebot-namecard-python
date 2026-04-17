@@ -1,21 +1,22 @@
 // app.js — LIFF init, auth, and hash router
 import { createApp, defineComponent, ref, onMounted, onUnmounted, h, computed } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
-import { login, isAuthenticated } from "./api.js?v=2";
-import Login from "./views/Login.js";
-import CardList from "./views/CardList.js";
-import CardDetail from "./views/CardDetail.js";
-import CardEdit from "./views/CardEdit.js";
-import CrmInput from "./views/CrmInput.js";
-import DealList from "./views/DealList.js";
-import DealDetail from "./views/DealDetail.js";
-import ActionList from "./views/ActionList.js";
-import ContactCrm from "./views/ContactCrm.js?v=2";
-import ManagerPipeline from "./views/ManagerPipeline.js";
-import ProductList from "./views/ProductList.js";
-import TeamPage from "./views/TeamPage.js";
-import SettingsPage from "./views/SettingsPage.js";
-import BottomNav from "./components/BottomNav.js";
-import Toast from "./components/Toast.js";
+import { login, isAuthenticated } from "./api.js?v=3";
+import Login from "./views/Login.js?v=3";
+import CardList from "./views/CardList.js?v=3";
+import CardDetail from "./views/CardDetail.js?v=3";
+import CardEdit from "./views/CardEdit.js?v=3";
+import CrmInput from "./views/CrmInput.js?v=3";
+import DealList from "./views/DealList.js?v=3";
+import DealDetail from "./views/DealDetail.js?v=3";
+import ActionList from "./views/ActionList.js?v=3";
+import ContactCrm from "./views/ContactCrm.js?v=3";
+import ManagerPipeline from "./views/ManagerPipeline.js?v=3";
+import ProductList from "./views/ProductList.js?v=3";
+import TeamPage from "./views/TeamPage.js?v=3";
+import SettingsPage from "./views/SettingsPage.js?v=3";
+import BottomNav from "./components/BottomNav.js?v=3";
+import Toast from "./components/Toast.js?v=3";
+import Header from "./components/Header.js?v=3";
 
 // ---- Router ----
 // #/               → CardList
@@ -144,8 +145,32 @@ const App = defineComponent({
         // 只在主視圖展示 BottomNav（避免在詳細頁面疊加）
         const showBottomNav = view === "CardList" || view === "TeamPage" || view === "SettingsPage" || view === "CrmInput" || view === "DealList" || view === "ActionList" || view === "ManagerPipeline" || view === "ProductList";
 
+        // Determine header config based on route
+        const headerConfigs = {
+          "CardList":        { title: "🗂️ 名片", actionLabel: null },
+          "DealList":        { title: "📊 CRM", actionLabel: "+ 新增", onAction: () => { window.location.hash = "#/crm"; } },
+          "ActionList":      { title: "📌 待辦", actionLabel: null },
+          "TeamPage":        { title: "👥 團隊", actionLabel: null },
+          "SettingsPage":    { title: "⚙️ 設定", actionLabel: null },
+          "CrmInput":        { title: "新增 CRM 記錄" },
+          "DealDetail":      { title: "案件詳情", showBack: true },
+          "CardDetail":      { title: "名片詳情", showBack: true },
+          "CardEdit":        { title: "編輯名片", showBack: true },
+          "ContactCrm":      { title: "聯絡人 CRM", showBack: true },
+          "ManagerPipeline": { title: "Pipeline", showBack: true },
+          "ProductList":     { title: "產品管理", showBack: true },
+        };
+        const hConfig = headerConfigs[view] || { title: "" };
+        const headerEl = h(Header, {
+          title: hConfig.title || "",
+          showBack: hConfig.showBack || false,
+          actionLabel: hConfig.actionLabel || "",
+          onAction: hConfig.onAction || null,
+        });
+
         return h("div", { style: "display:flex;flex-direction:column;height:100vh;" }, [
-          h("div", { style: "flex:1;overflow-y:auto;" }, currentView),
+          headerEl,
+          h("div", { style: "flex:1;overflow-y:auto;padding-bottom:" + (showBottomNav ? "56px" : "0") + ";" }, currentView),
           h(Toast, {
             message: toastMessage.value,
             type: toastType.value,

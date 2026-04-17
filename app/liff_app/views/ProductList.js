@@ -1,6 +1,6 @@
 // ProductList.js — admin product management
 import { defineComponent, ref, onMounted, h } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
-import { listProducts, createProduct, updateProduct } from "../api.js";
+import { listProducts, createProduct, updateProduct } from "../api.js?v=3";
 
 const STATUS_OPTIONS = ["Active", "Beta", "Sunset"];
 const STATUS_COLORS  = { Active: "#31A24C", Beta: "#0084FF", Sunset: "#999" };

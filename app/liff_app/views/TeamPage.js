@@ -1,6 +1,6 @@
 // TeamPage.js — 團隊資訊頁
 import { defineComponent, ref, onMounted, inject } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
-import { getOrg, listOrgMembers, generateInviteCode } from "../api.js";
+import { getOrg, listOrgMembers, generateInviteCode } from "../api.js?v=3";
 
 export default defineComponent({
   name: "TeamPage",
@@ -51,10 +51,6 @@ export default defineComponent({
 
   template: `
     <div class="page-container team-page">
-      <div class="page-header">
-        <h2 class="page-title">團隊</h2>
-      </div>
-
       <div v-if="loading" class="loading-state">
         <p>載入中...</p>
       </div>

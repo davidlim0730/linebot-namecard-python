@@ -1,5 +1,6 @@
 // SettingsPage.js — 設定頁
 import { defineComponent, ref, onMounted, inject } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
+import { clearToken } from "../api.js?v=3";
 
 export default defineComponent({
   name: "SettingsPage",
@@ -22,7 +23,7 @@ export default defineComponent({
     }
 
     function logout() {
-      localStorage.removeItem("liff_token");
+      clearToken();
       liff.logout();
       window.location.reload();
     }
@@ -33,30 +34,24 @@ export default defineComponent({
   },
 
   template: `
-    <div class="page-container settings-page">
-      <div class="page-header">
-        <h2 class="page-title">設定</h2>
-      </div>
-
+    <div class="page-container" style="background: var(--color-surface)">
       <div v-if="loading" class="loading-state">
         <p>載入中...</p>
       </div>
 
       <template v-else>
         <!-- 用戶資訊 -->
-        <div class="settings-section">
-          <div class="user-card" v-if="userInfo">
-            <img v-if="userInfo.pictureUrl" :src="userInfo.pictureUrl" class="user-avatar-img" />
-            <div v-else class="user-avatar-placeholder">{{ (userInfo.displayName || "U").charAt(0) }}</div>
-            <div class="user-info">
-              <div class="user-name">{{ userInfo.displayName }}</div>
-              <div class="user-id">LINE ID: {{ userInfo.userId?.slice(0, 10) }}...</div>
-            </div>
+        <div class="card" v-if="userInfo">
+          <img v-if="userInfo.pictureUrl" :src="userInfo.pictureUrl" class="user-avatar-img" />
+          <div v-else class="user-avatar-placeholder">{{ (userInfo.displayName || "U").charAt(0) }}</div>
+          <div class="user-info">
+            <div class="user-name">{{ userInfo.displayName }}</div>
+            <div class="user-id">LINE ID: {{ userInfo.userId?.slice(0, 10) }}...</div>
           </div>
         </div>
 
-        <!-- 設定項目 -->
-        <div class="settings-section">
+        <!-- 關於 -->
+        <div class="card">
           <h3 class="section-title">關於</h3>
           <div class="settings-list">
             <div class="settings-item">
@@ -67,8 +62,8 @@ export default defineComponent({
         </div>
 
         <!-- 登出 -->
-        <div class="settings-section">
-          <button class="logout-button" @click="logout">登出</button>
+        <div class="card">
+          <button class="invite-button" @click="logout">登出</button>
         </div>
       </template>
     </div>
