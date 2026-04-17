@@ -1,6 +1,11 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import AuthGuard from './auth/AuthGuard'
+import AppShell from './components/layout/AppShell'
 import Login from './pages/Login'
 import AuthCallback from './pages/AuthCallback'
+import DealsKanban from './pages/DealsKanban'
+import ContactsTable from './pages/ContactsTable'
+import NotFound from './pages/NotFound'
 
 export default function App() {
   return (
@@ -8,7 +13,19 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/auth-callback" element={<AuthCallback />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route
+          path="/"
+          element={
+            <AuthGuard>
+              <AppShell />
+            </AuthGuard>
+          }
+        >
+          <Route index element={<Navigate to="/deals" replace />} />
+          <Route path="deals" element={<DealsKanban />} />
+          <Route path="contacts" element={<ContactsTable />} />
+          <Route path="*" element={<NotFound />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   )
