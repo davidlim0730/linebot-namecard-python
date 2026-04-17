@@ -1,22 +1,22 @@
 // app.js — LIFF init, auth, and hash router
 import { createApp, defineComponent, ref, onMounted, onUnmounted, h, computed } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
-import { login, isAuthenticated } from "./api.js?v=2";
-import Login from "./views/Login.js";
-import CardList from "./views/CardList.js";
-import CardDetail from "./views/CardDetail.js";
-import CardEdit from "./views/CardEdit.js";
-import CrmInput from "./views/CrmInput.js";
-import DealList from "./views/DealList.js";
-import DealDetail from "./views/DealDetail.js";
-import ActionList from "./views/ActionList.js";
-import ContactCrm from "./views/ContactCrm.js?v=2";
-import ManagerPipeline from "./views/ManagerPipeline.js";
-import ProductList from "./views/ProductList.js";
-import TeamPage from "./views/TeamPage.js";
-import SettingsPage from "./views/SettingsPage.js";
-import BottomNav from "./components/BottomNav.js";
-import Toast from "./components/Toast.js";
-import Header from "./components/Header.js";
+import { login, isAuthenticated } from "./api.js?v=3";
+import Login from "./views/Login.js?v=3";
+import CardList from "./views/CardList.js?v=3";
+import CardDetail from "./views/CardDetail.js?v=3";
+import CardEdit from "./views/CardEdit.js?v=3";
+import CrmInput from "./views/CrmInput.js?v=3";
+import DealList from "./views/DealList.js?v=3";
+import DealDetail from "./views/DealDetail.js?v=3";
+import ActionList from "./views/ActionList.js?v=3";
+import ContactCrm from "./views/ContactCrm.js?v=3";
+import ManagerPipeline from "./views/ManagerPipeline.js?v=3";
+import ProductList from "./views/ProductList.js?v=3";
+import TeamPage from "./views/TeamPage.js?v=3";
+import SettingsPage from "./views/SettingsPage.js?v=3";
+import BottomNav from "./components/BottomNav.js?v=3";
+import Toast from "./components/Toast.js?v=3";
+import Header from "./components/Header.js?v=3";
 
 // ---- Router ----
 // #/               → CardList

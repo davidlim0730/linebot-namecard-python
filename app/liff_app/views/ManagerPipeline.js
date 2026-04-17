@@ -1,6 +1,6 @@
 // ManagerPipeline.js — admin-only team pipeline overview
 import { defineComponent, ref, onMounted, h } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
-import { getPipelineSummary } from "../api.js";
+import { getPipelineSummary } from "../api.js?v=3";
 
 const STAGE_LABELS = {
   "0":"洽詢","1":"報價","2":"提案","3":"評估","4":"談判","5":"決策","6":"簽約","成交":"成交","失敗":"失敗",
