@@ -1,6 +1,6 @@
 // ContactCrm.js — CRM view of a single contact (deals + activities + actions)
 import { defineComponent, ref, onMounted, h } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
-import { getContactCrm, listContactActivities, listContactActions } from "../api.js";
+import { getContactCrm, listContactActivities, listContactActions } from "../api.js?v=2";
 
 export default defineComponent({
   name: "ContactCrm",

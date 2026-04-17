@@ -1,6 +1,6 @@
 // app.js — LIFF init, auth, and hash router
 import { createApp, defineComponent, ref, onMounted, onUnmounted, h, computed } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
-import { login, isAuthenticated } from "./api.js";
+import { login, isAuthenticated } from "./api.js?v=2";
 import Login from "./views/Login.js";
 import CardList from "./views/CardList.js";
 import CardDetail from "./views/CardDetail.js";
