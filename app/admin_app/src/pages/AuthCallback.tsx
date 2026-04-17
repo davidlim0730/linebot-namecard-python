@@ -1,3 +1,6 @@
+// Auth flow: backend sends access_token in URL hash fragment after LINE OAuth callback.
+// On hard refresh, useAuth bootstraps the token via /api/auth/me (HttpOnly cookie).
+// This dual-path is intentional per spec §4 of the auth design.
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../auth/AuthStore'
