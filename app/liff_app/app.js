@@ -16,6 +16,7 @@ import TeamPage from "./views/TeamPage.js";
 import SettingsPage from "./views/SettingsPage.js";
 import BottomNav from "./components/BottomNav.js";
 import Toast from "./components/Toast.js";
+import Header from "./components/Header.js";
 
 // ---- Router ----
 // #/               → CardList
@@ -144,8 +145,32 @@ const App = defineComponent({
         // 只在主視圖展示 BottomNav（避免在詳細頁面疊加）
         const showBottomNav = view === "CardList" || view === "TeamPage" || view === "SettingsPage" || view === "CrmInput" || view === "DealList" || view === "ActionList" || view === "ManagerPipeline" || view === "ProductList";
 
+        // Determine header config based on route
+        const headerConfigs = {
+          "CardList":        { title: "🗂️ 名片", actionLabel: null },
+          "DealList":        { title: "📊 CRM", actionLabel: "+ 新增", onAction: () => { window.location.hash = "#/crm"; } },
+          "ActionList":      { title: "📌 待辦", actionLabel: null },
+          "TeamPage":        { title: "👥 團隊", actionLabel: null },
+          "SettingsPage":    { title: "⚙️ 設定", actionLabel: null },
+          "CrmInput":        { title: "新增 CRM 記錄", showBack: true },
+          "DealDetail":      { title: "案件詳情", showBack: true },
+          "CardDetail":      { title: "名片詳情", showBack: true },
+          "CardEdit":        { title: "編輯名片", showBack: true },
+          "ContactCrm":      { title: "聯絡人 CRM", showBack: true },
+          "ManagerPipeline": { title: "Pipeline", showBack: true },
+          "ProductList":     { title: "產品管理", showBack: true },
+        };
+        const hConfig = headerConfigs[view] || { title: "" };
+        const headerEl = h(Header, {
+          title: hConfig.title || "",
+          showBack: hConfig.showBack || false,
+          actionLabel: hConfig.actionLabel || "",
+          onAction: hConfig.onAction || null,
+        });
+
         return h("div", { style: "display:flex;flex-direction:column;height:100vh;" }, [
-          h("div", { style: "flex:1;overflow-y:auto;" }, currentView),
+          headerEl,
+          h("div", { style: "flex:1;overflow-y:auto;padding-bottom:" + (showBottomNav ? "56px" : "0") + ";" }, currentView),
           h(Toast, {
             message: toastMessage.value,
             type: toastType.value,
