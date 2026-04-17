@@ -47,6 +47,8 @@ SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD")
 # LIFF / JWT 設定
 # =====================
 JWT_SECRET = os.environ.get("JWT_SECRET", "dev-secret-change-in-production")
+LINE_LOGIN_CHANNEL_ID: str = os.environ.get("LINE_LOGIN_CHANNEL_ID", "")
+LINE_LOGIN_CHANNEL_SECRET: str = os.environ.get("LINE_LOGIN_CHANNEL_SECRET", "")
 LIFF_CHANNEL_ID = os.environ.get("LIFF_CHANNEL_ID", "")
 LIFF_ID = os.environ.get("LIFF_ID", "")
 
