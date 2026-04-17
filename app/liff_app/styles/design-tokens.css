@@ -47,6 +47,7 @@
   --color-surface: #F8FAFC;     /* Page background alias */
   --color-card: #ffffff;        /* Card background alias */
   --radius-card: 12px;          /* Card border radius */
+  --radius-btn: 8px;             /* Button border radius */
   --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.08);  /* Card shadow */
 
   /* ====== LAYOUT ====== */
