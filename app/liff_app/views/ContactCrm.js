@@ -80,12 +80,19 @@ export default defineComponent({
         h("div", { style: "padding:16px;background:var(--color-primary);color:#fff;" }, [
           h("div", { style: "font-size:20px;font-weight:700;" }, displayName),
           subTitle ? h("div", { style: "font-size:13px;opacity:0.85;margin-top:4px;" }, subTitle) : null,
-        ]),
-
-        // Deals section
-        h("div", { class: "card", style: "margin:12px 16px;" }, [
-          h("div", { style: "display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;" }, [
-            h("div", { class: "crm-section-title" }, `📊 案件 (${deals.length})`),
+          // Quick action buttons
+          h("div", { style: "display:flex;gap:8px;margin-top:12px;" }, [
+            h("button", {
+              onClick: () => {
+                const p = new URLSearchParams();
+                const company = entity?.company || (contact?.contact_type === "company" ? contact.legal_name : null);
+                if (company) p.set("company", company);
+                if (displayName) p.set("contact", displayName);
+                if (entity?.id) p.set("contact_id", entity.id);
+                window.location.hash = `#/crm?${p.toString()}`;
+              },
+              style: "flex:1;padding:8px;background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.4);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;",
+            }, "✏️ 記錄互動"),
             h("button", {
               onClick: () => {
                 const p = new URLSearchParams();
@@ -95,8 +102,15 @@ export default defineComponent({
                 if (entity?.id) p.set("contact_id", entity.id);
                 window.location.hash = `#/deals/new?${p.toString()}`;
               },
-              style: "padding:6px 12px;background:var(--color-primary);color:#fff;border:none;border-radius:var(--radius-md);font-size:12px;cursor:pointer;",
-            }, "+ 新增案件"),
+              style: "flex:1;padding:8px;background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.4);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;",
+            }, "📊 新增案件"),
+          ]),
+        ]),
+
+        // Deals section
+        h("div", { class: "card", style: "margin:12px 16px;" }, [
+          h("div", { style: "margin-bottom:12px;" }, [
+            h("div", { class: "crm-section-title" }, `📊 案件 (${deals.length})`),
           ]),
           deals.length > 0
             ? deals.map(d => renderDeal(d))

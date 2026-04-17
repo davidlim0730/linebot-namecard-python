@@ -75,12 +75,12 @@ export function setCardTags(id, tag_names) {
 }
 
 // CRM endpoints
-export function crmParse(raw_text) {
-  return request("POST", "/api/v1/crm/parse", { raw_text });
+export function crmParse(raw_text, context_hint = null) {
+  return request("POST", "/api/v1/crm/parse", { raw_text, context_hint });
 }
 
-export function crmConfirm(confirmed_data) {
-  return request("POST", "/api/v1/crm/confirm", { confirmed_data });
+export function crmConfirm(confirmed_data, context_hint = null) {
+  return request("POST", "/api/v1/crm/confirm", { confirmed_data, context_hint });
 }
 
 // Deal endpoints

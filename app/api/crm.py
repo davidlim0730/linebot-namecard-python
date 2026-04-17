@@ -56,12 +56,20 @@ async def get_current_user(
 
 # ---- Request models ----
 
+class ContextHint(BaseModel):
+    contact_id: Optional[str] = None   # pre-known contact FK
+    contact_name: Optional[str] = None  # display name for prompt injection
+    entity_name: Optional[str] = None   # company name for deal/activity/action
+
+
 class ParseRequest(BaseModel):
     raw_text: str
+    context_hint: Optional[ContextHint] = None
 
 
 class ConfirmRequest(BaseModel):
     confirmed_data: dict
+    context_hint: Optional[ContextHint] = None
 
 
 class StakeholderCreate(BaseModel):
@@ -85,7 +93,8 @@ class ProductUpdate(BaseModel):
 @router.post("/crm/parse")
 async def crm_parse(body: ParseRequest, user: UserContext = Depends(get_current_user)):
     """Phase 1: NLU only — parse raw text, return structured preview."""
-    result = parse_text(body.raw_text, user.org_id)
+    hint = body.context_hint.model_dump() if body.context_hint else None
+    result = parse_text(body.raw_text, user.org_id, context_hint=hint)
     return {"parsed": result.model_dump()}
 
 
@@ -101,6 +110,11 @@ async def crm_confirm(body: ConfirmRequest, user: UserContext = Depends(get_curr
         "contacts_upserted": [],
     }
 
+    # context_hint：從 LIFF 頁面帶入的已知 contact，直接 bypass 模糊比對
+    hint = body.context_hint
+    hint_contact_id = hint.contact_id if hint else None
+    hint_entity_name = hint.entity_name if hint else None
+
     # 前置：批次解析所有 entity_name → contact_id，避免重複建立
     all_entity_names = set()
     for pipeline in data.get("pipelines", []):
@@ -115,7 +129,13 @@ async def crm_confirm(body: ConfirmRequest, user: UserContext = Depends(get_curr
 
     entity_contact_map: dict = {}
     for entity_name in all_entity_names:
-        contact_id = auto_link_or_create_contact(entity_name, user.org_id)
+        # 若 hint 提供了 contact_id 且 entity_name 符合，直接使用，不重新建立
+        if hint_contact_id and hint_entity_name and (
+            entity_name == hint_entity_name or hint_entity_name in entity_name or entity_name in hint_entity_name
+        ):
+            contact_id = hint_contact_id
+        else:
+            contact_id = auto_link_or_create_contact(entity_name, user.org_id)
         entity_contact_map[entity_name] = contact_id
         if contact_id not in written["contacts_upserted"]:
             written["contacts_upserted"].append(contact_id)

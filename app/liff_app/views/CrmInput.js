@@ -5,14 +5,20 @@ import { crmParse, crmConfirm } from "../api.js?v=3";
 export default defineComponent({
   name: "CrmInput",
   setup() {
-    // Pre-fill from URL query params (contact, company, contact_id)
+    // Context hint from URL query params (passed from ContactCrm / CardDetail)
     const urlParams = new URLSearchParams(window.location.hash.split("?")[1] || "");
-    const prefillContact = urlParams.get("contact") || "";
-    const prefillCompany = urlParams.get("company") || "";
+    const prefillContact   = urlParams.get("contact")    || "";
+    const prefillCompany   = urlParams.get("company")    || "";
     const prefillContactId = urlParams.get("contact_id") || "";
 
-    const prefillHint = [prefillContact, prefillCompany].filter(Boolean).join("／");
-    const rawText = ref(prefillHint ? `[${prefillHint}] ` : "");
+    // context_hint sent to backend NLU
+    const contextHint = (prefillContact || prefillCompany || prefillContactId) ? {
+      contact_name: prefillContact || null,
+      entity_name:  prefillCompany || null,
+      contact_id:   prefillContactId || null,
+    } : null;
+
+    const rawText = ref("");
     const parseResult = ref(null);
     const parseLoading = ref(false);
     const parseError = ref("");
@@ -25,7 +31,7 @@ export default defineComponent({
       parseResult.value = null;
       parseLoading.value = true;
       try {
-        const res = await crmParse(rawText.value);
+        const res = await crmParse(rawText.value, contextHint);
         parseResult.value = res.parsed;
       } catch (e) {
         parseError.value = e.message || "解析失敗";
@@ -39,7 +45,7 @@ export default defineComponent({
       confirmed.value = null;
       confirmLoading.value = true;
       try {
-        const res = await crmConfirm(parseResult.value);
+        const res = await crmConfirm(parseResult.value, contextHint);
         confirmed.value = res.written;
         parseResult.value = null; // Clear results after confirm
         rawText.value = "";
@@ -51,12 +57,25 @@ export default defineComponent({
     }
 
     function renderInput() {
+      const contactLabel = [prefillContact, prefillCompany].filter(Boolean).join(" ／ ");
+      const placeholder = prefillCompany
+        ? `記錄與 ${prefillCompany} 的互動，例如：\n剛見完${prefillContact || "對方"}，談到合作方向...`
+        : "輸入您想記錄的內容，例如：\n剛見完王總，談到新產品 X 的可行性...";
+
       return h("div", { style: "padding:var(--space-16);" }, [
+        // Context banner
+        contextHint ? h("div", {
+          class: "card left-accent-deal",
+          style: "margin-bottom:14px;padding:10px 14px;font-size:13px;color:var(--color-text-secondary);display:flex;align-items:center;gap:8px;"
+        }, [
+          h("span", { style: "font-size:16px;" }, "👤"),
+          h("span", {}, contactLabel || prefillContactId),
+        ]) : null,
         h("h2", { style: "margin:0 0 12px 0;font-size:18px;color:var(--color-text-primary);" }, "💬 輸入"),
         h("textarea", {
           value: rawText.value,
           onInput: (e) => { rawText.value = e.target.value; },
-          placeholder: "輸入您想記錄的內容，例如：\n剛見完王總，談到新產品 X 的可行性...",
+          placeholder,
           style: `border:1px solid var(--color-bg-3);border-radius:var(--radius-md);padding:var(--space-12);width:100%;font-size:15px;font-family:var(--font-body);min-height:120px;resize:vertical;box-sizing:border-box;`,
         }),
         h("button", {

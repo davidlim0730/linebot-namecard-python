@@ -125,7 +125,7 @@ def _validate_and_normalize_dates(data: dict) -> dict:
     return data
 
 
-def parse_text(raw_text: str, org_id: str) -> NLUResult:
+def parse_text(raw_text: str, org_id: str, context_hint: dict = None) -> NLUResult:
     """
     Parse a natural language CRM report via Gemini NLU.
     Injects grounding context (known companies + products) into the prompt.
@@ -144,10 +144,22 @@ def parse_text(raw_text: str, org_id: str) -> NLUResult:
     grounding_context = build_grounding_context(org_id)
     today = date.today().isoformat()
 
+    hint_section = ""
+    if context_hint:
+        lines = ["**Context Hint（從名片頁面帶入，請優先使用）**："]
+        if context_hint.get("contact_name"):
+            lines.append(f"- 聯絡人姓名：{context_hint['contact_name']}")
+        if context_hint.get("entity_name"):
+            lines.append(f"- 公司／客戶名稱（請用此值作為 entity_name）：{context_hint['entity_name']}")
+        if context_hint.get("contact_id"):
+            lines.append(f"- contact_id（已確認，勿自行比對）：{context_hint['contact_id']}")
+        hint_section = "\n" + "\n".join(lines) + "\n"
+
     prompt_parts = [
         system_prompt,
         f"\n\n**系統提供的今天日期**：{today}\n",
         f"\n**Grounding Context**：\n{grounding_context}\n",
+        hint_section,
         f"\n**BD 輸入**：\n{raw_text}",
     ]
 
