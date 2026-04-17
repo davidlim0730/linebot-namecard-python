@@ -1,5 +1,6 @@
 // SettingsPage.js — 設定頁
 import { defineComponent, ref, onMounted, inject } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
+import { clearToken } from "../api.js?v=3";
 
 export default defineComponent({
   name: "SettingsPage",
@@ -22,7 +23,7 @@ export default defineComponent({
     }
 
     function logout() {
-      localStorage.removeItem("jwt");
+      clearToken();
       liff.logout();
       window.location.reload();
     }

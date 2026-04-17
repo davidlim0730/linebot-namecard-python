@@ -152,7 +152,7 @@ const App = defineComponent({
           "ActionList":      { title: "📌 待辦", actionLabel: null },
           "TeamPage":        { title: "👥 團隊", actionLabel: null },
           "SettingsPage":    { title: "⚙️ 設定", actionLabel: null },
-          "CrmInput":        { title: "新增 CRM 記錄", showBack: true },
+          "CrmInput":        { title: "新增 CRM 記錄" },
           "DealDetail":      { title: "案件詳情", showBack: true },
           "CardDetail":      { title: "名片詳情", showBack: true },
           "CardEdit":        { title: "編輯名片", showBack: true },
