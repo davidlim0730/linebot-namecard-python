@@ -77,6 +77,7 @@ export function useUpdateContact() {
       apiPut<{ ok: boolean }>(`/v1/contacts/${id}`, update),
     onMutate: async ({ id, update }) => {
       await qc.cancelQueries({ queryKey: ['contacts'] })
+      await qc.cancelQueries({ queryKey: ['contact', id] })
       const previous = qc.getQueryData<Contact[]>(['contacts'])
       qc.setQueryData<Contact[]>(['contacts'], old =>
         old?.map(c => c.id === id ? { ...c, ...update } : c) ?? []

@@ -46,6 +46,7 @@ class Contact(BaseModel):
     source: Optional[str] = None
     added_by: str
     created_at: str
+    updated_at: Optional[str] = None
 
 
 class ContactCreate(BaseModel):

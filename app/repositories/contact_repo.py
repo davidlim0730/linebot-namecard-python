@@ -98,7 +98,7 @@ class ContactRepo:
         allowed = {
             "contact_type", "display_name", "legal_name", "aliases",
             "parent_company_id", "title", "phone", "mobile", "email",
-            "line_id", "memo", "source", "added_by", "created_at"
+            "line_id", "memo", "source", "added_by", "created_at", "updated_at"
         }
         filtered = {k: v for k, v in d.items() if k in allowed}
         if "aliases" in filtered:

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { X, Loader2, Check } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useParseCrm, useConfirmCrm, ParsedResult } from '../../api/dealDetail'
 
 interface Props {
@@ -13,8 +14,9 @@ export default function NluInputModal({ open, onClose }: Props) {
   const [step, setStep] = useState<Step>('input')
   const [text, setText] = useState('')
   const [parsed, setParsed] = useState<ParsedResult | null>(null)
+  const qc = useQueryClient()
   const parseCrm = useParseCrm()
-  const confirmCrm = useConfirmCrm('')
+  const confirmCrm = useConfirmCrm('__global__')
 
   if (!open) return null
 
@@ -22,6 +24,8 @@ export default function NluInputModal({ open, onClose }: Props) {
     setText('')
     setParsed(null)
     setStep('input')
+    parseCrm.reset()
+    confirmCrm.reset()
     onClose()
   }
 
@@ -42,6 +46,8 @@ export default function NluInputModal({ open, onClose }: Props) {
     setStep('confirming')
     try {
       await confirmCrm.mutateAsync({ confirmedData: parsed })
+      qc.invalidateQueries({ queryKey: ['contacts'] })
+      qc.invalidateQueries({ queryKey: ['deals'] })
       handleClose()
     } catch {
       setStep('preview')

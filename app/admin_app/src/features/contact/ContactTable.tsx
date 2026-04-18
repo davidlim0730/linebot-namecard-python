@@ -56,7 +56,7 @@ function InlineCell({ value, field, contactId, multiline = false }: InlineCellPr
 
   return (
     <span
-      onClick={() => { setDraft(value ?? ''); setEditing(true) }}
+      onClick={e => { e.stopPropagation(); setDraft(value ?? ''); setEditing(true) }}
       className="block w-full text-sm text-gray-700 cursor-pointer hover:bg-gray-50 rounded px-1 py-0.5 min-h-[1.5rem]"
     >
       {value ?? <span className="text-gray-300">—</span>}
