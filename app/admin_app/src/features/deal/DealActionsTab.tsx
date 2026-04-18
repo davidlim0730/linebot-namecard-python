@@ -11,9 +11,14 @@ export default function DealActionsTab({ dealId, actions }: Props) {
   const updateAction = useUpdateAction(dealId)
 
   const sorted = [...actions].sort((a, b) => {
+    // completed always last
     if (a.status === 'completed' && b.status !== 'completed') return 1
     if (a.status !== 'completed' && b.status === 'completed') return -1
-    return (a.due_date ?? '').localeCompare(b.due_date ?? '')
+    // among pending: null due_date goes to bottom
+    if (!a.due_date && !b.due_date) return 0
+    if (!a.due_date) return 1
+    if (!b.due_date) return -1
+    return a.due_date < b.due_date ? -1 : 1
   })
 
   const toggle = (action: Action) => {

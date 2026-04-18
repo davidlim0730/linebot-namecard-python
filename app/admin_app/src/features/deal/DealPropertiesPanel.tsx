@@ -16,25 +16,20 @@ function FieldRow({
   label,
   value,
   field,
-  dealId,
   type = 'text',
+  onSave,
 }: {
   label: string
   value: string | number | null
   field: EditableField
-  dealId: string
   type?: 'text' | 'number' | 'date' | 'select'
+  onSave: (field: EditableField, value: string) => void
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(String(value ?? ''))
-  const updateDeal = useUpdateDeal()
 
   const save = () => {
-    const update: DealUpdate = {}
-    if (field === 'est_value') update.est_value = draft ? Number(draft) : null
-    else if (field === 'stage') update.stage = draft
-    else (update as Record<string, unknown>)[field] = draft
-    updateDeal.mutate({ id: dealId, update })
+    onSave(field, draft)
     setEditing(false)
   }
 
@@ -136,15 +131,24 @@ function AddStakeholderForm({ dealId, onDone }: { dealId: string; onDone: () => 
 
 export default function DealPropertiesPanel({ deal, stakeholders }: Props) {
   const [showAddStakeholder, setShowAddStakeholder] = useState(false)
+  const updateDeal = useUpdateDeal()
+
+  const handleFieldSave = (field: EditableField, rawValue: string) => {
+    const update: DealUpdate = {}
+    if (field === 'est_value') update.est_value = rawValue ? Number(rawValue) : null
+    else if (field === 'stage') update.stage = rawValue
+    else (update as Record<string, unknown>)[field] = rawValue
+    updateDeal.mutate({ id: deal.id, update })
+  }
 
   return (
     <div className="bg-white rounded-xl p-5 space-y-1">
       <h2 className="text-sm font-semibold text-gray-500 mb-3">📝 屬性</h2>
-      <FieldRow label="Company" value={deal.entity_name} field="entity_name" dealId={deal.id} />
-      <FieldRow label="Stage" value={deal.stage} field="stage" dealId={deal.id} type="select" />
-      <FieldRow label="金額" value={deal.est_value} field="est_value" dealId={deal.id} type="number" />
-      <FieldRow label="下一步" value={deal.next_action_date} field="next_action_date" dealId={deal.id} type="date" />
-      <FieldRow label="摘要" value={deal.status_summary} field="status_summary" dealId={deal.id} />
+      <FieldRow label="Company" value={deal.entity_name} field="entity_name" onSave={handleFieldSave} />
+      <FieldRow label="Stage" value={deal.stage} field="stage" type="select" onSave={handleFieldSave} />
+      <FieldRow label="金額" value={deal.est_value} field="est_value" type="number" onSave={handleFieldSave} />
+      <FieldRow label="下一步" value={deal.next_action_date} field="next_action_date" type="date" onSave={handleFieldSave} />
+      <FieldRow label="摘要" value={deal.status_summary} field="status_summary" onSave={handleFieldSave} />
 
       <div className="mt-4 pt-3 border-t border-gray-100">
         <div className="flex items-center justify-between mb-2">

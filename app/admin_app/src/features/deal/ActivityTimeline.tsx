@@ -21,9 +21,11 @@ interface Props {
 }
 
 export default function ActivityTimeline({ activities }: Props) {
-  const sorted = [...activities].sort((a, b) =>
-    (b.created_at ?? '').localeCompare(a.created_at ?? '')
-  )
+  const sorted = [...activities].sort((a, b) => {
+    if (!b.created_at) return -1
+    if (!a.created_at) return 1
+    return b.created_at > a.created_at ? 1 : -1
+  })
 
   if (sorted.length === 0) {
     return (

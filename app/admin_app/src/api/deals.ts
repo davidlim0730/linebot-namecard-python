@@ -38,17 +38,22 @@ export function useUpdateDeal() {
       apiPut<{ ok: boolean }>(`/v1/deals/${id}`, update),
     onMutate: async ({ id, update }) => {
       await qc.cancelQueries({ queryKey: ['deals'] })
+      await qc.cancelQueries({ queryKey: ['deal', id] })
       const previous = qc.getQueryData<Deal[]>(['deals'])
+      const prevDeal = qc.getQueryData<Deal>(['deal', id])
       qc.setQueryData<Deal[]>(['deals'], old =>
         old?.map(d => d.id === id ? { ...d, ...update } : d) ?? []
       )
-      return { previous }
+      qc.setQueryData<Deal>(['deal', id], old => old ? { ...old, ...update } : old)
+      return { previous, prevDeal }
     },
     onError: (_err, _vars, context) => {
       if (context?.previous) qc.setQueryData(['deals'], context.previous)
+      if (context?.prevDeal) qc.setQueryData(['deal', _vars.id], context.prevDeal)
     },
-    onSettled: () => {
+    onSettled: (_data, _err, variables) => {
       qc.invalidateQueries({ queryKey: ['deals'] })
+      qc.invalidateQueries({ queryKey: ['deal', variables.id] })
     },
   })
 }

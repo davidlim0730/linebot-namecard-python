@@ -7,14 +7,12 @@ import DealPropertiesPanel from '../features/deal/DealPropertiesPanel'
 import ActivityTimeline from '../features/deal/ActivityTimeline'
 import DealActionsTab from '../features/deal/DealActionsTab'
 import NluInlineInput from '../features/deal/NluInlineInput'
-import { useQueryClient } from '@tanstack/react-query'
 
 type RightTab = 'timeline' | 'actions'
 
 export default function DealDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const qc = useQueryClient()
   const [rightTab, setRightTab] = useState<RightTab>('timeline')
 
   const dealId = id ?? ''
@@ -40,8 +38,7 @@ export default function DealDetail() {
   }
 
   const handleNluSuccess = () => {
-    qc.invalidateQueries({ queryKey: ['deal-activities', dealId] })
-    qc.invalidateQueries({ queryKey: ['deal-actions', dealId] })
+    // Invalidation handled by useConfirmCrm onSuccess
   }
 
   return (
