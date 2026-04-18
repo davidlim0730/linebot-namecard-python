@@ -13,8 +13,8 @@ export default function DealKanban({ deals }: DealKanbanProps) {
   const [activeTab, setActiveTab] = useState<'active' | 'won' | 'lost'>('active')
   const updateDeal = useUpdateDeal()
 
-  const pipelineIds = PIPELINE_STAGES.map(s => s.id)
-  const activeDeals = deals.filter(d => pipelineIds.includes(d.stage as typeof pipelineIds[number]))
+  const pipelineIdSet = new Set<string>(PIPELINE_STAGES.map(s => s.id))
+  const activeDeals = deals.filter(d => pipelineIdSet.has(d.stage))
   const wonDeals = deals.filter(d => d.stage === '成交')
   const lostDeals = deals.filter(d => d.stage === '失敗')
 

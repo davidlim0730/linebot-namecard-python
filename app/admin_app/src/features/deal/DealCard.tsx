@@ -14,7 +14,9 @@ interface DealCardProps {
 
 function ownerInitial(userId: string | null): string {
   if (!userId) return '?'
-  return userId.slice(-2).toUpperCase()
+  // LINE user IDs are opaque — use hash-based letter as visual identity placeholder
+  const hash = userId.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
+  return String.fromCharCode(65 + (hash % 26))
 }
 
 function ownerColor(userId: string | null): string {

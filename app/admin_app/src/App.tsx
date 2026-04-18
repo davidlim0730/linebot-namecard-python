@@ -4,6 +4,7 @@ import AppShell from './components/layout/AppShell'
 import Login from './pages/Login'
 import AuthCallback from './pages/AuthCallback'
 import DealsKanban from './pages/DealsKanban'
+import DealDetail from './pages/DealDetail'
 import ContactsTable from './pages/ContactsTable'
 import NotFound from './pages/NotFound'
 
@@ -23,6 +24,7 @@ export default function App() {
         >
           <Route index element={<Navigate to="/deals" replace />} />
           <Route path="deals" element={<DealsKanban />} />
+          <Route path="deals/:id" element={<DealDetail />} />
           <Route path="contacts" element={<ContactsTable />} />
           <Route path="*" element={<NotFound />} />
         </Route>
