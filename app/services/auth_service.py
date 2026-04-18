@@ -1,7 +1,41 @@
 import httpx
-import jwt as pyjwt
+import jwt
+import secrets
 from datetime import datetime, timezone, timedelta
+from app.config import JWT_SECRET
 from ..models.org import UserContext
+
+ALGORITHM = "HS256"
+ACCESS_TTL_HOURS = 2
+REFRESH_TTL_DAYS = 30
+
+
+def create_access_token(user_id: str, org_id: str, role: str) -> str:
+    payload = {
+        "sub": user_id,
+        "org_id": org_id,
+        "role": role,
+        "exp": datetime.now(timezone.utc) + timedelta(hours=ACCESS_TTL_HOURS),
+        "type": "access",
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=ALGORITHM)
+
+
+def create_refresh_token(user_id: str) -> str:
+    payload = {
+        "sub": user_id,
+        "exp": datetime.now(timezone.utc) + timedelta(days=REFRESH_TTL_DAYS),
+        "jti": secrets.token_urlsafe(16),
+        "type": "refresh",
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=ALGORITHM)
+
+
+def verify_token(token: str, token_type: str = "access") -> dict:
+    payload = jwt.decode(token, JWT_SECRET, algorithms=[ALGORITHM])
+    if payload.get("type") != token_type:
+        raise jwt.InvalidTokenError("Wrong token type")
+    return payload
 
 
 class AuthError(Exception):
@@ -34,12 +68,12 @@ class AuthService:
             "exp": datetime.now(timezone.utc) + timedelta(hours=1),
             "iat": datetime.now(timezone.utc),
         }
-        return pyjwt.encode(payload, self.jwt_secret, algorithm="HS256")
+        return jwt.encode(payload, self.jwt_secret, algorithm="HS256")
 
     def verify_jwt(self, token: str) -> UserContext:
         try:
-            payload = pyjwt.decode(token, self.jwt_secret, algorithms=["HS256"])
-        except pyjwt.PyJWTError as e:
+            payload = jwt.decode(token, self.jwt_secret, algorithms=["HS256"])
+        except jwt.PyJWTError as e:
             raise AuthError(f"Invalid JWT: {e}")
         return UserContext(
             user_id=payload["sub"],

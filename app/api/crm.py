@@ -7,6 +7,7 @@ from .. import config
 from ..models.org import UserContext
 from ..models.deal import DealUpdate
 from ..models.action import ActionUpdate
+from ..models.card import ContactCreate, ContactUpdate
 from ..services.auth_service import AuthService, AuthError
 from ..services.nlu_service import parse_text, auto_link_or_create_contact
 from ..services.deal_service import DealService
@@ -350,6 +351,64 @@ async def pipeline_summary(user: UserContext = Depends(get_current_user)):
 
 
 # ---- Contact-centric endpoints ----
+
+@router.get("/contacts")
+async def list_contacts(user: UserContext = Depends(get_current_user)):
+    contacts = contact_repo.list_all(user.org_id)
+    return [c.model_dump() for c in contacts.values()]
+
+
+@router.get("/contacts/{contact_id}")
+async def get_contact(contact_id: str, user: UserContext = Depends(get_current_user)):
+    contact = contact_repo.get(user.org_id, contact_id)
+    if not contact:
+        raise HTTPException(status_code=404, detail={"error": "not_found"})
+    return contact.model_dump()
+
+
+@router.put("/contacts/{contact_id}")
+async def update_contact(
+    contact_id: str,
+    body: ContactUpdate,
+    user: UserContext = Depends(get_current_user),
+):
+    contact = contact_repo.get(user.org_id, contact_id)
+    if not contact:
+        raise HTTPException(status_code=404, detail={"error": "not_found"})
+    update_fields = body.model_dump(exclude_none=True)
+    if update_fields:
+        from datetime import datetime
+        update_fields["updated_at"] = datetime.utcnow().isoformat() + "Z"
+        contact_repo.update(user.org_id, contact_id, update_fields)
+    return {"ok": True}
+
+
+@router.post("/contacts")
+async def create_contact(
+    body: ContactCreate,
+    user: UserContext = Depends(get_current_user),
+):
+    import uuid
+    from datetime import datetime
+    contact_id = str(uuid.uuid4())
+    now = datetime.utcnow().isoformat() + "Z"
+    data = {
+        "org_id": user.org_id,
+        "contact_type": body.contact_type,
+        "display_name": body.display_name,
+        "source": body.source,
+        "added_by": user.user_id,
+        "created_at": now,
+    }
+    optional_fields = ["legal_name", "aliases", "parent_company_id", "title",
+                       "phone", "mobile", "email", "line_id", "memo"]
+    for f in optional_fields:
+        v = getattr(body, f, None)
+        if v is not None:
+            data[f] = v
+    contact_repo.save(user.org_id, contact_id, data)
+    return {"id": contact_id, "ok": True}
+
 
 @router.get("/contacts/{contact_id}/activities")
 async def list_contact_activities(
