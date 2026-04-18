@@ -91,19 +91,28 @@ from pathlib import Path
 from fastapi.responses import FileResponse
 
 _admin_dist = Path(__file__).parent / "admin_app" / "dist"
-if _admin_dist.exists():
-    app.mount("/admin", StaticFiles(directory=str(_admin_dist), html=True), name="admin_app")
 
 
-@app.get("/admin/{full_path:path}", include_in_schema=False)
-async def admin_spa_catchall(full_path: str):
-    file = _admin_dist / full_path
-    if file.is_file():
-        return FileResponse(str(file))
+def _serve_admin(sub: str = ""):
+    if sub:
+        f = _admin_dist / sub
+        if f.is_file():
+            return FileResponse(str(f))
     index = _admin_dist / "index.html"
     if index.exists():
         return FileResponse(str(index))
     return JSONResponse({"detail": "Admin app not built"}, status_code=404)
+
+
+@app.get("/admin", include_in_schema=False)
+@app.get("/admin/", include_in_schema=False)
+async def admin_root():
+    return _serve_admin()
+
+
+@app.get("/admin/{full_path:path}", include_in_schema=False)
+async def admin_spa_catchall(full_path: str):
+    return _serve_admin(full_path)
 
 
 @app.on_event("startup")
