@@ -3,7 +3,7 @@ import dayjs from 'dayjs'
 import { Edit2, Plus } from 'lucide-react'
 import { Deal, DealUpdate, useUpdateDeal } from '../../api/deals'
 import { Stakeholder, useAddStakeholder } from '../../api/dealDetail'
-import { ALL_STAGES } from '../../constants/stages'
+import { ALL_STAGES, getStage } from '../../constants/stages'
 
 interface Props {
   deal: Deal
@@ -18,12 +18,14 @@ function FieldRow({
   field,
   type = 'text',
   onSave,
+  displayValue,
 }: {
   label: string
   value: string | number | null
   field: EditableField
   type?: 'text' | 'number' | 'date' | 'select'
   onSave: (field: EditableField, value: string) => void
+  displayValue?: string
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(String(value ?? ''))
@@ -76,7 +78,7 @@ function FieldRow({
           className="flex-1 text-sm text-gray-700 cursor-pointer hover:bg-gray-50 px-1 rounded group-hover:text-gray-900 flex items-center gap-1"
           onClick={() => { setDraft(String(value ?? '')); setEditing(true) }}
         >
-          {String(display)}
+          {displayValue ?? String(display)}
           <Edit2 size={11} className="text-gray-300 group-hover:text-gray-400 shrink-0" />
         </span>
       )}
@@ -145,7 +147,7 @@ export default function DealPropertiesPanel({ deal, stakeholders }: Props) {
     <div className="bg-white rounded-xl p-5 space-y-1">
       <h2 className="text-sm font-semibold text-gray-500 mb-3">📝 屬性</h2>
       <FieldRow label="Company" value={deal.entity_name} field="entity_name" onSave={handleFieldSave} />
-      <FieldRow label="Stage" value={deal.stage} field="stage" type="select" onSave={handleFieldSave} />
+      <FieldRow label="Stage" value={deal.stage} field="stage" type="select" onSave={handleFieldSave} displayValue={getStage(deal.stage)?.label ?? deal.stage} />
       <FieldRow label="金額" value={deal.est_value} field="est_value" type="number" onSave={handleFieldSave} />
       <FieldRow label="下一步" value={deal.next_action_date} field="next_action_date" type="date" onSave={handleFieldSave} />
       <FieldRow label="摘要" value={deal.status_summary} field="status_summary" onSave={handleFieldSave} />

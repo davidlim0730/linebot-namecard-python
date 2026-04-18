@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Loader2, Check } from 'lucide-react'
 import { useParseCrm, useConfirmCrm, ContextHint, ParsedResult } from '../../api/dealDetail'
+import NluPreview from '../nlu/NluPreview'
 
 interface Props {
   dealId: string
@@ -73,17 +74,9 @@ export default function NluInlineInput({ dealId, contextHint, onSuccess }: Props
       />
 
       {step === 'preview' && parsed && (
-        <div className="mt-3 bg-white rounded-lg p-3 border border-gray-200 text-xs space-y-2">
-          <p className="font-semibold text-gray-600">解析結果：</p>
-          {(parsed.pipelines as unknown[]).length > 0 && (
-            <p className="text-blue-600">📊 案件：{JSON.stringify(parsed.pipelines)}</p>
-          )}
-          {(parsed.interactions as unknown[]).length > 0 && (
-            <p className="text-green-600">💬 互動：{(parsed.interactions as Array<{raw_transcript?: string}>).map(i => i.raw_transcript).join(', ')}</p>
-          )}
-          {(parsed.actions as unknown[]).length > 0 && (
-            <p className="text-orange-600">✅ 待辦：{(parsed.actions as Array<{task_detail?: string}>).map(a => a.task_detail).join(', ')}</p>
-          )}
+        <div className="mt-3 bg-white rounded-lg p-3 border border-gray-200">
+          <p className="text-xs font-semibold text-gray-600 mb-2">解析結果：</p>
+          <NluPreview parsed={parsed} />
         </div>
       )}
 

@@ -8,7 +8,7 @@ import {
 } from '@tanstack/react-table'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import { Search } from 'lucide-react'
+import { Search, Edit2 } from 'lucide-react'
 import { Contact, ContactUpdate, useUpdateContact } from '../../api/contacts'
 
 dayjs.extend(relativeTime)
@@ -38,7 +38,7 @@ function InlineCell({ value, field, contactId, multiline = false }: InlineCellPr
   }
 
   if (editing) {
-    const props = {
+    const sharedProps = {
       value: draft,
       onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setDraft(e.target.value),
       onBlur: save,
@@ -49,18 +49,21 @@ function InlineCell({ value, field, contactId, multiline = false }: InlineCellPr
       autoFocus: true,
       className: 'w-full text-sm border border-green-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-green-400',
     }
-    return multiline
-      ? <textarea {...props} rows={2} />
-      : <input {...props} />
+    return multiline ? <textarea {...sharedProps} rows={2} /> : <input {...sharedProps} />
   }
 
   return (
-    <span
-      onClick={e => { e.stopPropagation(); setDraft(value ?? ''); setEditing(true) }}
-      className="block w-full text-sm text-gray-700 cursor-pointer hover:bg-gray-50 rounded px-1 py-0.5 min-h-[1.5rem]"
-    >
-      {value ?? <span className="text-gray-300">—</span>}
-    </span>
+    <div className="flex items-center gap-1 group/cell">
+      <span className="text-sm text-gray-700 flex-1 min-h-[1.5rem]">
+        {value ?? <span className="text-gray-300">—</span>}
+      </span>
+      <button
+        onClick={e => { e.stopPropagation(); setDraft(value ?? ''); setEditing(true) }}
+        className="opacity-0 group-hover/cell:opacity-100 text-gray-300 hover:text-gray-500 transition-opacity shrink-0"
+      >
+        <Edit2 size={12} />
+      </button>
+    </div>
   )
 }
 

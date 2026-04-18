@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { X, Loader2, Check } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useParseCrm, useConfirmCrm, ParsedResult } from '../../api/dealDetail'
+import NluPreview from './NluPreview'
 
 interface Props {
   open: boolean
@@ -79,29 +80,9 @@ export default function NluInputModal({ open, onClose }: Props) {
         />
 
         {step === 'preview' && parsed && (
-          <div className="mt-3 bg-gray-50 rounded-xl p-4 text-xs space-y-2">
-            <p className="font-semibold text-gray-600 mb-2">📋 解析結果預覽</p>
-            {(parsed.pipelines as unknown[]).length > 0 && (
-              <div className="text-blue-700">
-                <span className="font-medium">📊 案件：</span>
-                {(parsed.pipelines as Array<{entity_name?: string}>)
-                  .map(p => p.entity_name).filter(Boolean).join('、')}
-              </div>
-            )}
-            {(parsed.interactions as unknown[]).length > 0 && (
-              <div className="text-green-700">
-                <span className="font-medium">💬 互動：</span>
-                {(parsed.interactions as Array<{raw_transcript?: string}>)
-                  .map(i => i.raw_transcript?.slice(0, 40)).filter(Boolean).join('；')}
-              </div>
-            )}
-            {(parsed.actions as unknown[]).length > 0 && (
-              <div className="text-orange-700">
-                <span className="font-medium">✅ 待辦：</span>
-                {(parsed.actions as Array<{task_detail?: string}>)
-                  .map(a => a.task_detail).filter(Boolean).join('、')}
-              </div>
-            )}
+          <div className="mt-3 bg-gray-50 rounded-xl p-4">
+            <p className="text-xs font-semibold text-gray-600 mb-3">📋 解析結果預覽</p>
+            <NluPreview parsed={parsed} />
           </div>
         )}
 

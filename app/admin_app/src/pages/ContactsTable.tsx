@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Plus } from 'lucide-react'
 import { useContacts, useCreateContact, Contact, ContactCreate } from '../api/contacts'
 import ContactTableComponent from '../features/contact/ContactTable'
@@ -54,6 +54,19 @@ export default function ContactsTable() {
   const { data: contacts = [], isLoading, error } = useContacts()
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null)
   const [showCreate, setShowCreate] = useState(false)
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest' | 'name'>('newest')
+
+  const sortedContacts = useMemo(() => {
+    const list = [...contacts]
+    if (sortOrder === 'newest') {
+      list.sort((a, b) => (b.updated_at ?? b.created_at ?? '') > (a.updated_at ?? a.created_at ?? '') ? 1 : -1)
+    } else if (sortOrder === 'oldest') {
+      list.sort((a, b) => (a.updated_at ?? a.created_at ?? '') > (b.updated_at ?? b.created_at ?? '') ? 1 : -1)
+    } else {
+      list.sort((a, b) => a.display_name.localeCompare(b.display_name, 'zh-TW'))
+    }
+    return list
+  }, [contacts, sortOrder])
 
   if (isLoading) {
     return <div className="flex items-center justify-center h-64 text-gray-400 text-sm">載入中…</div>
@@ -64,7 +77,27 @@ export default function ContactsTable() {
 
   return (
     <div>
-      <div className="flex justify-end mb-4">
+      <div className="flex items-center gap-3 mb-4 justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-500">排序：</span>
+          {([
+            { key: 'newest', label: '最近更新 ↓' },
+            { key: 'oldest', label: '最近更新 ↑' },
+            { key: 'name',   label: '名稱 A-Z' },
+          ] as const).map(opt => (
+            <button
+              key={opt.key}
+              onClick={() => setSortOrder(opt.key)}
+              className={`text-xs px-2.5 py-1 rounded-lg transition-colors ${
+                sortOrder === opt.key
+                  ? 'bg-green-500 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
         <button
           onClick={() => setShowCreate(true)}
           className="flex items-center gap-2 text-sm bg-green-500 hover:bg-green-600 text-white font-medium px-4 py-2 rounded-xl transition-colors"
@@ -74,7 +107,7 @@ export default function ContactsTable() {
       </div>
 
       <ContactTableComponent
-        contacts={contacts}
+        contacts={sortedContacts}
         onRowClick={setSelectedContact}
       />
 
