@@ -23,13 +23,8 @@ def _get_callback_url(request: Request) -> str:
 
 
 @router.get("/line-login/authorize")
-async def authorize(request: Request, response: Response):
+async def authorize(request: Request):
     state = secrets.token_urlsafe(32)
-    response.set_cookie(
-        "line_login_state", state,
-        httponly=True, secure=True, samesite="lax",
-        max_age=300
-    )
     callback_url = _get_callback_url(request)
     params = urlencode({
         "response_type": "code",
@@ -38,7 +33,13 @@ async def authorize(request: Request, response: Response):
         "state": state,
         "scope": "profile openid",
     })
-    return RedirectResponse(f"{LINE_AUTHORIZE_URL}?{params}")
+    redirect = RedirectResponse(f"{LINE_AUTHORIZE_URL}?{params}")
+    redirect.set_cookie(
+        "line_login_state", state,
+        httponly=True, secure=True, samesite="lax",
+        max_age=300
+    )
+    return redirect
 
 
 @router.get("/line-login/callback")
