@@ -68,11 +68,6 @@ async def callback(
             "client_secret": config.LINE_LOGIN_CHANNEL_SECRET,
         })
     if token_resp.status_code != 200:
-        import logging
-        logging.getLogger(__name__).error(
-            f"LINE token exchange failed: {token_resp.status_code} {token_resp.text} "
-            f"[redirect_uri={callback_url}, client_id={config.LINE_LOGIN_CHANNEL_ID}]"
-        )
         raise HTTPException(status_code=502, detail="Failed to exchange LINE token")
 
     token_data = token_resp.json()
