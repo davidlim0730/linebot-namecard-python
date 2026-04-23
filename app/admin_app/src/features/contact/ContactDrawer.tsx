@@ -1,10 +1,29 @@
-import { X, ExternalLink, Building2, Plus } from 'lucide-react'
+import {
+  X,
+  ExternalLink,
+  Building2,
+  Plus,
+  Copy,
+  Globe,
+  MapPin,
+  Phone,
+  Mail,
+  MessageCircle,
+  BriefcaseBusiness,
+  Landmark,
+  Users,
+  Sparkles,
+  ShieldCheck,
+  BadgeInfo,
+  UserRound,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { type Contact, type ContactUpdate, useContactCrm, useUpdateContact } from '../../api/contacts'
-import { getStage } from '../../constants/stages'
+import { PIPELINE_STAGES, getStage } from '../../constants/stages'
 
 dayjs.extend(relativeTime)
 
@@ -16,9 +35,75 @@ interface Props {
   onCreateChildContact: (companyId: string) => void
 }
 
+interface InfoTileConfig {
+  icon: LucideIcon
+  label: string
+  value?: string | number | null
+  mono?: boolean
+}
+
 function emptyToUndefined(value?: string | null) {
   const next = value?.trim()
   return next ? next : undefined
+}
+
+function formatContribution(value: number) {
+  const wan = value / 10000
+  return `NT$${wan.toLocaleString('zh-TW', {
+    minimumFractionDigits: wan >= 100 ? 0 : 1,
+    maximumFractionDigits: wan >= 100 ? 0 : 1,
+  })}萬`
+}
+
+function getInitial(name: string) {
+  return name?.trim().charAt(0).toUpperCase() || '?'
+}
+
+function CopyButton({ value }: { value?: string | number | null }) {
+  if (value == null || value === '') return null
+
+  return (
+    <button
+      type="button"
+      title="複製"
+      onClick={() => {
+        const text = String(value)
+        if (!text) return
+        void navigator.clipboard?.writeText(text)
+      }}
+      className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[color:var(--color-outline)] bg-white text-[color:var(--color-text-secondary)]/60 transition hover:border-[color:var(--color-primary)]/30 hover:text-[color:var(--color-primary-dark)]"
+    >
+      <Copy size={12} />
+    </button>
+  )
+}
+
+function InfoTile({ icon: Icon, label, value, mono = false }: InfoTileConfig) {
+  const hasValue = value != null && value !== ''
+
+  return (
+    <div className="flex min-h-[88px] items-start gap-3 rounded-[18px] border border-[color:var(--color-outline)]/80 bg-[color:var(--color-bg-base)]/55 px-4 py-3">
+      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-[color:var(--color-primary-light)] text-[color:var(--color-primary-dark)]">
+        <Icon size={16} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-[color:var(--color-text-secondary)]/60">{label}</div>
+        <div className={`mt-1 break-words text-sm leading-relaxed ${hasValue ? 'text-[color:var(--color-text-primary)]' : 'text-[color:var(--color-text-secondary)]/45'} ${mono ? 'mono' : ''}`}>
+          {hasValue ? value : '未填寫'}
+        </div>
+      </div>
+      <CopyButton value={value} />
+    </div>
+  )
+}
+
+function MiniStat({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="min-w-[92px]">
+      <div className="display-font text-[24px] font-bold tracking-[-0.02em] text-[color:var(--color-text-primary)]">{value}</div>
+      <div className="mt-1 text-[11px] font-semibold tracking-[0.08em] text-[color:var(--color-text-secondary)]/65">{label}</div>
+    </div>
+  )
 }
 
 export default function ContactDrawer({
@@ -92,6 +177,49 @@ export default function ContactDrawer({
 
   const isCompany = contact.contact_type === 'company'
   const linkedCompany = crm?.company_contact ?? null
+  const romanizedName = contact.aliases?.[0]
+  const isVip = contact.tags?.includes('VIP客戶')
+  const deals = crm?.deals ?? []
+  const activities = [...(crm?.activities ?? [])].sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
+  const actions = [...(crm?.actions ?? [])].sort((a, b) => {
+    if (a.status === 'completed' && b.status !== 'completed') return 1
+    if (a.status !== 'completed' && b.status === 'completed') return -1
+    return (a.due_date ?? a.created_at ?? '').localeCompare(b.due_date ?? b.created_at ?? '')
+  })
+  const activeDealsCount = deals.filter(deal => PIPELINE_STAGES.some(stage => stage.id === deal.stage)).length
+  const totalContribution = deals.reduce((sum, deal) => sum + (deal.est_value ?? 0), 0)
+  const latestActivity = activities[0]
+  const pendingAction = actions.find(action => action.status !== 'completed')
+  const aiTopic = latestActivity?.ai_key_insights?.[0]
+  const aiNextStep = pendingAction?.task_detail
+  const showAiSnapshot = Boolean(aiTopic || aiNextStep)
+  const companyPhone = contact.work_phone || contact.phone
+
+  const companySubtitle = [
+    contact.industry,
+    romanizedName,
+    contact.employee_count != null ? `${contact.employee_count.toLocaleString('zh-TW')} 員` : null,
+  ].filter(Boolean).join(' · ')
+
+  const personSubtitleLead = [contact.title, contact.company_name].filter(Boolean)
+
+  const fieldTiles: InfoTileConfig[] = isCompany
+    ? [
+        { icon: Landmark, label: '法定名稱', value: contact.legal_name },
+        { icon: BriefcaseBusiness, label: '產業', value: contact.industry },
+        { icon: Users, label: '員工人數', value: contact.employee_count != null ? `${contact.employee_count.toLocaleString('zh-TW')} 員` : null },
+        { icon: Globe, label: '網站', value: contact.website },
+        { icon: MapPin, label: '地址', value: contact.address },
+      ]
+    : [
+        { icon: BadgeInfo, label: '職稱', value: contact.title },
+        { icon: Building2, label: '部門', value: contact.department },
+        { icon: Phone, label: '公司電話', value: companyPhone, mono: true },
+        { icon: Phone, label: '手機', value: contact.mobile, mono: true },
+        { icon: Mail, label: 'Email', value: contact.email, mono: true },
+        { icon: MessageCircle, label: 'LINE ID', value: contact.line_id, mono: true },
+        { icon: MapPin, label: '地址', value: contact.address },
+      ]
 
   const save = () => {
     const selectedCompany = companyOptions.find(company => company.id === form.parent_company_id)
@@ -108,7 +236,7 @@ export default function ContactDrawer({
           mobile: !isCompany ? emptyToUndefined(form.mobile) : undefined,
           email: emptyToUndefined(form.email),
           line_id: !isCompany ? emptyToUndefined(form.line_id) : undefined,
-          address: isCompany ? emptyToUndefined(form.address) : undefined,
+          address: emptyToUndefined(form.address),
           memo: emptyToUndefined(form.memo),
           industry: isCompany ? emptyToUndefined(form.industry) : undefined,
           website: isCompany ? emptyToUndefined(form.website) : undefined,
@@ -121,30 +249,13 @@ export default function ContactDrawer({
     )
   }
 
-  const visibleInfoRows = isCompany
-    ? [
-        { label: '產業', value: contact.industry, icon: '🏷' },
-        { label: '網站', value: contact.website, icon: '🌐' },
-        { label: '員工規模', value: contact.employee_count ? `${contact.employee_count.toLocaleString()} 人` : null, icon: '👥' },
-        { label: '總機', value: contact.phone, icon: '📞' },
-        { label: '地址', value: contact.address, icon: '📍' },
-      ].filter(row => row.value)
-    : [
-        { label: '部門', value: contact.department, icon: '🏢' },
-        { label: '所屬公司', value: contact.company_name, icon: '🏭' },
-        { label: '手機', value: contact.mobile, icon: '📱' },
-        { label: '座機', value: contact.work_phone, icon: '☎️' },
-        { label: 'Email', value: contact.email, icon: '✉️' },
-        { label: 'LINE ID', value: contact.line_id, icon: '💬' },
-      ].filter(row => row.value)
-
   return (
     <div className="flex h-full flex-col bg-white">
       <div className="flex items-center justify-between border-b border-[color:var(--color-outline)] px-5 py-4">
         <div>
           <h2 className="display-font text-xl font-bold text-[color:var(--color-text-primary)]">{contact.display_name}</h2>
           <p className="mt-1 text-xs text-[color:var(--color-text-secondary)]/70">
-            {isCompany ? 'Account 公司視角' : [contact.title, contact.department].filter(Boolean).join(' · ') || 'Contact 個人視角'}
+            {isCompany ? 'Account 公司視角' : 'Contact 個人視角'}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -154,43 +265,127 @@ export default function ContactDrawer({
           >
             {editing ? '取消編輯' : '編輯'}
           </button>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+          <button onClick={onClose} className="text-slate-400 transition hover:text-slate-600">
             <X size={20} />
           </button>
         </div>
       </div>
 
       <div className="flex-1 space-y-5 overflow-y-auto bg-[color:var(--color-bg-base)] p-5">
-        <div className="rounded-[20px] bg-white p-4 shadow-[var(--shadow-card)]">
-          <span className={`inline-block rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-            isCompany ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700'
-          }`}>
-            {isCompany ? '公司 Account' : '個人 Contact'}
-          </span>
-          <div className="mt-3 space-y-2 text-sm text-[color:var(--color-text-secondary)]">
-            {visibleInfoRows.map(row => (
-              <div key={row.label} className="flex items-start gap-2">
-                <span>{row.icon}</span>
-                <div className="flex-1">
-                  <span className="font-medium text-[color:var(--color-text-primary)]">{row.label}：</span>
-                  {row.label === '所屬公司' && linkedCompany ? (
-                    <button
-                      onClick={() => onSelectContact(linkedCompany)}
-                      className="ml-1 inline-flex items-center gap-1 text-[color:var(--color-primary-dark)] underline-offset-2 hover:underline"
-                    >
-                      {row.value}
-                      <Building2 size={14} />
-                    </button>
-                  ) : (
-                    <span className="ml-1">{row.value}</span>
-                  )}
+        <div className="rounded-[24px] bg-white p-5 shadow-[var(--shadow-card)]">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-start">
+            <div className={`flex h-[72px] w-[72px] shrink-0 items-center justify-center ${isCompany ? 'rounded-[18px] bg-slate-100 text-slate-700' : 'rounded-full bg-[color:var(--color-primary-light)] text-[color:var(--color-primary-dark)]'} display-font text-[28px] font-bold`}>
+              {isCompany ? <Building2 size={34} /> : getInitial(contact.display_name)}
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-3">
+                <h3 className="display-font text-[30px] font-bold tracking-[-0.02em] text-[color:var(--color-text-primary)]">
+                  {contact.display_name}
+                </h3>
+                {romanizedName && (
+                  <span className="text-sm font-medium lowercase tracking-[0.02em] text-[color:var(--color-text-secondary)]/60">
+                    {romanizedName}
+                  </span>
+                )}
+                {isVip && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700">
+                    <ShieldCheck size={12} />
+                    VIP
+                  </span>
+                )}
+              </div>
+
+              <div className="mt-2 text-sm text-[color:var(--color-text-secondary)]/80">
+                {isCompany ? (
+                  companySubtitle || '尚未補上產業、別名與員工規模'
+                ) : personSubtitleLead.length > 0 ? (
+                  <span>
+                    {contact.title || '未填寫職稱'}
+                    {contact.company_name && (
+                      <>
+                        {' · '}
+                        {linkedCompany ? (
+                          <button
+                            type="button"
+                            onClick={() => onSelectContact(linkedCompany)}
+                            className="font-semibold text-[color:var(--color-primary-dark)] underline-offset-2 hover:underline"
+                          >
+                            {contact.company_name}
+                          </button>
+                        ) : (
+                          <span className="font-semibold text-[color:var(--color-primary-dark)]">{contact.company_name}</span>
+                        )}
+                      </>
+                    )}
+                  </span>
+                ) : (
+                  '尚未補上職稱與公司'
+                )}
+              </div>
+
+              {contact.tags.length > 0 && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {contact.tags.map(tag => (
+                    <span key={tag} className="rounded-full bg-[color:var(--color-bg-base)] px-3 py-1 text-xs font-medium text-[color:var(--color-text-secondary)]">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 border-t border-[color:var(--color-outline)]/70 pt-4 xl:border-l xl:border-t-0 xl:pl-5 xl:pt-0">
+              <MiniStat label="進行中案件" value={activeDealsCount} />
+              <MiniStat label="總貢獻" value={formatContribution(totalContribution)} />
+            </div>
+          </div>
+        </div>
+
+        <div className={showAiSnapshot ? 'grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]' : 'grid gap-5'}>
+          <div className="rounded-[24px] bg-white p-5 shadow-[var(--shadow-card)]">
+            <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-[color:var(--color-text-secondary)]/60">
+              {isCompany ? '公司資訊' : '聯絡資訊'}
+            </h3>
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+              {fieldTiles.map(tile => (
+                <InfoTile key={tile.label} {...tile} />
+              ))}
+            </div>
+
+            {contact.memo && (
+              <div className="mt-5 border-t border-[color:var(--color-outline)]/70 pt-5">
+                <h4 className="text-[11px] font-bold uppercase tracking-[0.12em] text-[color:var(--color-text-secondary)]/60">備忘錄</h4>
+                <div className="mt-3 rounded-[18px] bg-[color:var(--color-bg-base)] px-4 py-3 text-sm leading-relaxed text-[color:var(--color-text-secondary)]">
+                  {contact.memo}
                 </div>
               </div>
-            ))}
+            )}
           </div>
-          {contact.memo && (
-            <div className="mt-4 rounded-2xl bg-[color:var(--color-bg-base)] p-3 text-sm leading-relaxed text-[color:var(--color-text-secondary)]">
-              {contact.memo}
+
+          {showAiSnapshot && (
+            <div className="relative overflow-hidden rounded-[24px] bg-white p-4 shadow-[var(--shadow-card)]">
+              <div className="absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,#06C755_0%,#38BDF8_100%)]" />
+              <div className="mt-1 flex items-center gap-2">
+                <span className="inline-flex items-center gap-1 rounded-full bg-[color:var(--color-primary-light)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[color:var(--color-primary-dark)]">
+                  <Sparkles size={12} />
+                  AI Snapshot
+                </span>
+              </div>
+              <div className="mt-4 space-y-4">
+                {aiTopic && (
+                  <div className="rounded-[18px] border border-sky-100 bg-sky-50/50 px-4 py-3">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-sky-700">破冰話題</div>
+                    <p className="mt-2 text-sm leading-relaxed text-[color:var(--color-text-primary)]">{aiTopic}</p>
+                  </div>
+                )}
+                {aiNextStep && (
+                  <div className="rounded-[18px] border border-emerald-100 bg-emerald-50/60 px-4 py-3">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-700">建議下一步</div>
+                    <p className="mt-2 text-sm leading-relaxed text-[color:var(--color-text-primary)]">{aiNextStep}</p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -322,9 +517,14 @@ export default function ContactDrawer({
                     onClick={() => onSelectContact(member)}
                     className="flex w-full items-center justify-between rounded-2xl bg-[color:var(--color-bg-base)] px-3 py-3 text-left transition hover:bg-[color:var(--color-primary-light)]/50"
                   >
-                    <div>
-                      <p className="text-sm font-semibold text-[color:var(--color-text-primary)]">{member.display_name}</p>
-                      <p className="text-xs text-[color:var(--color-text-secondary)]/70">{[member.title, member.department].filter(Boolean).join(' · ') || '尚未補上職稱與部門'}</p>
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[color:var(--color-primary-light)] text-[color:var(--color-primary-dark)]">
+                        <UserRound size={18} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-[color:var(--color-text-primary)]">{member.display_name}</p>
+                        <p className="truncate text-xs text-[color:var(--color-text-secondary)]/70">{[member.title, member.department].filter(Boolean).join(' · ') || '尚未補上職稱與部門'}</p>
+                      </div>
                     </div>
                     <div className="text-right text-xs text-[color:var(--color-text-secondary)]/70">
                       <div>{member.mobile || member.work_phone || '—'}</div>
@@ -371,10 +571,9 @@ export default function ContactDrawer({
           <div className="rounded-[20px] bg-white p-4 shadow-[var(--shadow-card)]">
             <h3 className="mb-3 text-[11px] font-bold uppercase tracking-[0.12em] text-[color:var(--color-text-secondary)]/60">最近互動（{Math.min(crm.activities.length, 5)} / {crm.activities.length}）</h3>
             <div className="space-y-2">
-              {crm.activities.length === 0 ? (
+              {activities.length === 0 ? (
                 <div className="rounded-2xl bg-[color:var(--color-bg-base)] px-3 py-4 text-sm text-[color:var(--color-text-secondary)]/70">目前沒有互動記錄</div>
-              ) : [...crm.activities]
-                .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
+              ) : activities
                 .slice(0, 5)
                 .map(act => (
                   <div key={act.id} className="rounded-2xl bg-[color:var(--color-bg-base)] p-3">
@@ -390,9 +589,9 @@ export default function ContactDrawer({
           <div className="rounded-[20px] bg-white p-4 shadow-[var(--shadow-card)]">
             <h3 className="mb-3 text-[11px] font-bold uppercase tracking-[0.12em] text-[color:var(--color-text-secondary)]/60">待辦 ({crm.actions.length})</h3>
             <div className="space-y-2">
-              {crm.actions.length === 0 ? (
+              {actions.length === 0 ? (
                 <div className="rounded-2xl bg-[color:var(--color-bg-base)] px-3 py-4 text-sm text-[color:var(--color-text-secondary)]/70">目前沒有待辦事項</div>
-              ) : crm.actions.slice(0, 5).map(action => (
+              ) : actions.slice(0, 5).map(action => (
                 <div key={action.id} className="rounded-2xl bg-[color:var(--color-bg-base)] p-3">
                   <p className="text-sm font-medium text-[color:var(--color-text-primary)]">{action.task_detail}</p>
                   <p className="mt-1 text-xs text-[color:var(--color-text-secondary)]/70">{[action.due_date, action.status].filter(Boolean).join(' · ')}</p>
