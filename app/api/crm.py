@@ -377,6 +377,13 @@ async def update_contact(
         raise HTTPException(status_code=404, detail={"error": "not_found"})
     update_fields = body.model_dump(exclude_none=True)
     if update_fields:
+        if "parent_company_id" in update_fields and update_fields["parent_company_id"]:
+            parent = contact_repo.get(user.org_id, update_fields["parent_company_id"])
+            if parent:
+                update_fields["company_name"] = parent.display_name
+        if update_fields.get("contact_type") == "company":
+            update_fields["parent_company_id"] = None
+            update_fields["company_name"] = None
         from datetime import datetime
         update_fields["updated_at"] = datetime.utcnow().isoformat() + "Z"
         contact_repo.update(user.org_id, contact_id, update_fields)
@@ -400,14 +407,34 @@ async def create_contact(
         "added_by": user.user_id,
         "created_at": now,
     }
-    optional_fields = ["legal_name", "aliases", "parent_company_id", "title",
-                       "phone", "mobile", "email", "line_id", "memo"]
+    optional_fields = [
+        "legal_name", "aliases", "parent_company_id", "company_name", "title",
+        "phone", "mobile", "email", "line_id", "address", "memo", "tags",
+        "raw_card_data", "industry", "website", "employee_count", "department",
+        "work_phone",
+    ]
     for f in optional_fields:
         v = getattr(body, f, None)
         if v is not None:
             data[f] = v
+    if body.parent_company_id:
+        parent = contact_repo.get(user.org_id, body.parent_company_id)
+        if parent:
+            data["company_name"] = parent.display_name
+    if body.contact_type == "company":
+        data["parent_company_id"] = None
+        data["company_name"] = None
     contact_repo.save(user.org_id, contact_id, data)
     return {"id": contact_id, "ok": True}
+
+
+@router.get("/contacts/{contact_id}/members")
+async def list_contact_members(contact_id: str, user: UserContext = Depends(get_current_user)):
+    contact = contact_repo.get(user.org_id, contact_id)
+    if not contact:
+        raise HTTPException(status_code=404, detail={"error": "not_found"})
+    members = contact_repo.list_by_parent_company(user.org_id, contact_id)
+    return [c.model_dump() for c in members.values()]
 
 
 @router.get("/contacts/{contact_id}/activities")
@@ -441,12 +468,28 @@ async def contact_crm(card_id: str, user: UserContext = Depends(get_current_user
     # Try ContactRepo first, fallback to CardRepo for backward compat
     contact = contact_repo.get(user.org_id, card_id)
     if contact:
-        deals = deal_repo.list_by_company_contact_id(user.org_id, card_id)
+        company_contact = None
+        members = []
+        deal_contact_id = card_id
+        if contact.contact_type == "company":
+            members = list(contact_repo.list_by_parent_company(user.org_id, card_id).values())
+        elif contact.parent_company_id:
+            company_contact = contact_repo.get(user.org_id, contact.parent_company_id)
+            if company_contact:
+                deal_contact_id = company_contact.id
+
+        deals = deal_repo.list_by_company_contact_id(user.org_id, deal_contact_id)
+        if not deals and contact.company_name:
+            deals = deal_repo.list_by_entity_name(user.org_id, contact.company_name)
         activities = activity_repo.list_by_contact_id(user.org_id, card_id)
+        actions = action_repo.list_by_contact_id(user.org_id, card_id)
         return {
             "contact": contact.model_dump(),
+            "company_contact": company_contact.model_dump() if company_contact else None,
+            "members": [m.model_dump() for m in members],
             "deals": [d.model_dump() for d in deals],
             "activities": [a.model_dump() for a in activities],
+            "actions": [a.model_dump() for a in actions],
         }
     # Fallback: legacy card_repo lookup
     card = card_repo.get(user.org_id, card_id)

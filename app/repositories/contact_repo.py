@@ -39,6 +39,14 @@ class ContactRepo:
         except Exception:
             return False
 
+    def list_by_parent_company(self, org_id: str, company_contact_id: str) -> Dict[str, Contact]:
+        contacts = self.list_all(org_id)
+        return {
+            contact_id: contact
+            for contact_id, contact in contacts.items()
+            if contact.parent_company_id == company_contact_id
+        }
+
     def delete(self, org_id: str, contact_id: str) -> bool:
         try:
             db.reference(f"{config.CONTACT_PATH}/{org_id}/{contact_id}").delete()
@@ -93,12 +101,64 @@ class ContactRepo:
             return best_id
         return None
 
+    def find_or_create_company(self, org_id: str, company_name: str, added_by: str) -> str:
+        """以 display_name（case-insensitive）找到或建立 Company Contact，回傳 contact_id"""
+        contacts = self.list_all(org_id)
+        name_lower = company_name.strip().lower()
+        for contact_id, contact in contacts.items():
+            if contact.contact_type == "company" and contact.display_name.strip().lower() == name_lower:
+                return contact_id
+        contact_id = str(uuid.uuid4())
+        now = datetime.utcnow().isoformat() + "Z"
+        self.save(org_id, contact_id, {
+            "contact_type": "company",
+            "display_name": company_name.strip(),
+            "source": "ocr",
+            "added_by": added_by,
+            "created_at": now,
+        })
+        return contact_id
+
+    def check_exists_by_email(self, org_id: str, email: str) -> Optional[str]:
+        """以 email（case-insensitive）比對，回傳既有 contact_id 或 None"""
+        contacts = self.list_all(org_id)
+        email_lower = email.strip().lower()
+        for contact_id, contact in contacts.items():
+            if contact.email and contact.email.strip().lower() == email_lower:
+                return contact_id
+        return None
+
+    def add_tag(self, org_id: str, contact_id: str, tag_name: str) -> bool:
+        """將 tag_name 加入 Contact.tags（不重複）"""
+        contact = self.get(org_id, contact_id)
+        if not contact:
+            return False
+        tags = list(contact.tags)
+        if tag_name not in tags:
+            tags.append(tag_name)
+            return self.update(org_id, contact_id, {"tags": tags})
+        return True
+
+    def remove_tag(self, org_id: str, contact_id: str, tag_name: str) -> bool:
+        """從 Contact.tags 移除 tag_name"""
+        contact = self.get(org_id, contact_id)
+        if not contact:
+            return False
+        tags = [t for t in contact.tags if t != tag_name]
+        return self.update(org_id, contact_id, {"tags": tags})
+
+    def set_tags(self, org_id: str, contact_id: str, tags: list) -> bool:
+        """整組覆蓋 Contact.tags"""
+        return self.update(org_id, contact_id, {"tags": tags})
+
     def _to_contact(self, contact_id: str, data: dict) -> Contact:
         d = dict(data)
         allowed = {
             "contact_type", "display_name", "legal_name", "aliases",
-            "parent_company_id", "title", "phone", "mobile", "email",
-            "line_id", "memo", "source", "added_by", "created_at", "updated_at"
+            "parent_company_id", "company_name", "title", "phone", "mobile", "email",
+            "line_id", "address", "memo", "tags", "source", "raw_card_data",
+            "industry", "website", "employee_count", "department", "work_phone",
+            "added_by", "created_at", "updated_at"
         }
         filtered = {k: v for k, v in d.items() if k in allowed}
         if "aliases" in filtered:
@@ -107,8 +167,20 @@ class ContactRepo:
                 filtered["aliases"] = list(v.values())
             elif not isinstance(v, list):
                 filtered["aliases"] = []
+        if "tags" in filtered:
+            v = filtered["tags"]
+            if isinstance(v, dict):
+                filtered["tags"] = list(v.values())
+            elif not isinstance(v, list):
+                filtered["tags"] = []
         filtered.setdefault("contact_type", "person")
         filtered.setdefault("display_name", "（未知）")
         filtered.setdefault("added_by", "system")
         filtered.setdefault("created_at", "")
+        filtered.setdefault("source", "manual")
+        if "employee_count" in filtered and filtered["employee_count"] is not None:
+            try:
+                filtered["employee_count"] = int(filtered["employee_count"])
+            except (TypeError, ValueError):
+                filtered["employee_count"] = None
         return Contact(id=contact_id, **filtered)
