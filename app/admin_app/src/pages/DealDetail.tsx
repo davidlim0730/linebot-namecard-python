@@ -23,7 +23,7 @@ export default function DealDetail() {
 
   if (dealLoading || !deal) {
     return (
-      <div className="flex items-center justify-center h-64 text-gray-400 text-sm">
+      <div className="flex h-64 items-center justify-center text-sm text-[color:var(--color-text-secondary)]/60">
         {dealLoading ? '載入中…' : '找不到案件'}
       </div>
     )
@@ -42,58 +42,72 @@ export default function DealDetail() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="mx-auto flex max-w-6xl flex-col">
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
+      <div className="mb-6">
+        <div className="mb-3 flex items-center gap-3">
         <button
           onClick={() => navigate('/deals')}
-          className="text-gray-400 hover:text-gray-600 transition-colors"
+          className="text-slate-400 transition hover:text-slate-600"
         >
           <ArrowLeft size={20} />
         </button>
         <div className="flex items-center gap-3">
-          <h1 className="text-lg font-bold text-gray-800">{deal.entity_name}</h1>
+          <h1 className="display-font text-[28px] font-bold text-[color:var(--color-text-primary)]">{deal.entity_name}</h1>
           {stage && (
             <span
-              className="text-xs font-medium px-2 py-1 rounded-full text-white"
-              style={{ backgroundColor: stage.color }}
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${stage.badgeClass}`}
             >
               {stage.label}
             </span>
           )}
         </div>
       </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          {[
+            { label: '預估金額', value: deal.est_value != null ? `NT$ ${deal.est_value.toLocaleString()}` : '未估金額', sub: 'TWD' },
+            { label: '下一步日期', value: deal.next_action_date ?? '尚未安排', sub: deal.next_action_date ? '已設定' : '待更新' },
+            { label: '待辦數量', value: pendingCount, sub: '進行中' },
+          ].map(card => (
+            <div key={card.label} className="rounded-[20px] border border-[color:var(--color-outline)] bg-white p-4 shadow-[var(--shadow-card)]">
+              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--color-text-secondary)]/65">{card.label}</div>
+              <div className="display-font mt-3 text-2xl font-bold text-[color:var(--color-text-primary)]">{card.value}</div>
+              <div className="mt-1 text-xs text-[color:var(--color-text-secondary)]/65">{card.sub}</div>
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* Two-column layout */}
-      <div className="flex gap-6 items-start">
+      <div className="flex items-start gap-6">
         {/* Left: Properties + Stakeholders */}
-        <div className="w-64 shrink-0">
+        <div className="w-[320px] shrink-0">
           <DealPropertiesPanel deal={deal} stakeholders={stakeholders} />
         </div>
 
         {/* Right: Timeline / Actions tabs */}
-        <div className="flex-1 bg-white rounded-xl p-5">
+        <div className="flex-1 rounded-[22px] border border-[color:var(--color-outline)] bg-white p-5 shadow-[var(--shadow-card)]">
           {/* Tabs */}
-          <div className="flex gap-1 border-b border-gray-100 mb-4">
+          <div className="mb-4 flex gap-2 border-b border-[color:var(--color-outline)] pb-3">
             <button
               onClick={() => setRightTab('timeline')}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${
+              className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
                 rightTab === 'timeline'
-                  ? 'border-green-500 text-green-700'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  ? 'bg-[color:var(--color-primary-light)] text-[color:var(--color-primary-dark)]'
+                  : 'bg-[color:var(--color-bg-section)] text-[color:var(--color-text-secondary)]'
               }`}
             >
-              💬 Timeline
+              Timeline
             </button>
             <button
               onClick={() => setRightTab('actions')}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${
+              className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
                 rightTab === 'actions'
-                  ? 'border-green-500 text-green-700'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  ? 'bg-[color:var(--color-primary-light)] text-[color:var(--color-primary-dark)]'
+                  : 'bg-[color:var(--color-bg-section)] text-[color:var(--color-text-secondary)]'
               }`}
             >
-              ✅ 待辦 {pendingCount > 0 && `(${pendingCount})`}
+              待辦 {pendingCount > 0 && `(${pendingCount})`}
             </button>
           </div>
 

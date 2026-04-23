@@ -54,7 +54,7 @@ export default function NluInlineInput({ dealId, contextHint, onSuccess }: Props
     return (
       <button
         onClick={() => setStep('input')}
-        className="flex items-center gap-2 text-sm text-green-600 hover:text-green-700 font-medium py-2"
+        className="mb-4 inline-flex items-center gap-2 rounded-full bg-[color:var(--color-primary-light)] px-4 py-2 text-sm font-semibold text-[color:var(--color-primary-dark)]"
       >
         ➕ 新增互動（意識流）
       </button>
@@ -62,33 +62,33 @@ export default function NluInlineInput({ dealId, contextHint, onSuccess }: Props
   }
 
   return (
-    <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+    <div className="mb-4 rounded-[20px] border border-emerald-200 bg-gradient-to-r from-emerald-50 to-sky-50 p-4">
       <textarea
         value={text}
         onChange={e => setText(e.target.value)}
         placeholder="輸入今天的互動…（例：今天拜訪王總，他同意下週給我們報價機會，需要準備 demo）"
         rows={3}
-        className="w-full text-sm border border-gray-200 rounded-lg p-3 focus:outline-none focus:ring-1 focus:ring-green-400 resize-none bg-white"
+        className="w-full resize-none rounded-2xl border border-[color:var(--color-outline)] bg-white p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--color-primary)]/30"
         autoFocus
         disabled={step === 'parsing' || step === 'confirming'}
       />
 
       {step === 'preview' && parsed && (
-        <div className="mt-3 bg-white rounded-lg p-3 border border-gray-200">
-          <p className="text-xs font-semibold text-gray-600 mb-2">解析結果：</p>
+        <div className="mt-3 rounded-2xl border border-white/80 bg-white/90 p-3">
+          <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.12em] text-sky-600">解析結果</p>
           <NluPreview parsed={parsed} />
         </div>
       )}
 
-      <div className="flex gap-2 mt-3 justify-end">
-        <button onClick={handleCancel} className="text-xs text-gray-400 hover:text-gray-600 px-3 py-1">
+      <div className="mt-3 flex justify-end gap-2">
+        <button onClick={handleCancel} className="px-3 py-1 text-xs font-semibold text-[color:var(--color-text-secondary)]/70">
           取消
         </button>
         {step === 'preview' || step === 'confirming' ? (
           <button
             onClick={handleConfirm}
             disabled={confirmCrm.isPending}
-            className="flex items-center gap-1 text-xs bg-green-500 text-white px-4 py-1.5 rounded-lg hover:bg-green-600 disabled:opacity-50"
+            className="flex items-center gap-1 rounded-lg bg-[color:var(--color-primary)] px-4 py-1.5 text-xs font-semibold text-white hover:bg-[color:var(--color-primary-dark)] disabled:opacity-50"
           >
             {confirmCrm.isPending ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
             確認寫入
@@ -97,7 +97,7 @@ export default function NluInlineInput({ dealId, contextHint, onSuccess }: Props
           <button
             onClick={handleParse}
             disabled={step === 'parsing' || !text.trim()}
-            className="flex items-center gap-1 text-xs bg-green-500 text-white px-4 py-1.5 rounded-lg hover:bg-green-600 disabled:opacity-50"
+            className="flex items-center gap-1 rounded-lg bg-[color:var(--color-primary)] px-4 py-1.5 text-xs font-semibold text-white hover:bg-[color:var(--color-primary-dark)] disabled:opacity-50"
           >
             {step === 'parsing' ? <Loader2 size={12} className="animate-spin" /> : null}
             🔍 分析

@@ -6,8 +6,12 @@ from datetime import datetime
 import PIL.Image
 from linebot.models import TextSendMessage
 
+import uuid as _uuid
 from . import firebase_utils, gemini_utils, utils, config
 from .gsheets_utils import trigger_sync
+from .repositories.contact_repo import ContactRepo
+
+_contact_repo = ContactRepo()
 
 logger = logging.getLogger(__name__)
 
@@ -67,20 +71,45 @@ async def process_batch(user_id: str, org_id: str, image_paths: list) -> dict:
             card_obj = {k.lower(): v for k, v in card_obj.items()}
             card_obj = utils.validate_namecard_fields(card_obj)
 
-            # 去重檢查
-            existing_id = firebase_utils.check_if_card_exists(card_obj, org_id)
+            # 去重檢查（以 email 為主鍵）
+            email = card_obj.get("email", "")
+            existing_id = _contact_repo.check_exists_by_email(org_id, email) if email else None
             if existing_id:
-                # 重複名片視為成功（已存在即可）
                 success += 1
                 successes.append({"name": card_obj.get("name", ""), "company": card_obj.get("company", "")})
                 _log_ocr_event("ocr_success", org_id, user_id, "batch")
             else:
-                card_id = firebase_utils.add_namecard(card_obj, org_id, user_id)
-                if card_id:
+                company_name = (card_obj.get("company") or "").strip() or None
+                parent_company_id = None
+                if company_name:
+                    parent_company_id = _contact_repo.find_or_create_company(org_id, company_name, user_id)
+                contact_id = str(_uuid.uuid4())
+                now = datetime.utcnow().isoformat() + "Z"
+                contact_data = {
+                    "contact_type": "person",
+                    "display_name": card_obj.get("name") or "（未知）",
+                    "company_name": company_name,
+                    "parent_company_id": parent_company_id,
+                    "title": card_obj.get("title") or None,
+                    "phone": card_obj.get("phone") or None,
+                    "mobile": card_obj.get("mobile") or None,
+                    "email": email or None,
+                    "line_id": card_obj.get("line_id") or None,
+                    "address": card_obj.get("address") or None,
+                    "memo": card_obj.get("memo") or None,
+                    "tags": [],
+                    "source": "ocr",
+                    "raw_card_data": card_obj,
+                    "added_by": user_id,
+                    "created_at": now,
+                }
+                contact_data = {k: v for k, v in contact_data.items() if v is not None}
+                ok = _contact_repo.save(org_id, contact_id, contact_data)
+                if ok:
                     try:
-                        trigger_sync(org_id, card_id, card_obj)
+                        trigger_sync(org_id, contact_id, card_obj)
                     except Exception as e_sync:
-                        logger.warning(f"Batch: gsheets sync failed for card {card_id}: {e_sync}")
+                        logger.warning(f"Batch: gsheets sync failed for contact {contact_id}: {e_sync}")
                     success += 1
                     successes.append({"name": card_obj.get("name", ""), "company": card_obj.get("company", "")})
                     _log_ocr_event("ocr_success", org_id, user_id, "batch")

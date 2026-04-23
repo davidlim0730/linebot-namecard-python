@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=1400"/>
+<title>Conversational CRM — LIFF Design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="tokens.css"/>
+<style>
+  html, body { margin: 0; padding: 0; background: #f0eee9; font-family: Inter, "Noto Sans TC", system-ui, sans-serif; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="ios-frame.jsx"></script>
+<script type="text/babel" src="primitives.jsx"></script>
+<script type="text/babel" src="screens-cards.jsx"></script>
+<script type="text/babel" src="screens-sheets.jsx"></script>
+<script type="text/babel" src="screens-crm.jsx"></script>
+
+<script type="text/babel">
+// ─── App ─────────────────────────────────────────────────────
+// Wrap every LIFF screen in an iOS 402x874 device frame.
+function Phone({ children, label }) {
+  return (
+    <IOSDevice width={402} height={874}>
+      <div style={{ position: 'absolute', inset: 0 }}>{children}</div>
+    </IOSDevice>
+  );
+}
+
+function App() {
+  const W = 402, H = 874;
+  return (
+    <DesignCanvas>
+      <DCSection id="intro" title="Conversational CRM · LIFF" subtitle="手機主戰場 · 375pt @2x · iOS 26 frame · 原創配色（非 LINE 品牌）">
+        <DCArtboard id="notes" label="Design system" width={360} height={420}>
+          <div style={{
+            height: '100%', background: '#fff', borderRadius: 12, padding: 22,
+            fontFamily: 'Inter, "Noto Sans TC", system-ui',
+            fontSize: 12, color: '#1A1B18', lineHeight: 1.55,
+            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+            overflow: 'hidden',
+          }}>
+            <div style={{ fontFamily: '"Plus Jakarta Sans"', fontWeight: 700, fontSize: 17, letterSpacing: '-0.02em' }}>
+              系統：Moss Green · Warm Neutrals · AI Blue
+            </div>
+            <div style={{ color: '#55584F', marginTop: 4, fontSize: 11 }}>
+              原創配色取向 — 不使用 LINE 品牌色
+            </div>
+
+            <div style={{ display: 'flex', gap: 6, marginTop: 14 }}>
+              {[
+                ['#1F8B5C', 'Primary'],
+                ['#0E5E3A', 'Deep'],
+                ['#E6F4EC', 'Soft'],
+                ['#2B6CD6', 'AI'],
+                ['#FAFAF7', 'BG'],
+                ['#1A1B18', 'Text'],
+              ].map(([c, n]) => (
+                <div key={c} style={{ flex: 1, textAlign: 'center' }}>
+                  <div style={{ height: 40, borderRadius: 8, background: c, border: '1px solid rgba(0,0,0,0.05)' }}/>
+                  <div style={{ fontSize: 9, marginTop: 4, color: '#55584F' }}>{n}</div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ marginTop: 16, fontWeight: 700, fontSize: 11, color: '#55584F', textTransform: 'uppercase', letterSpacing: '0.06em' }}>字體</div>
+            <div style={{ fontFamily: '"Plus Jakarta Sans"', fontSize: 20, fontWeight: 800, marginTop: 4, letterSpacing: '-0.02em' }}>Plus Jakarta — Aa 123</div>
+            <div style={{ fontFamily: 'Inter', fontSize: 13, color: '#55584F', marginTop: 2 }}>Inter — UI body 14/13/12</div>
+            <div style={{ fontFamily: '"Noto Sans TC"', fontSize: 13, color: '#55584F' }}>Noto Sans TC — 繁體中文補字</div>
+
+            <div style={{ marginTop: 14, fontWeight: 700, fontSize: 11, color: '#55584F', textTransform: 'uppercase', letterSpacing: '0.06em' }}>原則</div>
+            <ul style={{ margin: '4px 0 0 14px', padding: 0, fontSize: 11, lineHeight: 1.65 }}>
+              <li>No-line: 用色階取代分隔線</li>
+              <li>AI 內容：左側綠藍漸層 3px border</li>
+              <li>圓角 16 卡片 / 10 input / 999 chip</li>
+              <li>52px 高 CTA · 44px hit-target</li>
+            </ul>
+          </div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="cards-main" title="名片 Tab · 總表與詳情">
+        <DCArtboard id="list-normal" label="總表 · 正常" width={W} height={H}>
+          <CardsListScreen state="normal"/>
+        </DCArtboard>
+        <DCArtboard id="list-search" label="總表 · 搜尋中（找到 N 筆）" width={W} height={H}>
+          <CardsListScreen state="searching"/>
+        </DCArtboard>
+        <DCArtboard id="list-empty-search" label="搜尋無結果" width={W} height={H}>
+          <CardsListScreen state="empty-search"/>
+        </DCArtboard>
+        <DCArtboard id="list-empty" label="空狀態" width={W} height={H}>
+          <CardsListScreen state="empty"/>
+        </DCArtboard>
+        <DCArtboard id="list-loading" label="載入中（Skeleton）" width={W} height={H}>
+          <CardsListScreen state="loading"/>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="cards-detail" title="名片詳情 · 備忘錄快捷">
+        <DCArtboard id="detail-photo" label="詳情 · 含照片" width={W} height={H}>
+          <CardDetailScreen hasPhoto={true} memoMode="filled"/>
+        </DCArtboard>
+        <DCArtboard id="detail-nophoto" label="詳情 · 無照片" width={W} height={H}>
+          <CardDetailScreen hasPhoto={false} memoMode="filled"/>
+        </DCArtboard>
+        <DCArtboard id="detail-memo-empty" label="詳情 · 備忘錄空狀態" width={W} height={H}>
+          <CardDetailScreen hasPhoto={true} memoMode="empty"/>
+        </DCArtboard>
+        <DCArtboard id="detail-memo-inline" label="詳情 · 備忘錄 inline 編輯" width={W} height={H}>
+          <CardDetailScreen hasPhoto={true} memoMode="inline-edit"/>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="edit" title="名片編輯 Bottom Sheet">
+        <DCArtboard id="edit-normal" label="編輯 · 可互動" width={W} height={H}>
+          <EditSheetScreen mode="normal"/>
+        </DCArtboard>
+        <DCArtboard id="edit-saving" label="編輯 · 儲存中" width={W} height={H}>
+          <EditSheetScreen mode="saving"/>
+        </DCArtboard>
+        <DCArtboard id="edit-success" label="編輯 · 儲存成功 Toast" width={W} height={H}>
+          <EditSheetScreen mode="success"/>
+        </DCArtboard>
+        <DCArtboard id="edit-error" label="編輯 · 儲存失敗 Toast" width={W} height={H}>
+          <EditSheetScreen mode="error"/>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="tags" title="標籤套用 Sheet（含管理員入口）">
+        <DCArtboard id="tag-tab1-admin" label="Tab 1 · 此名片標籤（管理員）" width={W} height={H}>
+          <TagSheetScreen tab={1} role="admin"/>
+        </DCArtboard>
+        <DCArtboard id="tag-tab1-member" label="Tab 1 · 成員視角（無入口）" width={W} height={H}>
+          <TagSheetScreen tab={1} role="member"/>
+        </DCArtboard>
+        <DCArtboard id="tag-tab2-admin" label="Tab 2 · 所有標籤（管理員）" width={W} height={H}>
+          <TagSheetScreen tab={2} role="admin"/>
+        </DCArtboard>
+        <DCArtboard id="tag-tab2-member" label="Tab 2 · 所有標籤（成員）" width={W} height={H}>
+          <TagSheetScreen tab={2} role="member"/>
+        </DCArtboard>
+        <DCArtboard id="tag-delete" label="刪除確認" width={W} height={H}>
+          <TagSheetScreen tab={2} role="admin" showDelete={true}/>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="todo" title="待辦清單（CRM Tab）">
+        <DCArtboard id="todo-today" label="今日到期 · 正常" width={W} height={H}>
+          <TodoScreen/>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="crm" title="聯絡人 CRM 視角">
+        <DCArtboard id="crm-view" label="案件 + 互動時間軸（含 AI 標示）" width={W} height={H}>
+          <CRMContactScreen/>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="team" title="團隊管理">
+        <DCArtboard id="team-admin" label="管理員視角" width={W} height={H}>
+          <TeamScreen role="admin"/>
+        </DCArtboard>
+        <DCArtboard id="team-member" label="成員視角" width={W} height={H}>
+          <TeamScreen role="member"/>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="ai" title="AI 專屬 UX 模式">
+        <DCArtboard id="ai-wait-1" label="AI 等待 · 步驟 1" width={W} height={H}>
+          <AIWaitScreen stepIdx={0}/>
+        </DCArtboard>
+        <DCArtboard id="ai-wait-2" label="AI 等待 · 步驟 2" width={W} height={H}>
+          <AIWaitScreen stepIdx={1}/>
+        </DCArtboard>
+        <DCArtboard id="ai-wait-3" label="AI 等待 · 步驟 3" width={W} height={H}>
+          <AIWaitScreen stepIdx={2}/>
+        </DCArtboard>
+        <DCArtboard id="ai-wait-4" label="AI 等待 · 步驟 4" width={W} height={H}>
+          <AIWaitScreen stepIdx={3}/>
+        </DCArtboard>
+        <DCArtboard id="ai-confirm" label="AI 確認卡片（語音 Recap 結果）" width={W} height={H}>
+          <AIConfirmScreen/>
+        </DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

@@ -1,0 +1,1074 @@
+openapi: 3.0.0
+info:
+  title: Linebot Namecard CRM API
+  version: 1.0.0
+  description: |
+    統一 CRM API。org_id 由後端從 auth token 解析，前端無需帶入。
+    **遷移過渡期**：`company_contact_id` / `contact_id` 可能為 null，
+    前端顯示公司名稱時以 `entity_name` 作 fallback。
+
+servers:
+  - url: https://{service}.run.app
+    description: Cloud Run（正式）
+  - url: http://localhost:8080
+    description: 本地開發
+
+security:
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: LINE LIFF id_token
+
+  schemas:
+
+    # ── Contacts ──────────────────────────────────────────
+
+    Contact:
+      type: object
+      required: [id, org_id, contact_type, display_name, source, added_by, created_at]
+      properties:
+        id:
+          type: string
+        org_id:
+          type: string
+        contact_type:
+          type: string
+          enum: [person, company]
+        display_name:
+          type: string
+        legal_name:
+          type: string
+          nullable: true
+        aliases:
+          type: array
+          items:
+            type: string
+          default: []
+        parent_company_id:
+          type: string
+          nullable: true
+          description: person 所屬公司的 contact_id
+        parent_company:
+          $ref: '#/components/schemas/ContactSummary'
+          nullable: true
+          description: expanded，遷移前為 null
+        company_name:
+          type: string
+          nullable: true
+          description: denormalized 公司名，供快速顯示
+        title:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        mobile:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        line_id:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        memo:
+          type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+          default: []
+        source:
+          type: string
+          enum: [ocr, nlu, manual, marketing_list, referral, import, liff]
+        industry:
+          type: string
+          nullable: true
+          description: company 專屬
+        website:
+          type: string
+          nullable: true
+          description: company 專屬
+        added_by:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    ContactSummary:
+      type: object
+      description: 巢狀引用時的精簡版本
+      required: [id, display_name, contact_type]
+      properties:
+        id:
+          type: string
+        display_name:
+          type: string
+        contact_type:
+          type: string
+          enum: [person, company]
+        title:
+          type: string
+          nullable: true
+        company_name:
+          type: string
+          nullable: true
+
+    ContactCreate:
+      type: object
+      required: [contact_type, display_name, source]
+      properties:
+        contact_type:
+          type: string
+          enum: [person, company]
+        display_name:
+          type: string
+        legal_name:
+          type: string
+          nullable: true
+        aliases:
+          type: array
+          items:
+            type: string
+        parent_company_id:
+          type: string
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        mobile:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        line_id:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        memo:
+          type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+        source:
+          type: string
+          enum: [ocr, nlu, manual, marketing_list, referral, import, liff]
+          default: manual
+        industry:
+          type: string
+          nullable: true
+        website:
+          type: string
+          nullable: true
+
+    ContactUpdate:
+      type: object
+      description: 所有欄位皆選填（PATCH 語意）
+      properties:
+        display_name:
+          type: string
+        legal_name:
+          type: string
+          nullable: true
+        aliases:
+          type: array
+          items:
+            type: string
+        parent_company_id:
+          type: string
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        mobile:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        line_id:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        memo:
+          type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+        industry:
+          type: string
+          nullable: true
+        website:
+          type: string
+          nullable: true
+
+    ContactCrmView:
+      type: object
+      required: [contact, deals, activities, actions, stakeholders]
+      properties:
+        contact:
+          $ref: '#/components/schemas/Contact'
+        deals:
+          type: array
+          items:
+            $ref: '#/components/schemas/Deal'
+        activities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Activity'
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Action'
+        stakeholders:
+          type: array
+          items:
+            $ref: '#/components/schemas/Stakeholder'
+
+    # ── Deals ─────────────────────────────────────────────
+
+    Deal:
+      type: object
+      required: [id, org_id, entity_name, stage, status_summary, created_at]
+      properties:
+        id:
+          type: string
+        org_id:
+          type: string
+        entity_name:
+          type: string
+          description: display cache，永遠有值，遷移前作為公司名稱 fallback
+        company_contact_id:
+          type: string
+          nullable: true
+          description: 遷移完成前可為 null
+        company_contact:
+          $ref: '#/components/schemas/ContactSummary'
+          nullable: true
+        contract_entity_id:
+          type: string
+          nullable: true
+        poc_contact_id:
+          type: string
+          nullable: true
+        poc_contact:
+          $ref: '#/components/schemas/ContactSummary'
+          nullable: true
+        stage:
+          type: string
+          enum: ['0','1','2','3','4','5','6','成交','失敗']
+        is_pending:
+          type: boolean
+          nullable: true
+        product_id:
+          type: string
+          nullable: true
+        est_value:
+          type: integer
+          nullable: true
+          description: TWD
+        next_action_date:
+          type: string
+          format: date
+          nullable: true
+        status_summary:
+          type: string
+        added_by:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    DealUpdate:
+      type: object
+      properties:
+        stage:
+          type: string
+          enum: ['0','1','2','3','4','5','6','成交','失敗']
+        is_pending:
+          type: boolean
+          nullable: true
+        poc_contact_id:
+          type: string
+          nullable: true
+        est_value:
+          type: integer
+          nullable: true
+        next_action_date:
+          type: string
+          format: date
+          nullable: true
+        status_summary:
+          type: string
+
+    # ── Activities ────────────────────────────────────────
+
+    Activity:
+      type: object
+      required: [id, raw_transcript, ai_key_insights, sentiment, is_human_corrected, created_at]
+      properties:
+        id:
+          type: string
+        deal_id:
+          type: string
+          nullable: true
+        contact_id:
+          type: string
+          nullable: true
+          description: 遷移完成前可為 null
+        entity_name:
+          type: string
+          nullable: true
+          description: display cache
+        raw_transcript:
+          type: string
+        ai_key_insights:
+          type: array
+          items:
+            type: string
+          maxItems: 3
+          description: 各條 ≤30 字
+        sentiment:
+          type: string
+          enum: [Positive, Neutral, Negative]
+        is_human_corrected:
+          type: boolean
+        added_by:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    # ── Actions ───────────────────────────────────────────
+
+    Action:
+      type: object
+      required: [id, task_detail, status, added_by, created_at]
+      properties:
+        id:
+          type: string
+        deal_id:
+          type: string
+          nullable: true
+        contact_id:
+          type: string
+          nullable: true
+          description: 遷移完成前可為 null
+        entity_name:
+          type: string
+          nullable: true
+        task_detail:
+          type: string
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        status:
+          type: string
+          enum: [pending, completed]
+        added_by:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    ActionUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pending, completed]
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        task_detail:
+          type: string
+
+    # ── Stakeholders ──────────────────────────────────────
+
+    Stakeholder:
+      type: object
+      required: [id, deal_id, name, role, is_champion, added_by, created_at]
+      properties:
+        id:
+          type: string
+        deal_id:
+          type: string
+        name:
+          type: string
+        title:
+          type: string
+          nullable: true
+        role:
+          type: string
+          enum: [Champion, Decision Maker, Gatekeeper]
+        attitude:
+          type: string
+          enum: [Supportive, Neutral, Skeptical]
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        contact_id:
+          type: string
+          nullable: true
+        is_champion:
+          type: boolean
+        notes:
+          type: string
+          nullable: true
+        added_by:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    StakeholderCreate:
+      type: object
+      required: [name, role, is_champion]
+      properties:
+        name:
+          type: string
+        title:
+          type: string
+          nullable: true
+        role:
+          type: string
+          enum: [Champion, Decision Maker, Gatekeeper]
+        attitude:
+          type: string
+          enum: [Supportive, Neutral, Skeptical]
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        contact_id:
+          type: string
+          nullable: true
+        is_champion:
+          type: boolean
+          default: false
+        notes:
+          type: string
+          nullable: true
+
+    # ── CRM NLU ───────────────────────────────────────────
+
+    CrmParseResult:
+      type: object
+      required: [pipelines, interactions, actions]
+      properties:
+        pipelines:
+          type: array
+          items:
+            type: object
+            properties:
+              entity_name:
+                type: string
+              stage:
+                type: string
+              status_summary:
+                type: string
+              est_value:
+                type: integer
+                nullable: true
+              next_action_date:
+                type: string
+                format: date
+                nullable: true
+        interactions:
+          type: array
+          items:
+            type: object
+            properties:
+              entity_name:
+                type: string
+              raw_transcript:
+                type: string
+              ai_key_insights:
+                type: array
+                items:
+                  type: string
+              sentiment:
+                type: string
+                enum: [Positive, Neutral, Negative]
+        actions:
+          type: array
+          items:
+            type: object
+            properties:
+              entity_name:
+                type: string
+              task_detail:
+                type: string
+              due_date:
+                type: string
+                format: date
+                nullable: true
+
+    CrmConfirmResult:
+      type: object
+      required: [written]
+      properties:
+        written:
+          type: object
+          properties:
+            deals_upserted:
+              type: integer
+            activities_created:
+              type: integer
+            actions_created:
+              type: integer
+            contacts_upserted:
+              type: integer
+
+    # ── Pipeline Summary ──────────────────────────────────
+
+    PipelineSummary:
+      type: object
+      properties:
+        by_stage:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              count:
+                type: integer
+              total_value:
+                type: integer
+        pending_actions:
+          type: integer
+        total_deals:
+          type: integer
+        won_deals:
+          type: integer
+        lost_deals:
+          type: integer
+
+    # ── Shared ────────────────────────────────────────────
+
+    Error:
+      type: object
+      required: [detail]
+      properties:
+        detail:
+          type: string
+
+paths:
+
+  # ════════════════════════════════════════════════════════
+  # Contacts
+  # ════════════════════════════════════════════════════════
+
+  /api/v1/contacts:
+    get:
+      summary: 聯絡人列表
+      tags: [Contacts]
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: 文字搜尋（比對 display_name / aliases / email）
+        - name: contact_type
+          in: query
+          schema:
+            type: string
+            enum: [person, company]
+          description: 篩選人員或公司
+        - name: tags
+          in: query
+          schema:
+            type: string
+          description: 標籤篩選，逗號分隔（e.g. "VIP,潛力客戶"）
+        - name: source
+          in: query
+          schema:
+            type: string
+          description: 來源篩選（e.g. "ocr"）
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [contacts, total]
+                properties:
+                  contacts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Contact'
+                  total:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      summary: 新增聯絡人
+      tags: [Contacts]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContactCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contact'
+        '409':
+          description: 已有相同 email 的聯絡人（person）或相同 display_name 的公司
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/contacts/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      summary: 聯絡人詳情
+      tags: [Contacts]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contact'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      summary: 更新聯絡人
+      tags: [Contacts]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContactUpdate'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contact'
+
+  /api/v1/contacts/{id}/crm:
+    get:
+      summary: 聯絡人 CRM 視角（deals + activities + actions + stakeholders）
+      tags: [Contacts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContactCrmView'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/contacts/{id}/activities:
+    get:
+      summary: 聯絡人互動記錄（contact 360 view）
+      tags: [Contacts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  activities:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Activity'
+
+  /api/v1/contacts/{id}/actions:
+    get:
+      summary: 聯絡人待辦事項
+      tags: [Contacts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, completed]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  actions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Action'
+
+  # ════════════════════════════════════════════════════════
+  # Deals
+  # ════════════════════════════════════════════════════════
+
+  /api/v1/deals:
+    get:
+      summary: 案件列表（member 只看自己，admin 看全部）
+      tags: [Deals]
+      parameters:
+        - name: stage
+          in: query
+          schema:
+            type: string
+          description: 篩選階段
+        - name: is_pending
+          in: query
+          schema:
+            type: boolean
+        - name: contact_id
+          in: query
+          schema:
+            type: string
+          description: 篩選指定 contact 的所有案件
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deals:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Deal'
+                  total:
+                    type: integer
+
+  /api/v1/deals/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      summary: 案件詳情
+      tags: [Deals]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deal'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      summary: 更新案件
+      tags: [Deals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DealUpdate'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deal'
+
+  /api/v1/deals/{id}/activities:
+    get:
+      summary: 案件互動時間軸（deal timeline view）
+      tags: [Deals]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  activities:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Activity'
+
+  /api/v1/deals/{id}/stakeholders:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      summary: 案件利害關係人列表
+      tags: [Deals]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  stakeholders:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Stakeholder'
+
+    post:
+      summary: 新增利害關係人
+      tags: [Deals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StakeholderCreate'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Stakeholder'
+
+  # ════════════════════════════════════════════════════════
+  # Activities
+  # ════════════════════════════════════════════════════════
+
+  /api/v1/activities:
+    get:
+      summary: 互動記錄列表
+      tags: [Activities]
+      parameters:
+        - name: deal_id
+          in: query
+          schema:
+            type: string
+        - name: contact_id
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  activities:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Activity'
+
+  # ════════════════════════════════════════════════════════
+  # Actions
+  # ════════════════════════════════════════════════════════
+
+  /api/v1/actions:
+    get:
+      summary: 待辦事項列表
+      tags: [Actions]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, completed]
+          description: 不帶參數回傳全部
+        - name: deal_id
+          in: query
+          schema:
+            type: string
+        - name: contact_id
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  actions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Action'
+
+  /api/v1/actions/{id}:
+    put:
+      summary: 更新待辦事項
+      tags: [Actions]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActionUpdate'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Action'
+
+  # ════════════════════════════════════════════════════════
+  # CRM NLU
+  # ════════════════════════════════════════════════════════
+
+  /api/v1/crm/parse:
+    post:
+      summary: NLU 解析，回傳預覽（不寫入）
+      tags: [CRM]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text:
+                  type: string
+                  description: 用戶輸入的自然語言文字
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CrmParseResult'
+
+  /api/v1/crm/confirm:
+    post:
+      summary: 確認寫入 Firebase（接受 parse 回傳的結構）
+      tags: [CRM]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CrmParseResult'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CrmConfirmResult'
+
+  # ════════════════════════════════════════════════════════
+  # Pipeline
+  # ════════════════════════════════════════════════════════
+
+  /api/v1/pipeline/summary:
+    get:
+      summary: Pipeline 彙總（admin only）
+      tags: [Pipeline]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PipelineSummary'
+        '403':
+          description: 非 admin 身份
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  components:
+    responses:
+      Unauthorized:
+        description: 未授權（token 無效或過期）
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+      NotFound:
+        description: 資源不存在
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'

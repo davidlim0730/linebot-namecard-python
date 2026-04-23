@@ -1,0 +1,161 @@
+/* ═══════════════════════════════════════════════════════════════
+   Conversational CRM — Design Tokens
+   Based on spec §3 Design System
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* 主品牌色 */
+  --color-primary:          #06C755;
+  --color-primary-dark:     #006E2B;
+  --color-primary-light:    #E8F9EE;
+
+  /* 背景層次 */
+  --color-bg-base:          #F9F9FE;
+  --color-bg-section:       #F3F3F8;
+  --color-bg-card:          #FFFFFF;
+  --color-bg-input-empty:   #E2E2E7;
+
+  /* 文字 */
+  --color-text-primary:     #1A1A1A;
+  --color-text-secondary:   #3C4A3C;
+  --color-text-tertiary:    #6B7A6B;
+  --color-text-disabled:    rgba(60,74,60,0.5);
+
+  /* 邊框 */
+  --color-outline:          rgba(60,74,60,0.2);
+  --color-focus-ring:       #06C755;
+
+  /* 狀態色 */
+  --color-danger:           #C0000A;
+  --color-warning:          #F59E0B;
+  --color-success:          #06C755;
+
+  /* AI 專屬 */
+  --color-ai-gradient:      linear-gradient(90deg, #06C755 0%, #0A84FF 100%);
+  --color-ai-gradient-soft: linear-gradient(90deg, rgba(6,199,85,0.08) 0%, rgba(10,132,255,0.08) 100%);
+  --color-ai-surface:       rgba(10,132,255,0.06);
+  --color-ai-blue:          #0A84FF;
+
+  /* 圓角 */
+  --radius-card:    16px;
+  --radius-button:  8px;
+  --radius-input:   8px;
+  --radius-chip:    20px;
+  --radius-modal:   16px;
+
+  /* 間距 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+
+  /* 字體 */
+  --font-display: 'Plus Jakarta Sans', 'Noto Sans TC', -apple-system, system-ui, sans-serif;
+  --font-body:    'Inter', 'Noto Sans TC', -apple-system, system-ui, sans-serif;
+}
+
+/* ── Reset for the LIFF canvas ───────────────────────────────── */
+.liff-app {
+  font-family: var(--font-body);
+  color: var(--color-text-primary);
+  background: var(--color-bg-base);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "cv11", "ss01";
+  letter-spacing: -0.01em;
+}
+.liff-app * { box-sizing: border-box; }
+.liff-app button { font-family: inherit; cursor: pointer; border: none; background: none; padding: 0; color: inherit; }
+.liff-app h1, .liff-app h2, .liff-app h3 { font-family: var(--font-display); margin: 0; letter-spacing: -0.02em; }
+.liff-app p { margin: 0; }
+
+/* ── AI gradient text ────────────────────────────────────────── */
+.ai-text {
+  background: var(--color-ai-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 600;
+}
+
+.ai-ribbon {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--color-ai-gradient);
+  border-radius: 2px;
+}
+
+/* ── Pulse animation (listening mic) ────────────────────────── */
+@keyframes ai-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50%      { transform: scale(1.15); opacity: 0.2; }
+}
+@keyframes ai-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.ai-shimmer {
+  background: linear-gradient(90deg,
+    rgba(6,199,85,0) 0%,
+    rgba(10,132,255,0.25) 50%,
+    rgba(6,199,85,0) 100%);
+  background-size: 200% 100%;
+  animation: ai-shimmer 2s linear infinite;
+}
+
+@keyframes wave {
+  0%, 100% { transform: scaleY(0.3); }
+  50%      { transform: scaleY(1); }
+}
+
+/* ── Scroll bar hide ─────────────────────────────────────────── */
+.liff-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+.liff-scroll::-webkit-scrollbar { display: none; }
+
+/* ── Cards & buttons ─────────────────────────────────────────── */
+.liff-card {
+  background: var(--color-bg-card);
+  border-radius: var(--radius-card);
+  padding: var(--space-4);
+}
+.liff-btn-primary {
+  height: 48px;
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: var(--radius-button);
+  font-weight: 600;
+  font-size: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 20px;
+  transition: transform 0.1s, background 0.15s;
+}
+.liff-btn-primary:active { transform: scale(0.98); background: var(--color-primary-dark); }
+.liff-btn-ghost {
+  height: 44px;
+  border-radius: var(--radius-button);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  font-size: 14px;
+  padding: 0 16px;
+  background: var(--color-bg-section);
+}
+.liff-chip {
+  height: 32px;
+  border-radius: var(--radius-chip);
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--color-bg-section);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+}
+.liff-chip-active {
+  background: var(--color-primary-light);
+  color: var(--color-primary-dark);
+}

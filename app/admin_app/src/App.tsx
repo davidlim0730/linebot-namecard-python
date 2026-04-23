@@ -6,6 +6,7 @@ import AuthCallback from './pages/AuthCallback'
 import DealsKanban from './pages/DealsKanban'
 import DealDetail from './pages/DealDetail'
 import ContactsTable from './pages/ContactsTable'
+import Actions from './pages/Actions'
 import NotFound from './pages/NotFound'
 
 export default function App() {
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="deals" element={<DealsKanban />} />
           <Route path="deals/:id" element={<DealDetail />} />
           <Route path="contacts" element={<ContactsTable />} />
+          <Route path="actions" element={<Actions />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>

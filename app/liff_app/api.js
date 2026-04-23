@@ -19,6 +19,22 @@ export function isAuthenticated() {
   return !!getToken();
 }
 
+export function getSessionUser() {
+  const token = getToken();
+  if (!token) return null;
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return {
+      user_id: payload.sub || "",
+      org_id: payload.org_id || "",
+      role: payload.role || "member",
+      is_admin: payload.role === "admin",
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function request(method, path, body) {
   const token = getToken();
   const headers = { "Content-Type": "application/json" };
@@ -68,6 +84,14 @@ export function updateCard(id, body) {
 
 export function listTags() {
   return request("GET", "/api/v1/tags");
+}
+
+export function createTag(name) {
+  return request("POST", "/api/v1/tags", { name });
+}
+
+export function deleteTag(tagName) {
+  return request("DELETE", `/api/v1/tags/${encodeURIComponent(tagName)}`);
 }
 
 export function setCardTags(id, tag_names) {

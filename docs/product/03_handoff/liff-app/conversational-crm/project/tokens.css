@@ -1,0 +1,124 @@
+/* Conversational CRM — LIFF design tokens
+   Original palette (not LINE-branded): deep moss/forest green as primary,
+   warm neutral backgrounds, single cool-blue AI accent.
+*/
+:root {
+  /* Primary — moss / forest (oklch, chroma ~0.12, hue ~155) */
+  --c-primary:          #1F8B5C;
+  --c-primary-deep:     #0E5E3A;
+  --c-primary-soft:     #E6F4EC;
+  --c-primary-softer:   #F1FAF4;
+
+  /* Surfaces — warm neutrals */
+  --c-bg-base:          #FAFAF7;
+  --c-bg-section:       #F2F1EC;
+  --c-bg-card:          #FFFFFF;
+  --c-bg-input:         #ECEAE3;
+
+  /* Text */
+  --c-text:             #1A1B18;
+  --c-text-sub:         #55584F;
+  --c-text-mute:        #8A8C83;
+  --c-text-disabled:    rgba(85,88,79,0.45);
+
+  /* Outline / hairline */
+  --c-outline:          rgba(26,27,24,0.09);
+  --c-hairline:         rgba(26,27,24,0.08);
+
+  /* Status */
+  --c-danger:           #B3261E;
+  --c-danger-soft:      #FDEDEA;
+  --c-warning:          #B06B0F;
+  --c-warning-soft:     #FCF2DE;
+  --c-info:             #1D5CC4;
+  --c-info-soft:        #E8EFFB;
+
+  /* AI accent — cool blue that pairs with moss green */
+  --c-ai:               #2B6CD6;
+  --c-ai-soft:          rgba(43,108,214,0.06);
+  --c-ai-grad:          linear-gradient(90deg, #1F8B5C 0%, #2B6CD6 100%);
+  --c-ai-grad-135:      linear-gradient(135deg, #1F8B5C 0%, #0E5E3A 100%);
+
+  /* Radii */
+  --r-card:   16px;
+  --r-btn:    12px;
+  --r-input:  10px;
+  --r-chip:   999px;
+  --r-sheet:  20px;
+
+  /* Shadows */
+  --sh-card:  0 1px 2px rgba(26,27,24,0.04), 0 4px 14px rgba(26,27,24,0.04);
+  --sh-float: 0 6px 24px rgba(26,27,24,0.08), 0 2px 6px rgba(26,27,24,0.05);
+
+  /* Type */
+  --f-display: "Plus Jakarta Sans", "Noto Sans TC", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --f-ui:      "Inter", "Noto Sans TC", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --f-mono:    ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+}
+
+/* Reset inside each phone screen */
+.liff {
+  font-family: var(--f-ui);
+  color: var(--c-text);
+  background: var(--c-bg-base);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "ss01", "cv11";
+  letter-spacing: -0.005em;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+.liff *, .liff *::before, .liff *::after { box-sizing: border-box; }
+.liff button { font-family: inherit; border: 0; background: none; cursor: pointer; color: inherit; padding: 0; }
+.liff input, .liff textarea { font-family: inherit; border: 0; outline: 0; background: transparent; color: inherit; }
+
+.display { font-family: var(--f-display); letter-spacing: -0.015em; }
+.num { font-family: var(--f-display); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+
+/* Custom scrollbar hide for liff scroll areas */
+.liff-scroll { overflow-y: auto; scrollbar-width: none; }
+.liff-scroll::-webkit-scrollbar { display: none; }
+
+/* Shimmer for skeletons */
+@keyframes shimmer {
+  0%   { background-position: -180px 0; }
+  100% { background-position: 180px 0; }
+}
+.skel {
+  background: linear-gradient(90deg, #ECEAE3 0%, #F5F4EF 50%, #ECEAE3 100%);
+  background-size: 360px 100%;
+  animation: shimmer 1.5s linear infinite;
+  border-radius: 6px;
+}
+
+/* Slide-down toast */
+@keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+
+/* AI gradient border helper */
+.ai-border-top {
+  position: relative;
+}
+.ai-border-top::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px;
+  background: var(--c-ai-grad);
+  border-top-left-radius: inherit; border-top-right-radius: inherit;
+}
+.ai-border-left {
+  position: relative; padding-left: 10px;
+}
+.ai-border-left::before {
+  content: ""; position: absolute; left: 0; top: 2px; bottom: 2px; width: 3px;
+  border-radius: 2px;
+  background: var(--c-ai-grad);
+}
+
+/* AI dot pulse */
+@keyframes pulseDot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(1.25); opacity: 0.6; }
+}
+
+/* Checkbox tick animation */
+@keyframes tickIn { from { stroke-dashoffset: 16; } to { stroke-dashoffset: 0; } }

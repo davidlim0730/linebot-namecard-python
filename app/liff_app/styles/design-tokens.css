@@ -13,25 +13,25 @@
   /* ====== PRIMARY COLOR (LINE Green) ====== */
   --color-primary: #06C755;
   --color-primary-dark: #006E2B;
-  --color-primary-light: #ECFDF5;
+  --color-primary-light: #E8F9EE;
 
   /* ====== NEUTRAL COLORS (Background Layers - No-Line Rule) ====== */
   --color-bg-1: #FFFFFF;           /* Card background, highest contrast */
   --color-bg-2: #F9F9FE;           /* Primary background */
   --color-bg-3: #F3F3F8;           /* Secondary background */
-  --color-bg-4: #EBEBF0;           /* Disabled background */
+  --color-bg-4: #E2E2E7;           /* Input empty background */
 
   /* ====== TEXT COLORS ====== */
-  --color-text-primary: #1F2937;    /* Dark gray, primary text */
-  --color-text-secondary: #6B7280;  /* Light gray, secondary text */
-  --color-text-disabled: #9CA3AF;   /* Disabled text */
+  --color-text-primary: #1A1A1A;    /* Dark gray, primary text */
+  --color-text-secondary: #3C4A3C;  /* Light gray, secondary text */
+  --color-text-disabled: rgba(60,74,60,0.5);   /* Disabled text */
   --color-text-inverse: #FFFFFF;    /* Inverse text (on dark backgrounds) */
 
   /* ====== SYSTEM COLORS ====== */
-  --color-success: #10B981;         /* Green: Success states */
-  --color-error: #EF4444;           /* Red: Error/Delete states */
+  --color-success: #06C755;         /* Green: Success states */
+  --color-error: #C0000A;           /* Red: Error/Delete states */
   --color-warning: #F59E0B;         /* Orange: Warning states */
-  --color-info: #3B82F6;            /* Blue: Info states */
+  --color-info: #0A84FF;            /* Blue: Info states */
 
   /* ====== SHADOWS ====== */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
@@ -44,10 +44,11 @@
   --color-action: #FF6B00;      /* Action / 待辦 left-accent */
 
   /* ====== ALIASES (convenience) ====== */
-  --color-surface: #F8FAFC;     /* Page background alias */
+  --color-surface: #F9F9FE;     /* Page background alias */
   --color-card: #ffffff;        /* Card background alias */
-  --radius-card: 12px;          /* Card border radius */
+  --radius-card: 16px;          /* Card border radius */
   --radius-btn: 8px;             /* Button border radius */
+  --radius-input: 8px;
   --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.08);  /* Card shadow */
 
   /* ====== LAYOUT ====== */

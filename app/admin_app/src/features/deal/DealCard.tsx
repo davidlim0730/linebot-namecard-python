@@ -3,7 +3,6 @@ import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { AlertCircle } from 'lucide-react'
 import { Deal } from '../../api/deals'
-import { getStage } from '../../constants/stages'
 
 dayjs.extend(relativeTime)
 
@@ -19,17 +18,31 @@ function ownerInitial(userId: string | null): string {
   return String.fromCharCode(65 + (hash % 26))
 }
 
-function ownerColor(userId: string | null): string {
-  if (!userId) return '#9CA3AF'
+function ownerTone(userId: string | null): string {
+  if (!userId) return 'bg-slate-400'
   const hash = userId.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
-  const colors = ['#06C755', '#3B82F6', '#8B5CF6', '#F59E0B', '#EF4444', '#EC4899', '#10B981']
+  const colors = ['bg-emerald-500', 'bg-blue-500', 'bg-violet-500', 'bg-amber-500', 'bg-red-500', 'bg-pink-500', 'bg-teal-500']
   return colors[hash % colors.length]
+}
+
+function stageBorderTone(stageId: string): string {
+  const tones: Record<string, string> = {
+    '0': 'border-l-slate-500',
+    '1': 'border-l-blue-500',
+    '2': 'border-l-violet-500',
+    '3': 'border-l-amber-500',
+    '4': 'border-l-red-500',
+    '5': 'border-l-pink-500',
+    '6': 'border-l-emerald-500',
+    '成交': 'border-l-transparent',
+    '失敗': 'border-l-transparent',
+  }
+  return tones[stageId] ?? 'border-l-slate-500'
 }
 
 export default function DealCard({ deal, isDragging }: DealCardProps) {
   const navigate = useNavigate()
-  const stage = getStage(deal.stage)
-  const accentColor = stage?.color ?? '#6B7280'
+  const accentClass = stageBorderTone(deal.stage)
 
   const isOverdue = deal.next_action_date
     ? dayjs(deal.next_action_date).isBefore(dayjs(), 'day')
@@ -46,38 +59,38 @@ export default function DealCard({ deal, isDragging }: DealCardProps) {
   return (
     <div
       onClick={() => navigate(`/deals/${deal.id}`)}
-      className={`bg-white rounded-lg p-3 cursor-pointer border-l-[3px] shadow-sm hover:shadow-md transition-shadow ${
-        isDragging ? 'shadow-lg rotate-1' : ''
+      className={`deal-card cursor-pointer rounded-2xl border-l-[3px] bg-white p-3.5 shadow-[var(--shadow-card)] ${accentClass} ${
+        isDragging ? 'rotate-1 shadow-[var(--shadow-card-hover)]' : ''
       }`}
-      style={{ borderLeftColor: accentColor }}
     >
-      <div className="font-medium text-sm text-gray-800 leading-snug line-clamp-2">
-        {deal.entity_name}
-      </div>
-      <div className="text-xs text-gray-500 mt-1">
-        {deal.est_value != null
-          ? `NT$ ${deal.est_value.toLocaleString()}`
-          : '未估金額'}
-      </div>
-      {(daysLabel || deal.added_by) && (
-        <div className="flex items-center justify-between mt-2">
-          {daysLabel ? (
-            <div className={`flex items-center gap-1 text-xs ${isOverdue ? 'text-red-500' : 'text-gray-400'}`}>
-              {isOverdue && <AlertCircle size={12} />}
-              📅 {deal.next_action_date} ({daysLabel})
-            </div>
-          ) : (
-            <div />
-          )}
-          <div
-            className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0"
-            style={{ backgroundColor: ownerColor(deal.added_by) }}
-            title={deal.added_by ?? ''}
-          >
-            {ownerInitial(deal.added_by)}
-          </div>
+      <div className="mb-1 flex items-start justify-between gap-2">
+        <div className="display-font line-clamp-2 text-[13.5px] font-bold leading-snug text-[color:var(--color-text-primary)]">
+          {deal.entity_name}
         </div>
-      )}
+      </div>
+      <div className="display-font text-[18px] font-bold leading-none tracking-[-0.02em] text-[color:var(--color-text-primary)]">
+        {deal.est_value != null ? `NT$ ${deal.est_value.toLocaleString()}` : '未估金額'}
+        {deal.est_value != null && (
+          <span className="ml-1 text-[10px] font-medium text-[color:var(--color-text-secondary)]/55">TWD</span>
+        )}
+      </div>
+      <div className="mt-2 line-clamp-2 text-xs leading-relaxed text-[color:var(--color-text-secondary)]/85">
+        {deal.status_summary || '尚未建立摘要，點開後可補充案件進度與下一步。'}
+      </div>
+      <div className="mt-3 flex items-center justify-between gap-3 border-t border-[color:var(--color-outline)]/40 pt-2.5">
+        <div className={`flex min-w-0 items-center gap-1 text-[11px] font-semibold ${isOverdue ? 'text-[color:var(--color-danger)]' : 'text-[color:var(--color-text-secondary)]/80'}`}>
+          {isOverdue && <AlertCircle size={12} />}
+          <span className="truncate">
+            {daysLabel ? `${daysLabel} · ${deal.next_action_date}` : '尚未安排下一步'}
+          </span>
+        </div>
+        <div
+          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold text-white ${ownerTone(deal.added_by)}`}
+          title={deal.added_by ?? ''}
+        >
+          {ownerInitial(deal.added_by)}
+        </div>
+      </div>
     </div>
   )
 }

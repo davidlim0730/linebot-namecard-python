@@ -61,14 +61,18 @@ export default function NluInputModal({ open, onClose }: Props) {
       <div className="absolute inset-0 bg-black/40" onClick={handleClose} />
 
       {/* Modal */}
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-xl mx-4 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-semibold text-gray-800">意識流輸入</h2>
-          <button onClick={handleClose} className="text-gray-400 hover:text-gray-600">
+      <div className="relative mx-4 w-full max-w-2xl overflow-hidden rounded-[24px] bg-white shadow-[var(--shadow-popover)]">
+        <div className="absolute left-0 right-0 top-0 h-[3px] bg-gradient-to-r from-[color:var(--color-primary)] to-sky-500" />
+        <div className="flex items-center justify-between border-b border-[color:var(--color-outline)] px-6 py-4">
+          <div>
+            <h2 className="display-font text-lg font-bold text-[color:var(--color-text-primary)]">AI 快速記錄</h2>
+            <p className="mt-1 text-xs text-[color:var(--color-text-secondary)]/70">說出或貼上拜訪紀錄，AI 自動整理為案件、聯絡人與待辦</p>
+          </div>
+          <button onClick={handleClose} className="text-slate-400 hover:text-slate-600">
             <X size={20} />
           </button>
         </div>
-
+        <div className="p-6">
         <textarea
           value={text}
           onChange={e => setText(e.target.value)}
@@ -76,20 +80,20 @@ export default function NluInputModal({ open, onClose }: Props) {
           rows={6}
           disabled={step === 'parsing' || step === 'confirming'}
           autoFocus
-          className="w-full text-sm border border-gray-200 rounded-xl p-4 focus:outline-none focus:ring-2 focus:ring-green-400 resize-none disabled:bg-gray-50"
+          className="w-full resize-none rounded-2xl bg-[color:var(--color-bg-section)] p-4 text-sm leading-relaxed focus:bg-white focus:outline-none focus:ring-2 focus:ring-[color:var(--color-primary)]/30 disabled:bg-slate-50"
         />
 
         {step === 'preview' && parsed && (
-          <div className="mt-3 bg-gray-50 rounded-xl p-4">
-            <p className="text-xs font-semibold text-gray-600 mb-3">📋 解析結果預覽</p>
+          <div className="mt-4 rounded-2xl bg-[color:var(--color-ai-surface)] p-4">
+            <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.12em] text-sky-600">AI 解析結果</p>
             <NluPreview parsed={parsed} />
           </div>
         )}
 
-        <div className="flex gap-3 justify-end mt-4">
+        <div className="mt-5 flex justify-end gap-3">
           <button
             onClick={handleClose}
-            className="text-sm text-gray-500 hover:text-gray-700 px-4 py-2"
+            className="px-4 py-2 text-sm font-semibold text-[color:var(--color-text-secondary)]"
           >
             取消
           </button>
@@ -97,7 +101,7 @@ export default function NluInputModal({ open, onClose }: Props) {
             <button
               onClick={handleConfirm}
               disabled={confirmCrm.isPending}
-              className="flex items-center gap-2 text-sm bg-green-500 hover:bg-green-600 text-white font-medium px-5 py-2 rounded-xl disabled:opacity-50 transition-colors"
+              className="flex items-center gap-2 rounded-xl bg-[color:var(--color-primary)] px-5 py-2 text-sm font-semibold text-white transition hover:bg-[color:var(--color-primary-dark)] disabled:opacity-50"
             >
               {confirmCrm.isPending
                 ? <Loader2 size={14} className="animate-spin" />
@@ -108,12 +112,13 @@ export default function NluInputModal({ open, onClose }: Props) {
             <button
               onClick={handleParse}
               disabled={parseCrm.isPending || !text.trim()}
-              className="flex items-center gap-2 text-sm bg-green-500 hover:bg-green-600 text-white font-medium px-5 py-2 rounded-xl disabled:opacity-50 transition-colors"
+              className="flex items-center gap-2 rounded-xl bg-[color:var(--color-primary)] px-5 py-2 text-sm font-semibold text-white transition hover:bg-[color:var(--color-primary-dark)] disabled:opacity-50"
             >
               {parseCrm.isPending && <Loader2 size={14} className="animate-spin" />}
               🔍 分析
             </button>
           )}
+        </div>
         </div>
       </div>
     </div>

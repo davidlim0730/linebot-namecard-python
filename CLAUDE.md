@@ -129,34 +129,119 @@ user_states[user_id] = {'action': 'editing_field', 'card_id': '...', 'field': 'n
 
 ### Data Model（Firebase Realtime DB）
 
-Phase 2 後，所有名片以組織為隔離單位：
+所有業務資料以 `org_id` 為隔離單位：
 
 ```
-batch_states/{user_id}/
-  org_id: string
-  pending_images: [storage_path, ...]
-  created_at, updated_at: ISO8601
-  ← 批量上傳進行中的狀態（Admin SDK 寫入）
-
-namecard/{org_id}/{card_id}/     ← config.NAMECARD_PATH = "namecard"
-  name, title, company, address, phone, email
-  memo?: string
-  added_by: user_id
-  created_at: ISO8601
-
+# ── 組織與成員 ──────────────────────────────────────────────
 organizations/{org_id}/
   name: string
   created_by: user_id
-  members/{user_id}/role: "admin" | "member"
-  tags/roles/{push_id}/name: string    ← 角色標籤
+  plan_type?: string
+  trial_ends_at?: ISO8601
+  members/{user_id}/
+    role: "admin" | "member"
+    joined_at: ISO8601
+    display_name?: string
+  tags/roles/{push_id}/name: string    ← 角色標籤（舊版名片用）
 
-user_org_map/{user_id}: org_id        ← 使用者 → 組織的索引
+user_org_map/{user_id}: org_id         ← 使用者 → 組織索引
 
 invite_codes/{code}/
   org_id, created_by, created_at, expires_at
 
-namecard_cache/{card_id}/roles: [tag_names]  ← 名片標籤快取
-display_name_cache/{user_id}: string         ← LINE 顯示名稱快取
+# ── 名片（舊版，LINE Bot OCR 掃描）────────────────────────────
+namecard/{org_id}/{card_id}/           ← config.NAMECARD_PATH = "namecard"
+  name, title, company, address
+  phone?, mobile?, email?, line_id?
+  memo?: string
+  tags: [string]
+  added_by: user_id
+  created_at: ISO8601
+
+# ── 聯絡人（新版 CRM Contact）──────────────────────────────────
+contacts/{org_id}/{contact_id}/        ← config.CONTACT_PATH = "contacts"
+  contact_type: "person" | "company"
+  display_name: string
+  legal_name?: string
+  aliases: [string]
+  parent_company_id?: string           ← 所屬公司 contact_id
+  title?, phone?, mobile?, email?, line_id?
+  memo?: string
+  source: string                       ← "nlu" | "ocr" | ...
+  added_by: user_id
+  created_at, updated_at: ISO8601
+
+# ── 商機 ────────────────────────────────────────────────────
+deals/{org_id}/{deal_id}/
+  entity_name: string
+  company_contact_id?: string          ← contacts FK
+  contract_entity_id?: string          ← contacts FK
+  poc_contact_id?: string              ← contacts FK
+  stage: "0"~"6" | "成交" | "失敗"
+  is_pending?: boolean
+  product_id?: string                  ← products FK
+  est_value?: int                      ← TWD
+  next_action_date?: YYYY-MM-DD
+  status_summary: string
+  added_by: user_id
+  created_at, updated_at: ISO8601
+
+stage_change_events/{org_id}/{event_id}/
+  deal_id, from_stage, to_stage
+  updated_by: user_id
+  created_at: ISO8601
+
+# ── 互動記錄 ────────────────────────────────────────────────
+activities/{org_id}/{activity_id}/
+  deal_id?: string
+  contact_id?: string
+  entity_name?: string
+  raw_transcript: string
+  ai_key_insights: [string]            ← 最多 3 條，各 ≤30 字
+  sentiment: "Positive" | "Neutral" | "Negative"
+  is_human_corrected: boolean
+  edit_log?: string                    ← JSON 字串
+  added_by: user_id
+  created_at: ISO8601
+
+# ── 待辦事項 ────────────────────────────────────────────────
+actions/{org_id}/{action_id}/
+  deal_id?, contact_id?, entity_name?
+  task_detail: string
+  due_date?: YYYY-MM-DD
+  status: "pending" | "completed"
+  added_by: user_id
+  created_at: ISO8601
+
+# ── 利害關係人 ──────────────────────────────────────────────
+stakeholders/{org_id}/{stakeholder_id}/
+  deal_id: string
+  name, title?
+  role: "Champion" | "Decision Maker" | "Gatekeeper"
+  attitude?: "Supportive" | "Neutral" | "Skeptical"
+  email?, phone?
+  contact_id?: string
+  is_champion: boolean
+  notes?: string
+  added_by: user_id
+  created_at: ISO8601
+
+# ── 產品線 ──────────────────────────────────────────────────
+products/{org_id}/{product_id}/
+  name: string
+  status: "Active" | "Beta" | "Sunset"
+  description?: string
+  created_at: ISO8601
+
+# ── 批量上傳暫態 ─────────────────────────────────────────────
+batch_states/{user_id}/
+  org_id: string
+  pending_images: [storage_path]
+  created_at, updated_at: ISO8601
+
+# ── 快取 ─────────────────────────────────────────────────────
+namecard_cache/{card_id}/roles: [tag_names]
+display_name_cache/{user_id}: string
 ```
 
 ### Key Behaviors

@@ -104,26 +104,51 @@ class Migrator:
     def phase1_copy_namecards(self):
         print(f"\n[Phase 1] Copying namecard → contacts (org: {self.org_id})")
         data = db.reference(f"namecard/{self.org_id}").get() or {}
+        existing_contacts = db.reference(f"contacts/{self.org_id}").get() or {}
+        skipped = 0
         for card_id, card_data in data.items():
             if not isinstance(card_data, dict):
                 continue
-            contact_data = dict(card_data)
-            contact_data["contact_type"] = "person"
-            contact_data["display_name"] = card_data.get("name") or "（未知）"
-            contact_data["source"] = "scan"
-            contact_data.setdefault("added_by", "migration")
-            contact_data.setdefault("created_at", datetime.utcnow().isoformat() + "Z")
+            if card_id in existing_contacts:
+                skipped += 1
+                continue
+            tags = card_data.get("role_tags") or card_data.get("tags") or []
+            if isinstance(tags, dict):
+                tags = list(tags.values())
+            contact_data = {
+                "contact_type": "person",
+                "display_name": card_data.get("name") or "（未知）",
+                "company_name": card_data.get("company") or None,
+                "title": card_data.get("title") or None,
+                "phone": card_data.get("phone") or None,
+                "mobile": card_data.get("mobile") or None,
+                "email": card_data.get("email") or None,
+                "line_id": card_data.get("line_id") or None,
+                "address": card_data.get("address") or None,
+                "memo": card_data.get("memo") or None,
+                "tags": tags,
+                "source": "ocr",
+                "raw_card_data": {k: v for k, v in card_data.items()
+                                  if k not in ("role_tags", "tags")},
+                "added_by": card_data.get("added_by") or "migration",
+                "created_at": card_data.get("created_at") or datetime.utcnow().isoformat() + "Z",
+            }
+            contact_data = {k: v for k, v in contact_data.items() if v is not None}
             self._write(f"contacts/{self.org_id}/{card_id}", contact_data)
             self.stats["phase1_copied"] += 1
-        print(f"  Copied: {self.stats['phase1_copied']} namecards")
+        print(f"  Copied: {self.stats['phase1_copied']}, Skipped (already exist): {skipped}")
 
     def phase2_create_companies(self):
-        print(f"\n[Phase 2] Creating company contacts from deal entity_names")
+        print(f"\n[Phase 2] Creating company contacts from namecard.company + deal entity_names")
         deals_data = db.reference(f"deals/{self.org_id}").get() or {}
         contacts_data = db.reference(f"contacts/{self.org_id}").get() or {}
 
-        # 收集所有 deal entity_names
+        # 收集所有公司名稱來源：namecard.company + deal entity_names
         entity_names = set()
+        namecard_data = db.reference(f"namecard/{self.org_id}").get() or {}
+        for card_data in namecard_data.values():
+            if isinstance(card_data, dict) and card_data.get("company"):
+                entity_names.add(card_data["company"].strip())
         for deal_data in deals_data.values():
             if isinstance(deal_data, dict) and deal_data.get("entity_name"):
                 entity_names.add(deal_data["entity_name"].strip())
@@ -152,6 +177,30 @@ class Migrator:
 
         print(f"  Companies created: {self.stats['phase2_companies_created']}")
         return contacts_data  # 回傳更新後的 contacts（含新建的）
+
+    def phase2b_backfill_person_company_fk(self, contacts_data: dict):
+        print(f"\n[Phase 2b] Backfilling person contacts parent_company_id from company_name")
+        backfilled = 0
+        for contact_id, cdata in contacts_data.items():
+            if not isinstance(cdata, dict):
+                continue
+            if cdata.get("contact_type") != "person":
+                continue
+            if cdata.get("parent_company_id"):
+                continue
+            company_name = cdata.get("company_name") or cdata.get("company")
+            if not company_name:
+                continue
+            company_contact_id = self._find_company_contact(contacts_data, company_name, threshold=0.8)
+            if company_contact_id:
+                self._write(
+                    f"contacts/{self.org_id}/{contact_id}",
+                    {"parent_company_id": company_contact_id},
+                    mode="update"
+                )
+                cdata["parent_company_id"] = company_contact_id
+                backfilled += 1
+        print(f"  parent_company_id backfilled: {backfilled}")
 
     def phase3_backfill_deals(self, contacts_data: dict):
         print(f"\n[Phase 3] Backfilling deals.company_contact_id")
@@ -225,6 +274,7 @@ class Migrator:
 
         self.phase1_copy_namecards()
         contacts_data = self.phase2_create_companies()
+        self.phase2b_backfill_person_company_fk(contacts_data)
         deals_data = self.phase3_backfill_deals(contacts_data)
         self.phase4_backfill_activities(contacts_data, deals_data)
         self.phase5_backfill_actions(contacts_data, deals_data)

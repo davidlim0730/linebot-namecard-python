@@ -10,7 +10,10 @@ html, body {
   width: 100%;
   height: 100%;
   font-family: var(--font-body);
-  background-color: var(--color-bg-2);
+  background:
+    radial-gradient(circle at top left, rgba(6, 199, 85, 0.08), transparent 32%),
+    radial-gradient(circle at top right, rgba(10, 132, 255, 0.06), transparent 22%),
+    var(--color-bg-2);
   color: var(--color-text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -36,6 +39,7 @@ html, body {
 .page-container {
   padding: var(--space-16);
   min-height: 100%;
+  padding-bottom: calc(var(--bottom-nav-height) + 20px);
 }
 
 /* 底部導航欄（固定位置，56px + 1px border） */
@@ -45,13 +49,15 @@ html, body {
   left: 0;
   right: 0;
   height: 56px;
-  background-color: var(--color-bg-1);
-  border-top: 1px solid var(--color-bg-3);  /* 幽靈邊框 */
+  background-color: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-top: 1px solid var(--color-outline);  /* 幽靈邊框 */
   display: flex;
   justify-content: space-around;
   align-items: center;
   z-index: var(--z-overlay);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 -4px 18px rgba(0, 0, 0, 0.05);
 }
 
 .bottom-nav-item {
@@ -64,15 +70,27 @@ html, body {
   cursor: pointer;
   text-decoration: none;
   color: var(--color-text-secondary);
-  transition: color 0.3s ease;
+  transition: color 0.2s ease, transform 0.2s ease;
+  position: relative;
 }
 
 .bottom-nav-item.active {
-  color: var(--color-primary);
+  color: var(--color-primary-dark);
+}
+
+.bottom-nav-item.active::after {
+  content: "";
+  position: absolute;
+  bottom: 4px;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--color-primary-dark);
 }
 
 .bottom-nav-item-icon {
-  font-size: 24px;
+  font-size: 20px;
+  line-height: 1;
 }
 
 .bottom-nav-item-label {
@@ -89,7 +107,7 @@ html, body {
   left: var(--space-16);
   right: var(--space-16);
   height: 52px;
-  border-radius: var(--radius-md);
+  border-radius: 14px;
   background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
   color: white;
   border: none;
@@ -99,7 +117,7 @@ html, body {
   justify-content: center;
   font-size: 16px;
   font-weight: 600;
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 12px 26px rgba(6, 199, 85, 0.25);
   transition: background-color 0.3s ease, transform 0.2s ease;
   z-index: var(--z-overlay);
 }

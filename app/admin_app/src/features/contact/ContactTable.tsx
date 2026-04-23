@@ -77,6 +77,15 @@ const colHelper = createColumnHelper<Contact>()
 export default function ContactTable({ contacts, onRowClick }: Props) {
   const [globalFilter, setGlobalFilter] = useState('')
   const [typeFilter, setTypeFilter] = useState<'all' | 'company' | 'person'>('all')
+  const memberCountMap = useMemo(() => {
+    const map: Record<string, number> = {}
+    contacts.forEach(contact => {
+      if (contact.parent_company_id) {
+        map[contact.parent_company_id] = (map[contact.parent_company_id] ?? 0) + 1
+      }
+    })
+    return map
+  }, [contacts])
 
   const filtered = useMemo(() => {
     let list = contacts
@@ -88,7 +97,11 @@ export default function ContactTable({ contacts, onRowClick }: Props) {
         (c.email ?? '').toLowerCase().includes(q) ||
         (c.phone ?? '').toLowerCase().includes(q) ||
         (c.mobile ?? '').toLowerCase().includes(q) ||
+        (c.work_phone ?? '').toLowerCase().includes(q) ||
+        (c.company_name ?? '').toLowerCase().includes(q) ||
         (c.legal_name ?? '').toLowerCase().includes(q) ||
+        (c.industry ?? '').toLowerCase().includes(q) ||
+        (c.department ?? '').toLowerCase().includes(q) ||
         c.aliases.some(a => a.toLowerCase().includes(q))
       )
     }
@@ -106,9 +119,11 @@ export default function ContactTable({ contacts, onRowClick }: Props) {
             field="display_name"
             contactId={info.row.original.id}
           />
-          {info.row.original.title && (
-            <span className="text-xs text-gray-400">{info.row.original.title}</span>
-          )}
+          <div className="mt-1 text-xs text-gray-400">
+            {info.row.original.contact_type === 'company'
+              ? [info.row.original.industry, `${memberCountMap[info.row.original.id] ?? 0} 位聯絡人`].filter(Boolean).join(' · ')
+              : [info.row.original.title, info.row.original.company_name].filter(Boolean).join(' · ')}
+          </div>
         </div>
       ),
     }),
@@ -124,23 +139,24 @@ export default function ContactTable({ contacts, onRowClick }: Props) {
         </span>
       ),
     }),
-    colHelper.accessor('title', {
-      header: '職稱',
+    colHelper.display({
+      id: 'relationship',
+      header: '關聯',
       cell: info => (
-        <InlineCell
-          value={info.getValue() as string | null}
-          field="title"
-          contactId={info.row.original.id}
-        />
+        <div className="text-sm text-[color:var(--color-text-secondary)]">
+          {info.row.original.contact_type === 'company'
+            ? (info.row.original.website || info.row.original.legal_name || '—')
+            : (info.row.original.department || info.row.original.company_name || '—')}
+        </div>
       ),
     }),
-    colHelper.accessor(row => row.mobile || row.phone, {
+    colHelper.accessor(row => row.mobile || row.work_phone || row.phone, {
       id: 'phone',
       header: '電話',
       cell: info => (
         <InlineCell
           value={info.getValue() as string | null}
-          field="mobile"
+          field={info.row.original.contact_type === 'company' ? 'phone' : 'mobile'}
           contactId={info.row.original.id}
         />
       ),
@@ -164,7 +180,7 @@ export default function ContactTable({ contacts, onRowClick }: Props) {
         </span>
       ),
     }),
-  ], [])
+  ], [memberCountMap])
 
   const table = useReactTable({
     data: filtered,
@@ -174,16 +190,16 @@ export default function ContactTable({ contacts, onRowClick }: Props) {
   })
 
   return (
-    <div>
+    <div className="flex h-full min-h-0 flex-col">
       {/* Toolbar */}
-      <div className="flex items-center gap-3 mb-4">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex items-center gap-3 border-b border-[color:var(--color-outline)] px-5 py-4">
+        <div className="relative max-w-sm flex-1">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             value={globalFilter}
             onChange={e => setGlobalFilter(e.target.value)}
             placeholder="搜尋名稱 / email / 電話…"
-            className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-400"
+            className="w-full rounded-xl bg-[color:var(--color-bg-input)] py-2 pl-9 pr-3 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-[color:var(--color-primary)]/30"
           />
         </div>
         <div className="flex gap-1">
@@ -191,29 +207,29 @@ export default function ContactTable({ contacts, onRowClick }: Props) {
             <button
               key={t}
               onClick={() => setTypeFilter(t)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
                 typeFilter === t
-                  ? 'bg-green-500 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'bg-[color:var(--color-primary-light)] text-[color:var(--color-primary-dark)]'
+                  : 'bg-[color:var(--color-bg-section)] text-[color:var(--color-text-secondary)]'
               }`}
             >
               {t === 'all' ? '全部' : t === 'company' ? '公司' : '個人'}
             </button>
           ))}
         </div>
-        <span className="text-xs text-gray-400 ml-auto">{filtered.length} 筆</span>
+        <span className="mono ml-auto text-xs text-[color:var(--color-text-secondary)]/60">{filtered.length} 筆</span>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl overflow-hidden border border-gray-100">
+      <div className="min-h-0 flex-1 overflow-auto">
         <table className="w-full text-sm">
           <thead>
             {table.getHeaderGroups().map(hg => (
-              <tr key={hg.id} className="border-b border-gray-100 bg-gray-50">
+              <tr key={hg.id} className="border-b border-[color:var(--color-outline)] bg-[color:var(--color-bg-base)]">
                 {hg.headers.map(header => (
                   <th
                     key={header.id}
-                    className="px-4 py-3 text-left text-xs font-semibold text-gray-500"
+                    className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-[0.08em] text-[color:var(--color-text-secondary)]/60"
                   >
                     {flexRender(header.column.columnDef.header, header.getContext())}
                   </th>
@@ -224,7 +240,7 @@ export default function ContactTable({ contacts, onRowClick }: Props) {
           <tbody>
             {table.getRowModel().rows.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="px-4 py-12 text-center text-gray-400 text-sm">
+                <td colSpan={columns.length} className="px-4 py-12 text-center text-sm text-[color:var(--color-text-secondary)]/60">
                   {globalFilter || typeFilter !== 'all' ? '無符合條件的聯絡人' : '尚無聯絡人'}
                 </td>
               </tr>
@@ -232,7 +248,7 @@ export default function ContactTable({ contacts, onRowClick }: Props) {
               table.getRowModel().rows.map(row => (
                 <tr
                   key={row.id}
-                  className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer"
+                  className="cursor-pointer border-b border-[color:var(--color-outline)]/30 bg-white transition hover:bg-[color:var(--color-primary-light)]/40"
                   onClick={e => {
                     // Don't open drawer when clicking inline edit cell
                     if ((e.target as HTMLElement).tagName !== 'INPUT' &&
@@ -242,7 +258,7 @@ export default function ContactTable({ contacts, onRowClick }: Props) {
                   }}
                 >
                   {row.getVisibleCells().map(cell => (
-                    <td key={cell.id} className="px-4 py-3">
+                    <td key={cell.id} className="px-5 py-4 align-top">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}

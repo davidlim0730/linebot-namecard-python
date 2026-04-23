@@ -1,23 +1,23 @@
 // app.js — LIFF init, auth, and hash router
 import { createApp, defineComponent, ref, onMounted, onUnmounted, h, computed } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
-import { login, isAuthenticated } from "./api.js?v=3";
-import Login from "./views/Login.js?v=3";
-import CardList from "./views/CardList.js?v=3";
-import CardDetail from "./views/CardDetail.js?v=3";
-import CardEdit from "./views/CardEdit.js?v=3";
-import CrmInput from "./views/CrmInput.js?v=3";
-import DealList from "./views/DealList.js?v=3";
-import DealCreate from "./views/DealCreate.js?v=3";
-import DealDetail from "./views/DealDetail.js?v=3";
-import ActionList from "./views/ActionList.js?v=3";
-import ContactCrm from "./views/ContactCrm.js?v=3";
-import ManagerPipeline from "./views/ManagerPipeline.js?v=3";
-import ProductList from "./views/ProductList.js?v=3";
-import TeamPage from "./views/TeamPage.js?v=3";
-import SettingsPage from "./views/SettingsPage.js?v=3";
-import BottomNav from "./components/BottomNav.js?v=3";
-import Toast from "./components/Toast.js?v=3";
-import Header from "./components/Header.js?v=3";
+import { login, isAuthenticated } from "./api.js?v=4";
+import Login from "./views/Login.js?v=4";
+import CardList from "./views/CardList.js?v=4";
+import CardDetail from "./views/CardDetail.js?v=4";
+import CardEdit from "./views/CardEdit.js?v=4";
+import CrmInput from "./views/CrmInput.js?v=4";
+import DealList from "./views/DealList.js?v=4";
+import DealCreate from "./views/DealCreate.js?v=4";
+import DealDetail from "./views/DealDetail.js?v=4";
+import ActionList from "./views/ActionList.js?v=4";
+import ContactCrm from "./views/ContactCrm.js?v=4";
+import ManagerPipeline from "./views/ManagerPipeline.js?v=4";
+import ProductList from "./views/ProductList.js?v=4";
+import TeamPage from "./views/TeamPage.js?v=4";
+import SettingsPage from "./views/SettingsPage.js?v=4";
+import BottomNav from "./components/BottomNav.js?v=4";
+import Toast from "./components/Toast.js?v=4";
+import Header from "./components/Header.js?v=4";
 
 // ---- Router ----
 // #/               → CardList
@@ -150,7 +150,7 @@ const App = defineComponent({
 
         // Determine header config based on route
         const headerConfigs = {
-          "CardList":        { title: "🗂️ 名片", actionLabel: null },
+          "CardList":        { title: "名片總表", actionLabel: null, showHeader: false },
           "DealList":        { title: "📊 CRM", actionLabel: null },
           "ActionList":      { title: "📊 CRM", actionLabel: null },
           "TeamPage":        { title: "👥 團隊", actionLabel: null },
@@ -158,21 +158,23 @@ const App = defineComponent({
           "CrmInput":        { title: "📊 CRM", actionLabel: null },
           "DealCreate":      { title: "新增案件", showBack: true },
           "DealDetail":      { title: "案件詳情", showBack: true },
-          "CardDetail":      { title: "名片詳情", showBack: true },
-          "CardEdit":        { title: "編輯名片", showBack: true },
+          "CardDetail":      { title: "名片詳情", showBack: true, showHeader: false },
+          "CardEdit":        { title: "編輯名片", showBack: true, showHeader: false },
           "ContactCrm":      { title: "聯絡人 CRM", showBack: true },
           "ManagerPipeline": { title: "Pipeline", showBack: true },
           "ProductList":     { title: "產品管理", showBack: true },
         };
         const hConfig = headerConfigs[view] || { title: "" };
-        const headerEl = h(Header, {
-          title: hConfig.title || "",
-          showBack: hConfig.showBack || false,
-          actionLabel: hConfig.actionLabel || "",
-          onAction: hConfig.onAction || null,
-          secondaryActionLabel: hConfig.secondaryActionLabel || "",
-          onSecondaryAction: hConfig.onSecondaryAction || null,
-        });
+        const headerEl = hConfig.showHeader === false
+          ? null
+          : h(Header, {
+              title: hConfig.title || "",
+              showBack: hConfig.showBack || false,
+              actionLabel: hConfig.actionLabel || "",
+              onAction: hConfig.onAction || null,
+              secondaryActionLabel: hConfig.secondaryActionLabel || "",
+              onSecondaryAction: hConfig.onSecondaryAction || null,
+            });
 
         const crmViews = ["CrmInput", "DealList", "ActionList"];
         const crmTabBar = crmViews.includes(view) ? h("div", {

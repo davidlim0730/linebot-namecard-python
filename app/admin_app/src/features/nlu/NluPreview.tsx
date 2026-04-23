@@ -16,13 +16,13 @@ export default function NluPreview({ parsed }: Props) {
   }
 
   return (
-    <div className="space-y-2 text-xs">
+    <div className="space-y-3 text-xs">
       {pipelines.length > 0 && (
-        <div>
-          <span className="font-semibold text-blue-700">📊 案件</span>
-          <ul className="mt-1 space-y-0.5">
+        <div className="rounded-xl bg-white px-3 py-3">
+          <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-sky-600">案件</span>
+          <ul className="mt-2 space-y-1">
             {pipelines.map((p, i) => (
-              <li key={i} className="text-blue-600">
+              <li key={i} className="text-[13px] text-sky-700">
                 {p.entity_name ?? '未知客戶'}{p.stage ? ` · ${p.stage}` : ''}
               </li>
             ))}
@@ -30,11 +30,11 @@ export default function NluPreview({ parsed }: Props) {
         </div>
       )}
       {interactions.length > 0 && (
-        <div>
-          <span className="font-semibold text-green-700">💬 互動</span>
-          <ul className="mt-1 space-y-0.5">
+        <div className="rounded-xl bg-white px-3 py-3">
+          <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-700">互動</span>
+          <ul className="mt-2 space-y-1">
             {interactions.map((it, i) => (
-              <li key={i} className="text-green-600 line-clamp-2">
+              <li key={i} className="line-clamp-2 text-[13px] text-emerald-700">
                 {it.raw_transcript?.slice(0, 60) ?? ''}
                 {(it.raw_transcript?.length ?? 0) > 60 ? '…' : ''}
               </li>
@@ -43,11 +43,11 @@ export default function NluPreview({ parsed }: Props) {
         </div>
       )}
       {actions.length > 0 && (
-        <div>
-          <span className="font-semibold text-orange-700">✅ 待辦</span>
-          <ul className="mt-1 space-y-0.5">
+        <div className="rounded-xl bg-white px-3 py-3">
+          <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-amber-700">待辦</span>
+          <ul className="mt-2 space-y-1">
             {actions.map((a, i) => (
-              <li key={i} className="text-orange-600">
+              <li key={i} className="text-[13px] text-amber-700">
                 {a.task_detail ?? '未知待辦'}{a.due_date ? ` · ${a.due_date}` : ''}
               </li>
             ))}

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1440" />
+<title>CRM Kanban — 業務員的隨身 AI 助理</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --color-primary: #06C755;
+    --color-primary-dark: #006E2B;
+    --color-primary-light: #E8F9EE;
+    --color-bg-base: #F9F9FE;
+    --color-bg-section: #F3F3F8;
+    --color-bg-card: #FFFFFF;
+    --color-bg-input: #E2E2E7;
+    --color-text-primary: #1A1A1A;
+    --color-text-secondary: #3C4A3C;
+    --color-text-disabled: rgba(60,74,60,0.5);
+    --color-outline: rgba(60,74,60,0.2);
+    --color-danger: #C0000A;
+    --color-warning: #F59E0B;
+    --color-success: #06C755;
+    --color-ai-surface: rgba(10,132,255,0.06);
+    --shadow-card: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+    --shadow-card-hover: 0 6px 16px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+    --shadow-popover: 0 10px 38px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.08);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', 'Noto Sans TC', system-ui, sans-serif;
+    background: var(--color-bg-base);
+    color: var(--color-text-primary);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "cv11", "ss01";
+  }
+  .display, h1, h2, h3, .display-font {
+    font-family: 'Plus Jakarta Sans', 'Noto Sans TC', sans-serif;
+    letter-spacing: -0.01em;
+  }
+  .mono { font-family: 'JetBrains Mono', monospace; font-feature-settings: "tnum"; }
+  .tnum { font-feature-settings: "tnum"; }
+
+  button { font-family: inherit; cursor: pointer; border: none; background: none; padding: 0; color: inherit; }
+  input, textarea { font-family: inherit; }
+  a { color: inherit; text-decoration: none; }
+
+  /* Scrollbars */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(60,74,60,0.15); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(60,74,60,0.3); }
+
+  /* Skeleton shimmer */
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  .shimmer {
+    background: linear-gradient(90deg, #E2E2E7 0%, #EDEDF1 50%, #E2E2E7 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s linear infinite;
+  }
+
+  /* AI gradient */
+  .ai-gradient-bg {
+    background: linear-gradient(90deg, #06C755 0%, #0A84FF 100%);
+  }
+  .ai-gradient-text {
+    background: linear-gradient(90deg, #06C755 0%, #0A84FF 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .ai-left-border {
+    border-left: 3px solid #0A84FF;
+  }
+
+  /* Focus ring */
+  .focus-ring:focus-within { outline: 2px solid var(--color-primary); outline-offset: -2px; background: #fff; }
+
+  /* Toast slide */
+  @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  @keyframes slideDown { from { transform: translateY(0); opacity: 1; } to { transform: translateY(120%); opacity: 0; } }
+  .toast-enter { animation: slideUp 200ms ease-out; }
+
+  /* Card hover elevation */
+  .deal-card {
+    transition: transform 160ms ease, box-shadow 160ms ease;
+  }
+  .deal-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  /* Kanban column scroll */
+  .kanban-scroll { scrollbar-width: thin; }
+
+  /* Pulse for AI thinking */
+  @keyframes pulseSoft {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
+  }
+  .pulse-soft { animation: pulseSoft 1.8s ease-in-out infinite; }
+
+  /* Drag ghost */
+  .dragging { opacity: 0.4; cursor: grabbing; }
+  .drop-target {
+    outline: 2px dashed var(--color-primary);
+    outline-offset: -4px;
+    background: var(--color-primary-light) !important;
+  }
+
+  /* Smooth transitions default */
+  .t-150 { transition: all 150ms ease; }
+  .t-200 { transition: all 200ms ease; }
+
+  /* Icon stroke helper */
+  .icon { stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="src/icons.jsx"></script>
+<script type="text/babel" src="src/data.jsx"></script>
+<script type="text/babel" src="src/primitives.jsx"></script>
+<script type="text/babel" src="src/appshell.jsx"></script>
+<script type="text/babel" src="src/kanban.jsx"></script>
+<script type="text/babel" src="src/contacts.jsx"></script>
+<script type="text/babel" src="src/actions.jsx"></script>
+<script type="text/babel" src="src/ai.jsx"></script>
+<script type="text/babel" src="src/app.jsx"></script>
+
+</body>
+</html>

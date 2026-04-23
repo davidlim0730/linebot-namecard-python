@@ -5,13 +5,16 @@ from pydantic import BaseModel
 from .. import config
 from ..services.auth_service import AuthService, AuthError
 from ..services.card_service import CardService, PermissionError as CardPermError, NotFoundError
+from ..services.contact_service import ContactService, PermissionError as ContactPermError
+from ..services.contact_service import NotFoundError as ContactNotFoundError
 from ..services.tag_service import TagService
 from ..services.org_service import OrgService
 from ..services.org_service import PermissionError as OrgPermError
 from ..models.org import UserContext
-from ..models.card import CardUpdate
+from ..models.card import CardUpdate, ContactUpdate
 from ..repositories.org_repo import OrgRepo
 from ..repositories.card_repo import CardRepo
+from ..repositories.contact_repo import ContactRepo
 from ..repositories.deal_repo import DealRepo
 from ..repositories.stakeholder_repo import StakeholderRepo
 from ..models.deal import DealCreate
@@ -28,8 +31,10 @@ auth_service = AuthService(
 )
 org_repo = OrgRepo()
 _card_repo = CardRepo()
+_contact_repo = ContactRepo()
 card_service = CardService(_card_repo, org_repo)
-tag_service = TagService(org_repo, _card_repo)
+contact_service = ContactService(_contact_repo, org_repo)
+tag_service = TagService(org_repo, _card_repo, _contact_repo)
 org_service = OrgService(org_repo)
 _deal_repo = DealRepo()
 _stakeholder_repo = StakeholderRepo()
@@ -95,12 +100,19 @@ async def list_cards(
     tag: Optional[str] = None,
     user: UserContext = Depends(get_current_user),
 ):
+    contacts = contact_service.list_contacts(user.org_id, user, search=search, tag=tag)
+    if contacts:
+        return [c.model_dump() for c in contacts]
+    # fallback：ContactRepo 無資料時回傳舊版 Card
     cards = card_service.list_cards(user.org_id, user, search=search, tag=tag)
     return [c.model_dump() for c in cards]
 
 
 @router.get("/v1/cards/{card_id}")
 async def get_card(card_id: str, user: UserContext = Depends(get_current_user)):
+    contact = contact_service.get_contact(user.org_id, card_id, user)
+    if contact:
+        return contact.model_dump()
     card = card_service.get_card(user.org_id, card_id, user)
     if not card:
         raise HTTPException(status_code=404, detail={"error": "not_found"})
@@ -110,11 +122,32 @@ async def get_card(card_id: str, user: UserContext = Depends(get_current_user)):
 @router.put("/v1/cards/{card_id}")
 async def update_card(
     card_id: str,
-    body: CardUpdate,
+    body: ContactUpdate,
     user: UserContext = Depends(get_current_user),
 ):
     try:
-        card_service.update_card(user.org_id, card_id, body, user)
+        contact_service.update_contact(user.org_id, card_id, body, user)
+        return {"ok": True}
+    except ContactNotFoundError:
+        pass
+    except ContactPermError:
+        raise HTTPException(status_code=403, detail={"error": "forbidden"})
+    # fallback to CardRepo
+    try:
+        payload = body.model_dump()
+        legacy_fields = {
+            "name": payload.get("display_name"),
+            "company": payload.get("company_name"),
+            "address": payload.get("address"),
+            "phone": payload.get("phone"),
+            "mobile": payload.get("mobile"),
+            "email": payload.get("email"),
+            "line_id": payload.get("line_id"),
+            "memo": payload.get("memo"),
+            "title": payload.get("title"),
+        }
+        card_update = CardUpdate(**{k: v for k, v in legacy_fields.items() if v is not None})
+        card_service.update_card(user.org_id, card_id, card_update, user)
     except NotFoundError:
         raise HTTPException(status_code=404, detail={"error": "not_found"})
     except CardPermError:
@@ -124,6 +157,13 @@ async def update_card(
 
 @router.delete("/v1/cards/{card_id}")
 async def delete_card(card_id: str, user: UserContext = Depends(get_current_user)):
+    try:
+        contact_service.delete_contact(user.org_id, card_id, user)
+        return {"ok": True}
+    except ContactNotFoundError:
+        pass
+    except ContactPermError:
+        raise HTTPException(status_code=403, detail={"error": "forbidden"})
     try:
         card_service.delete_card(user.org_id, card_id, user)
     except NotFoundError:
@@ -148,12 +188,29 @@ async def add_tag(body: TagCreate, user: UserContext = Depends(get_current_user)
     return {"ok": True}
 
 
+@router.delete("/v1/tags/{tag_name}")
+async def delete_tag(tag_name: str, user: UserContext = Depends(get_current_user)):
+    if not user.is_admin:
+        raise HTTPException(status_code=403, detail={"error": "forbidden"})
+    ok = tag_service.delete_tag(user.org_id, tag_name)
+    if not ok:
+        raise HTTPException(status_code=404, detail={"error": "not_found"})
+    return {"ok": True}
+
+
 @router.post("/v1/cards/{card_id}/tags")
 async def set_card_tags(
     card_id: str,
     body: CardTagsUpdate,
     user: UserContext = Depends(get_current_user),
 ):
+    try:
+        contact_service.set_contact_tags(user.org_id, card_id, body.tag_names, user)
+        return {"ok": True}
+    except ContactNotFoundError:
+        pass
+    except ContactPermError:
+        raise HTTPException(status_code=403, detail={"error": "forbidden"})
     try:
         tag_service.set_card_tags(user.org_id, card_id, body.tag_names, user)
     except NotFoundError:

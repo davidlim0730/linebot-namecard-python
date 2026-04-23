@@ -21,6 +21,7 @@ from .cloud_tasks_utils import create_process_batch_task
 from .repositories.action_repo import ActionRepo
 from .repositories.deal_repo import DealRepo
 from .repositories.card_repo import CardRepo
+from .repositories.contact_repo import ContactRepo
 from .repositories.org_repo import OrgRepo
 from .services.nlu_service import fuzzy_match_entity
 
@@ -29,6 +30,7 @@ logger = logging.getLogger(__name__)
 _action_repo = ActionRepo()
 _deal_repo = DealRepo()
 _card_repo = CardRepo()
+_contact_repo = ContactRepo()
 _org_repo = OrgRepo()
 
 def _log_ocr_event(event: str, org_id: str, user_id: str, mode: str, reason: str = None):
@@ -917,8 +919,8 @@ async def handle_tag_card(
 
     firebase_utils.ensure_default_role_tags(org_id)
     tags = firebase_utils.get_all_role_tags(org_id)
-    card = firebase_utils.get_card_by_id(org_id, card_id)
-    current_tags = (card or {}).get("role_tags") or []
+    contact = _contact_repo.get(org_id, card_id)
+    current_tags = contact.tags if contact else []
 
     reply_msg = flex_messages.role_tag_select_flex(card_id, tags, current_tags)
     await line_bot_api.reply_message(event.reply_token, [reply_msg])
@@ -933,39 +935,28 @@ async def handle_toggle_role(
             TextSendMessage(text='操作失敗，請稍後再試。'))
         return
 
-    # 取得使用者角色
-    user_role = firebase_utils.require_admin(org_id, user_id)
-    user_role = "admin" if user_role else "member"
-
-    card = firebase_utils.get_card_by_id(org_id, card_id)
-    current_tags = (card or {}).get("role_tags") or []
-
-    success = False
-    if tag_name in current_tags:
-        success = firebase_utils.remove_card_role_tag(org_id, card_id, tag_name, user_id, user_role)
-    else:
-        success = firebase_utils.add_card_role_tag(org_id, card_id, tag_name, user_id, user_role)
-
-    if not success:
-        # 檢查名片是否存在
-        if firebase_utils.check_card_exists(org_id, card_id):
-            # 名片存在但無權限
-            await line_bot_api.reply_message(
-                event.reply_token,
-                TextSendMessage(
-                    text='抱歉，您沒有權限給此名片加標籤。'
-                ))
-        else:
-            # 名片不存在
-            await line_bot_api.reply_message(
-                event.reply_token,
-                TextSendMessage(text='找不到該名片資料。'))
+    contact = _contact_repo.get(org_id, card_id)
+    if not contact:
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text='找不到該名片資料。'))
         return
 
-    # 重新讀取並顯示更新後的選單
+    current_tags = contact.tags
+    if tag_name in current_tags:
+        success = _contact_repo.remove_tag(org_id, card_id, tag_name)
+    else:
+        success = _contact_repo.add_tag(org_id, card_id, tag_name)
+
+    if not success:
+        await line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text='標籤更新失敗，請稍後再試。'))
+        return
+
     tags = firebase_utils.get_all_role_tags(org_id)
-    updated_card = firebase_utils.get_card_by_id(org_id, card_id)
-    updated_tags = (updated_card or {}).get("role_tags") or []
+    updated_contact = _contact_repo.get(org_id, card_id)
+    updated_tags = updated_contact.tags if updated_contact else []
 
     reply_msg = flex_messages.role_tag_select_flex(card_id, tags, updated_tags)
     await line_bot_api.reply_message(event.reply_token, [reply_msg])
@@ -974,10 +965,11 @@ async def handle_toggle_role(
 async def handle_finish_tag(
         event: PostbackEvent, org_id: str, card_id: str):
     """標籤選取完成，顯示更新後的名片"""
-    card = firebase_utils.get_card_by_id(org_id, card_id)
+    contact = _contact_repo.get(org_id, card_id)
+    card = contact  # duck-type compatible for flex_messages
     if card:
         reply_msg = flex_messages.get_namecard_flex_msg(card, card_id)
-        tags = (card.get("role_tags") or [])
+        tags = contact.tags if contact else []
         tag_text = "、".join(tags) if tags else "無"
         await line_bot_api.reply_message(
             event.reply_token,
@@ -1317,34 +1309,62 @@ async def handle_batch_cancel(
 
 
 async def _save_and_reply_namecard(event, user_id: str, org_id: str, card_obj: dict):
-    """去重、儲存、回覆名片 Flex Message。供正面直接儲存與雙面合併共用。"""
-    existing_card_id = firebase_utils.check_if_card_exists(card_obj, org_id)
-    if existing_card_id:
-        existing_card_data = firebase_utils.get_card_by_id(org_id, existing_card_id)
-        reply_msg = flex_messages.get_namecard_flex_msg(existing_card_data, existing_card_id)
-        await line_bot_api.reply_message(
-            event.reply_token,
-            [TextSendMessage(
-                text="這個名片已經存在資料庫中。"
-            ), reply_msg],
-        )
-        return
+    """去重、儲存 Contact、回覆名片 Flex Message。供正面直接儲存與雙面合併共用。"""
+    import uuid as _uuid
+    from datetime import datetime as _dt
 
-    card_id = firebase_utils.add_namecard(card_obj, org_id, user_id)
-    if card_id:
-        reply_msg = flex_messages.get_namecard_flex_msg(card_obj, card_id)
+    email = card_obj.get("email", "")
+    existing_contact_id = _contact_repo.check_exists_by_email(org_id, email) if email else None
+
+    if existing_contact_id:
+        existing_contact = _contact_repo.get(org_id, existing_contact_id)
+        if existing_contact:
+            reply_msg = flex_messages.get_namecard_flex_msg(existing_contact, existing_contact_id)
+            await line_bot_api.reply_message(
+                event.reply_token,
+                [TextSendMessage(text="這個名片已經存在資料庫中。"), reply_msg],
+            )
+            return
+
+    company_name = card_obj.get("company", "").strip() if card_obj.get("company") else None
+    parent_company_id = None
+    if company_name:
+        parent_company_id = _contact_repo.find_or_create_company(org_id, company_name, user_id)
+
+    contact_id = str(_uuid.uuid4())
+    now = _dt.utcnow().isoformat() + "Z"
+    contact_data = {
+        "contact_type": "person",
+        "display_name": card_obj.get("name") or "（未知）",
+        "company_name": company_name,
+        "parent_company_id": parent_company_id,
+        "title": card_obj.get("title") or None,
+        "phone": card_obj.get("phone") or None,
+        "mobile": card_obj.get("mobile") or None,
+        "email": card_obj.get("email") or None,
+        "line_id": card_obj.get("line_id") or None,
+        "address": card_obj.get("address") or None,
+        "memo": card_obj.get("memo") or None,
+        "tags": [],
+        "source": "ocr",
+        "raw_card_data": card_obj,
+        "added_by": user_id,
+        "created_at": now,
+    }
+    contact_data = {k: v for k, v in contact_data.items() if v is not None}
+
+    ok = _contact_repo.save(org_id, contact_id, contact_data)
+    if ok:
+        contact = _contact_repo.get(org_id, contact_id)
+        reply_msg = flex_messages.get_namecard_flex_msg(contact or contact_data, contact_id)
         await line_bot_api.reply_message(
             event.reply_token,
-            [reply_msg, TextSendMessage(
-                text="名片資料已經成功加入資料庫。"
-            )]
+            [reply_msg, TextSendMessage(text="名片資料已經成功加入資料庫。")]
         )
     else:
         await line_bot_api.reply_message(
             event.reply_token,
-            [TextSendMessage(
-                text="儲存名片時發生錯誤。"
-            )]
+            [TextSendMessage(text="儲存名片時發生錯誤。")]
         )
 
 

@@ -44,23 +44,21 @@
   }
 }
 
-/* Toast container - positioned at top with fixed height */
+/* Toast container - full-width below header bar */
 .toast {
   position: fixed;
-  top: 60px;    /* Positioned below status bar, 60px from top */
-  left: var(--space-16);
-  right: var(--space-16);
-  max-width: calc(100vw - 32px);
+  top: 48px;    /* Flush below header bar */
+  left: 0;
+  right: 0;
   height: 44px;
   background-color: var(--color-text-primary);
   color: white;
-  border-radius: var(--radius-md);
+  border-radius: 0;
   padding: 0 var(--space-16);
   display: flex;
   align-items: center;
   z-index: var(--z-toast);
   animation: slideDown 0.3s ease-out;
-  box-shadow: var(--shadow-lg);
   font-family: var(--font-body);
   font-size: 14px;
   line-height: 20px;

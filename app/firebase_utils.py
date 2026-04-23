@@ -351,7 +351,7 @@ def delete_role_tag(org_id: str, tag_name: str) -> bool:
 
 def add_card_role_tag(org_id: str, card_id: str, tag_name: str, user_id: str = None, user_role: str = "member") -> bool:
     """
-    將角色標籤加入名片的 role_tags 陣列，並檢查權限（如果提供）。
+    [DEPRECATED] 改用 ContactRepo.add_tag()。
 
     Args:
         org_id: 組織 ID
@@ -392,7 +392,7 @@ def remove_card_role_tag(org_id: str, card_id: str, tag_name: str,
                          user_id: str = None,
                          user_role: str = "member") -> bool:
     """
-    從名片的 role_tags 陣列移除指定標籤，並檢查權限（如果提供）。
+    [DEPRECATED] 改用 ContactRepo.remove_tag()。
 
     Args:
         org_id: 組織 ID
@@ -607,7 +607,7 @@ def get_all_cards(org_id: str) -> dict:
 
 
 def add_namecard(namecard_obj: dict, org_id: str, added_by: str) -> str:
-    """新增名片資料到 Firebase 並回傳 card_id"""
+    """[DEPRECATED] 改用 ContactRepo.save()。新資料改寫 contacts/ 路徑。"""
     try:
         namecard_obj['created_at'] = datetime.now().isoformat()
         namecard_obj['added_by'] = added_by
@@ -668,7 +668,7 @@ def delete_namecard(
 
 
 def update_namecard_memo(card_id: str, org_id: str, memo: str) -> bool:
-    """更新指定名片的備忘錄"""
+    """[DEPRECATED] 改用 ContactRepo.update()。"""
     try:
         ref = db.reference(f"{config.NAMECARD_PATH}/{org_id}/{card_id}")
         ref.update({"memo": memo})
@@ -704,7 +704,7 @@ def remove_redundant_data(org_id: str) -> None:
 
 
 def check_if_card_exists(namecard_obj: dict, org_id: str) -> str:
-    """檢查名片是否已存在 (以 email 為主鍵)，若存在則回傳 card_id"""
+    """[DEPRECATED] 改用 ContactRepo.check_exists_by_email()。"""
     try:
         email = namecard_obj.get("email")
         if not email:
@@ -789,6 +789,7 @@ def get_all_namecards(
     user_id: str,
     user_role: str = "member"
 ) -> list:
+    # [DEPRECATED] 改用 ContactRepo.list_all()。
     """
     取得 org 內所有名片。
 

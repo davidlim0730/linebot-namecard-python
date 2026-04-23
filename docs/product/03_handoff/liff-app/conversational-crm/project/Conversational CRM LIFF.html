@@ -1,0 +1,2865 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=1400"/>
+<title>Conversational CRM — LIFF Design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Conversational CRM — LIFF design tokens
+   Original palette (not LINE-branded): deep moss/forest green as primary,
+   warm neutral backgrounds, single cool-blue AI accent.
+*/
+:root {
+  /* Primary — moss / forest (oklch, chroma ~0.12, hue ~155) */
+  --c-primary:          #1F8B5C;
+  --c-primary-deep:     #0E5E3A;
+  --c-primary-soft:     #E6F4EC;
+  --c-primary-softer:   #F1FAF4;
+
+  /* Surfaces — warm neutrals */
+  --c-bg-base:          #FAFAF7;
+  --c-bg-section:       #F2F1EC;
+  --c-bg-card:          #FFFFFF;
+  --c-bg-input:         #ECEAE3;
+
+  /* Text */
+  --c-text:             #1A1B18;
+  --c-text-sub:         #55584F;
+  --c-text-mute:        #8A8C83;
+  --c-text-disabled:    rgba(85,88,79,0.45);
+
+  /* Outline / hairline */
+  --c-outline:          rgba(26,27,24,0.09);
+  --c-hairline:         rgba(26,27,24,0.08);
+
+  /* Status */
+  --c-danger:           #B3261E;
+  --c-danger-soft:      #FDEDEA;
+  --c-warning:          #B06B0F;
+  --c-warning-soft:     #FCF2DE;
+  --c-info:             #1D5CC4;
+  --c-info-soft:        #E8EFFB;
+
+  /* AI accent — cool blue that pairs with moss green */
+  --c-ai:               #2B6CD6;
+  --c-ai-soft:          rgba(43,108,214,0.06);
+  --c-ai-grad:          linear-gradient(90deg, #1F8B5C 0%, #2B6CD6 100%);
+  --c-ai-grad-135:      linear-gradient(135deg, #1F8B5C 0%, #0E5E3A 100%);
+
+  /* Radii */
+  --r-card:   16px;
+  --r-btn:    12px;
+  --r-input:  10px;
+  --r-chip:   999px;
+  --r-sheet:  20px;
+
+  /* Shadows */
+  --sh-card:  0 1px 2px rgba(26,27,24,0.04), 0 4px 14px rgba(26,27,24,0.04);
+  --sh-float: 0 6px 24px rgba(26,27,24,0.08), 0 2px 6px rgba(26,27,24,0.05);
+
+  /* Type */
+  --f-display: "Plus Jakarta Sans", "Noto Sans TC", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --f-ui:      "Inter", "Noto Sans TC", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --f-mono:    ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+}
+
+/* Reset inside each phone screen */
+.liff {
+  font-family: var(--f-ui);
+  color: var(--c-text);
+  background: var(--c-bg-base);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "ss01", "cv11";
+  letter-spacing: -0.005em;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+.liff *, .liff *::before, .liff *::after { box-sizing: border-box; }
+.liff button { font-family: inherit; border: 0; background: none; cursor: pointer; color: inherit; padding: 0; }
+.liff input, .liff textarea { font-family: inherit; border: 0; outline: 0; background: transparent; color: inherit; }
+
+.display { font-family: var(--f-display); letter-spacing: -0.015em; }
+.num { font-family: var(--f-display); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+
+/* Custom scrollbar hide for liff scroll areas */
+.liff-scroll { overflow-y: auto; scrollbar-width: none; }
+.liff-scroll::-webkit-scrollbar { display: none; }
+
+/* Shimmer for skeletons */
+@keyframes shimmer {
+  0%   { background-position: -180px 0; }
+  100% { background-position: 180px 0; }
+}
+.skel {
+  background: linear-gradient(90deg, #ECEAE3 0%, #F5F4EF 50%, #ECEAE3 100%);
+  background-size: 360px 100%;
+  animation: shimmer 1.5s linear infinite;
+  border-radius: 6px;
+}
+
+/* Slide-down toast */
+@keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+
+/* AI gradient border helper */
+.ai-border-top {
+  position: relative;
+}
+.ai-border-top::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px;
+  background: var(--c-ai-grad);
+  border-top-left-radius: inherit; border-top-right-radius: inherit;
+}
+.ai-border-left {
+  position: relative; padding-left: 10px;
+}
+.ai-border-left::before {
+  content: ""; position: absolute; left: 0; top: 2px; bottom: 2px; width: 3px;
+  border-radius: 2px;
+  background: var(--c-ai-grad);
+}
+
+/* AI dot pulse */
+@keyframes pulseDot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(1.25); opacity: 0.6; }
+}
+
+/* Checkbox tick animation */
+@keyframes tickIn { from { stroke-dashoffset: 16; } to { stroke-dashoffset: 0; } }
+
+</style>
+<style>
+  html, body { margin: 0; padding: 0; background: #f0eee9; font-family: Inter, "Noto Sans TC", system-ui, sans-serif; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" data-presets="react">
+
+// DesignCanvas.jsx — Figma-ish design canvas wrapper
+// Warm gray grid bg + Sections + Artboards + PostIt notes.
+// Artboards are reorderable (grip-drag), labels/titles are inline-editable,
+// and any artboard can be opened in a fullscreen focus overlay (←/→/Esc).
+// State persists to a .design-canvas.state.json sidecar via the host
+// bridge. No assets, no deps.
+//
+// Usage:
+//   <DesignCanvas>
+//     <DCSection id="onboarding" title="Onboarding" subtitle="First-run variants">
+//       <DCArtboard id="a" label="A · Dusk" width={260} height={480}>…</DCArtboard>
+//       <DCArtboard id="b" label="B · Minimal" width={260} height={480}>…</DCArtboard>
+//     </DCSection>
+//   </DesignCanvas>
+
+const DC = {
+  bg: '#f0eee9',
+  grid: 'rgba(0,0,0,0.06)',
+  label: 'rgba(60,50,40,0.7)',
+  title: 'rgba(40,30,20,0.85)',
+  subtitle: 'rgba(60,50,40,0.6)',
+  postitBg: '#fef4a8',
+  postitText: '#5a4a2a',
+  font: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
+};
+
+// One-time CSS injection (classes are dc-prefixed so they don't collide with
+// the hosted design's own styles).
+if (typeof document !== 'undefined' && !document.getElementById('dc-styles')) {
+  const s = document.createElement('style');
+  s.id = 'dc-styles';
+  s.textContent = [
+    '.dc-editable{cursor:text;outline:none;white-space:nowrap;border-radius:3px;padding:0 2px;margin:0 -2px}',
+    '.dc-editable:focus{background:#fff;box-shadow:0 0 0 1.5px #c96442}',
+    '[data-dc-slot]{transition:transform .18s cubic-bezier(.2,.7,.3,1)}',
+    '[data-dc-slot].dc-dragging{transition:none;z-index:10;pointer-events:none}',
+    '[data-dc-slot].dc-dragging .dc-card{box-shadow:0 12px 40px rgba(0,0,0,.25),0 0 0 2px #c96442;transform:scale(1.02)}',
+    '.dc-card{transition:box-shadow .15s,transform .15s}',
+    '.dc-card *{scrollbar-width:none}',
+    '.dc-card *::-webkit-scrollbar{display:none}',
+    '.dc-labelrow{display:flex;align-items:center;gap:4px;height:24px}',
+    '.dc-grip{cursor:grab;display:flex;align-items:center;padding:5px 4px;border-radius:4px;transition:background .12s}',
+    '.dc-grip:hover{background:rgba(0,0,0,.08)}',
+    '.dc-grip:active{cursor:grabbing}',
+    '.dc-labeltext{cursor:pointer;border-radius:4px;padding:3px 6px;display:flex;align-items:center;transition:background .12s}',
+    '.dc-labeltext:hover{background:rgba(0,0,0,.05)}',
+    '.dc-expand{position:absolute;bottom:100%;right:0;margin-bottom:5px;z-index:2;opacity:0;transition:opacity .12s,background .12s;',
+    '  width:22px;height:22px;border-radius:5px;border:none;cursor:pointer;padding:0;',
+    '  background:transparent;color:rgba(60,50,40,.7);display:flex;align-items:center;justify-content:center}',
+    '.dc-expand:hover{background:rgba(0,0,0,.06);color:#2a251f}',
+    '[data-dc-slot]:hover .dc-expand{opacity:1}',
+  ].join('\n');
+  document.head.appendChild(s);
+}
+
+const DCCtx = React.createContext(null);
+
+// ─────────────────────────────────────────────────────────────
+// DesignCanvas — stateful wrapper around the pan/zoom viewport.
+// Owns runtime state (per-section order, renamed titles/labels, focused
+// artboard). Order/titles/labels persist to a .design-canvas.state.json
+// sidecar next to the HTML. Reads go via plain fetch() so the saved
+// arrangement is visible anywhere the HTML + sidecar are served together
+// (omelette preview, direct link, downloaded zip). Writes go through the
+// host's window.omelette bridge — editing requires the omelette runtime.
+// Focus is ephemeral.
+// ─────────────────────────────────────────────────────────────
+const DC_STATE_FILE = '.design-canvas.state.json';
+
+function DesignCanvas({ children, minScale, maxScale, style }) {
+  const [state, setState] = React.useState({ sections: {}, focus: null });
+  // Hold rendering until the sidecar read settles so the saved order/titles
+  // appear on first paint (no source-order flash). didRead gates writes until
+  // the read settles so the empty initial state can't clobber a slow read;
+  // skipNextWrite suppresses the one echo-write that would otherwise follow
+  // hydration.
+  const [ready, setReady] = React.useState(false);
+  const didRead = React.useRef(false);
+  const skipNextWrite = React.useRef(false);
+
+  React.useEffect(() => {
+    let off = false;
+    fetch('./' + DC_STATE_FILE)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((saved) => {
+        if (off || !saved || !saved.sections) return;
+        skipNextWrite.current = true;
+        setState((s) => ({ ...s, sections: saved.sections }));
+      })
+      .catch(() => {})
+      .finally(() => { didRead.current = true; if (!off) setReady(true); });
+    const t = setTimeout(() => { if (!off) setReady(true); }, 150);
+    return () => { off = true; clearTimeout(t); };
+  }, []);
+
+  React.useEffect(() => {
+    if (!didRead.current) return;
+    if (skipNextWrite.current) { skipNextWrite.current = false; return; }
+    const t = setTimeout(() => {
+      window.omelette?.writeFile(DC_STATE_FILE, JSON.stringify({ sections: state.sections })).catch(() => {});
+    }, 250);
+    return () => clearTimeout(t);
+  }, [state.sections]);
+
+  // Build registries synchronously from children so FocusOverlay can read
+  // them in the same render. Only direct DCSection > DCArtboard children are
+  // walked — wrapping them in other elements opts out of focus/reorder.
+  const registry = {};     // slotId -> { sectionId, artboard }
+  const sectionMeta = {};  // sectionId -> { title, subtitle, slotIds[] }
+  const sectionOrder = [];
+  React.Children.forEach(children, (sec) => {
+    if (!sec || sec.type !== DCSection) return;
+    const sid = sec.props.id ?? sec.props.title;
+    if (!sid) return;
+    sectionOrder.push(sid);
+    const persisted = state.sections[sid] || {};
+    const srcIds = [];
+    React.Children.forEach(sec.props.children, (ab) => {
+      if (!ab || ab.type !== DCArtboard) return;
+      const aid = ab.props.id ?? ab.props.label;
+      if (!aid) return;
+      registry[`${sid}/${aid}`] = { sectionId: sid, artboard: ab };
+      srcIds.push(aid);
+    });
+    const kept = (persisted.order || []).filter((k) => srcIds.includes(k));
+    sectionMeta[sid] = {
+      title: persisted.title ?? sec.props.title,
+      subtitle: sec.props.subtitle,
+      slotIds: [...kept, ...srcIds.filter((k) => !kept.includes(k))],
+    };
+  });
+
+  const api = React.useMemo(() => ({
+    state,
+    section: (id) => state.sections[id] || {},
+    patchSection: (id, p) => setState((s) => ({
+      ...s,
+      sections: { ...s.sections, [id]: { ...s.sections[id], ...(typeof p === 'function' ? p(s.sections[id] || {}) : p) } },
+    })),
+    setFocus: (slotId) => setState((s) => ({ ...s, focus: slotId })),
+  }), [state]);
+
+  // Esc exits focus; any outside pointerdown commits an in-progress rename.
+  React.useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') api.setFocus(null); };
+    const onPd = (e) => {
+      const ae = document.activeElement;
+      if (ae && ae.isContentEditable && !ae.contains(e.target)) ae.blur();
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', onPd, true);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('pointerdown', onPd, true);
+    };
+  }, [api]);
+
+  return (
+    <DCCtx.Provider value={api}>
+      <DCViewport minScale={minScale} maxScale={maxScale} style={style}>{ready && children}</DCViewport>
+      {state.focus && registry[state.focus] && (
+        <DCFocusOverlay entry={registry[state.focus]} sectionMeta={sectionMeta} sectionOrder={sectionOrder} />
+      )}
+    </DCCtx.Provider>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// DCViewport — transform-based pan/zoom (internal)
+//
+// Input mapping (Figma-style):
+//   • trackpad pinch  → zoom   (ctrlKey wheel; Safari gesture* events)
+//   • trackpad scroll → pan    (two-finger)
+//   • mouse wheel     → zoom   (notched; distinguished from trackpad scroll)
+//   • middle-drag / primary-drag-on-bg → pan
+//
+// Transform state lives in a ref and is written straight to the DOM
+// (translate3d + will-change) so wheel ticks don't go through React —
+// keeps pans at 60fps on dense canvases.
+// ─────────────────────────────────────────────────────────────
+function DCViewport({ children, minScale = 0.1, maxScale = 8, style = {} }) {
+  const vpRef = React.useRef(null);
+  const worldRef = React.useRef(null);
+  const tf = React.useRef({ x: 0, y: 0, scale: 1 });
+
+  const apply = React.useCallback(() => {
+    const { x, y, scale } = tf.current;
+    const el = worldRef.current;
+    if (el) el.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${scale})`;
+  }, []);
+
+  React.useEffect(() => {
+    const vp = vpRef.current;
+    if (!vp) return;
+
+    const zoomAt = (cx, cy, factor) => {
+      const r = vp.getBoundingClientRect();
+      const px = cx - r.left, py = cy - r.top;
+      const t = tf.current;
+      const next = Math.min(maxScale, Math.max(minScale, t.scale * factor));
+      const k = next / t.scale;
+      // keep the world point under the cursor fixed
+      t.x = px - (px - t.x) * k;
+      t.y = py - (py - t.y) * k;
+      t.scale = next;
+      apply();
+    };
+
+    // Mouse-wheel vs trackpad-scroll heuristic. A physical wheel sends
+    // line-mode deltas (Firefox) or large integer pixel deltas with no X
+    // component (Chrome/Safari, typically multiples of 100/120). Trackpad
+    // two-finger scroll sends small/fractional pixel deltas, often with
+    // non-zero deltaX. ctrlKey is set by the browser for trackpad pinch.
+    const isMouseWheel = (e) =>
+      e.deltaMode !== 0 ||
+      (e.deltaX === 0 && Number.isInteger(e.deltaY) && Math.abs(e.deltaY) >= 40);
+
+    const onWheel = (e) => {
+      e.preventDefault();
+      if (isGesturing) return; // Safari: gesture* owns the pinch — discard concurrent wheels
+      if (e.ctrlKey) {
+        // trackpad pinch (or explicit ctrl+wheel)
+        zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * 0.01));
+      } else if (isMouseWheel(e)) {
+        // notched mouse wheel — fixed-ratio step per click
+        zoomAt(e.clientX, e.clientY, Math.exp(-Math.sign(e.deltaY) * 0.18));
+      } else {
+        // trackpad two-finger scroll — pan
+        tf.current.x -= e.deltaX;
+        tf.current.y -= e.deltaY;
+        apply();
+      }
+    };
+
+    // Safari sends native gesture* events for trackpad pinch with a smooth
+    // e.scale; preferring these over the ctrl+wheel fallback gives a much
+    // better feel there. No-ops on other browsers. Safari also fires
+    // ctrlKey wheel events during the same pinch — isGesturing makes
+    // onWheel drop those entirely so they neither zoom nor pan.
+    let gsBase = 1;
+    let isGesturing = false;
+    const onGestureStart = (e) => { e.preventDefault(); isGesturing = true; gsBase = tf.current.scale; };
+    const onGestureChange = (e) => {
+      e.preventDefault();
+      zoomAt(e.clientX, e.clientY, (gsBase * e.scale) / tf.current.scale);
+    };
+    const onGestureEnd = (e) => { e.preventDefault(); isGesturing = false; };
+
+    // Drag-pan: middle button anywhere, or primary button on canvas
+    // background (anything that isn't an artboard or an inline editor).
+    let drag = null;
+    const onPointerDown = (e) => {
+      const onBg = !e.target.closest('[data-dc-slot], .dc-editable');
+      if (!(e.button === 1 || (e.button === 0 && onBg))) return;
+      e.preventDefault();
+      vp.setPointerCapture(e.pointerId);
+      drag = { id: e.pointerId, lx: e.clientX, ly: e.clientY };
+      vp.style.cursor = 'grabbing';
+    };
+    const onPointerMove = (e) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      tf.current.x += e.clientX - drag.lx;
+      tf.current.y += e.clientY - drag.ly;
+      drag.lx = e.clientX; drag.ly = e.clientY;
+      apply();
+    };
+    const onPointerUp = (e) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      vp.releasePointerCapture(e.pointerId);
+      drag = null;
+      vp.style.cursor = '';
+    };
+
+    vp.addEventListener('wheel', onWheel, { passive: false });
+    vp.addEventListener('gesturestart', onGestureStart, { passive: false });
+    vp.addEventListener('gesturechange', onGestureChange, { passive: false });
+    vp.addEventListener('gestureend', onGestureEnd, { passive: false });
+    vp.addEventListener('pointerdown', onPointerDown);
+    vp.addEventListener('pointermove', onPointerMove);
+    vp.addEventListener('pointerup', onPointerUp);
+    vp.addEventListener('pointercancel', onPointerUp);
+    return () => {
+      vp.removeEventListener('wheel', onWheel);
+      vp.removeEventListener('gesturestart', onGestureStart);
+      vp.removeEventListener('gesturechange', onGestureChange);
+      vp.removeEventListener('gestureend', onGestureEnd);
+      vp.removeEventListener('pointerdown', onPointerDown);
+      vp.removeEventListener('pointermove', onPointerMove);
+      vp.removeEventListener('pointerup', onPointerUp);
+      vp.removeEventListener('pointercancel', onPointerUp);
+    };
+  }, [apply, minScale, maxScale]);
+
+  const gridSvg = `url("data:image/svg+xml,%3Csvg width='120' height='120' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M120 0H0v120' fill='none' stroke='${encodeURIComponent(DC.grid)}' stroke-width='1'/%3E%3C/svg%3E")`;
+  return (
+    <div
+      ref={vpRef}
+      className="design-canvas"
+      style={{
+        height: '100vh', width: '100vw',
+        background: DC.bg,
+        overflow: 'hidden',
+        overscrollBehavior: 'none',
+        touchAction: 'none',
+        position: 'relative',
+        fontFamily: DC.font,
+        boxSizing: 'border-box',
+        ...style,
+      }}
+    >
+      <div
+        ref={worldRef}
+        style={{
+          position: 'absolute', top: 0, left: 0,
+          transformOrigin: '0 0',
+          willChange: 'transform',
+          width: 'max-content', minWidth: '100%',
+          minHeight: '100%',
+          padding: '60px 0 80px',
+        }}
+      >
+        <div style={{ position: 'absolute', inset: -6000, backgroundImage: gridSvg, backgroundSize: '120px 120px', pointerEvents: 'none', zIndex: -1 }} />
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// DCSection — editable title + h-row of artboards in persisted order
+// ─────────────────────────────────────────────────────────────
+function DCSection({ id, title, subtitle, children, gap = 48 }) {
+  const ctx = React.useContext(DCCtx);
+  const sid = id ?? title;
+  const all = React.Children.toArray(children);
+  const artboards = all.filter((c) => c && c.type === DCArtboard);
+  const rest = all.filter((c) => !(c && c.type === DCArtboard));
+  const srcOrder = artboards.map((a) => a.props.id ?? a.props.label);
+  const sec = (ctx && sid && ctx.section(sid)) || {};
+
+  const order = React.useMemo(() => {
+    const kept = (sec.order || []).filter((k) => srcOrder.includes(k));
+    return [...kept, ...srcOrder.filter((k) => !kept.includes(k))];
+  }, [sec.order, srcOrder.join('|')]);
+
+  const byId = Object.fromEntries(artboards.map((a) => [a.props.id ?? a.props.label, a]));
+
+  return (
+    <div data-dc-section={sid} style={{ marginBottom: 80, position: 'relative' }}>
+      <div style={{ padding: '0 60px 56px' }}>
+        <DCEditable tag="div" value={sec.title ?? title}
+          onChange={(v) => ctx && sid && ctx.patchSection(sid, { title: v })}
+          style={{ fontSize: 28, fontWeight: 600, color: DC.title, letterSpacing: -0.4, marginBottom: 6, display: 'inline-block' }} />
+        {subtitle && <div style={{ fontSize: 16, color: DC.subtitle }}>{subtitle}</div>}
+      </div>
+      <div style={{ display: 'flex', gap, padding: '0 60px', alignItems: 'flex-start', width: 'max-content' }}>
+        {order.map((k) => (
+          <DCArtboardFrame key={k} sectionId={sid} artboard={byId[k]} order={order}
+            label={(sec.labels || {})[k] ?? byId[k].props.label}
+            onRename={(v) => ctx && ctx.patchSection(sid, (x) => ({ labels: { ...x.labels, [k]: v } }))}
+            onReorder={(next) => ctx && ctx.patchSection(sid, { order: next })}
+            onFocus={() => ctx && ctx.setFocus(`${sid}/${k}`)} />
+        ))}
+      </div>
+      {rest}
+    </div>
+  );
+}
+
+// DCArtboard — marker; rendered by DCArtboardFrame via DCSection.
+function DCArtboard() { return null; }
+
+function DCArtboardFrame({ sectionId, artboard, label, order, onRename, onReorder, onFocus }) {
+  const { id: rawId, label: rawLabel, width = 260, height = 480, children, style = {} } = artboard.props;
+  const id = rawId ?? rawLabel;
+  const ref = React.useRef(null);
+
+  // Live drag-reorder: dragged card sticks to cursor; siblings slide into
+  // their would-be slots in real time via transforms. DOM order only
+  // changes on drop.
+  const onGripDown = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    const me = ref.current;
+    // translateX is applied in local (pre-scale) space but pointer deltas and
+    // getBoundingClientRect().left are screen-space — divide by the viewport's
+    // current scale so the dragged card tracks the cursor at any zoom level.
+    const scale = me.getBoundingClientRect().width / me.offsetWidth || 1;
+    const peers = Array.from(document.querySelectorAll(`[data-dc-section="${sectionId}"] [data-dc-slot]`));
+    const homes = peers.map((el) => ({ el, id: el.dataset.dcSlot, x: el.getBoundingClientRect().left }));
+    const slotXs = homes.map((h) => h.x);
+    const startIdx = order.indexOf(id);
+    const startX = e.clientX;
+    let liveOrder = order.slice();
+    me.classList.add('dc-dragging');
+
+    const layout = () => {
+      for (const h of homes) {
+        if (h.id === id) continue;
+        const slot = liveOrder.indexOf(h.id);
+        h.el.style.transform = `translateX(${(slotXs[slot] - h.x) / scale}px)`;
+      }
+    };
+
+    const move = (ev) => {
+      const dx = ev.clientX - startX;
+      me.style.transform = `translateX(${dx / scale}px)`;
+      const cur = homes[startIdx].x + dx;
+      let nearest = 0, best = Infinity;
+      for (let i = 0; i < slotXs.length; i++) {
+        const d = Math.abs(slotXs[i] - cur);
+        if (d < best) { best = d; nearest = i; }
+      }
+      if (liveOrder.indexOf(id) !== nearest) {
+        liveOrder = order.filter((k) => k !== id);
+        liveOrder.splice(nearest, 0, id);
+        layout();
+      }
+    };
+
+    const up = () => {
+      document.removeEventListener('pointermove', move);
+      document.removeEventListener('pointerup', up);
+      const finalSlot = liveOrder.indexOf(id);
+      me.classList.remove('dc-dragging');
+      me.style.transform = `translateX(${(slotXs[finalSlot] - homes[startIdx].x) / scale}px)`;
+      // After the settle transition, kill transitions + clear transforms +
+      // commit the reorder in the same frame so there's no visual snap-back.
+      setTimeout(() => {
+        for (const h of homes) { h.el.style.transition = 'none'; h.el.style.transform = ''; }
+        if (liveOrder.join('|') !== order.join('|')) onReorder(liveOrder);
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          for (const h of homes) h.el.style.transition = '';
+        }));
+      }, 180);
+    };
+    document.addEventListener('pointermove', move);
+    document.addEventListener('pointerup', up);
+  };
+
+  return (
+    <div ref={ref} data-dc-slot={id} style={{ position: 'relative', flexShrink: 0 }}>
+      <div className="dc-labelrow" style={{ position: 'absolute', bottom: '100%', left: -4, marginBottom: 4, color: DC.label }}>
+        <div className="dc-grip" onPointerDown={onGripDown} title="Drag to reorder">
+          <svg width="9" height="13" viewBox="0 0 9 13" fill="currentColor"><circle cx="2" cy="2" r="1.1"/><circle cx="7" cy="2" r="1.1"/><circle cx="2" cy="6.5" r="1.1"/><circle cx="7" cy="6.5" r="1.1"/><circle cx="2" cy="11" r="1.1"/><circle cx="7" cy="11" r="1.1"/></svg>
+        </div>
+        <div className="dc-labeltext" onClick={onFocus} title="Click to focus">
+          <DCEditable value={label} onChange={onRename} onClick={(e) => e.stopPropagation()}
+            style={{ fontSize: 15, fontWeight: 500, color: DC.label, lineHeight: 1 }} />
+        </div>
+      </div>
+      <button className="dc-expand" onClick={onFocus} onPointerDown={(e) => e.stopPropagation()} title="Focus">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M7 1h4v4M5 11H1V7M11 1L7.5 4.5M1 11l3.5-3.5"/></svg>
+      </button>
+      <div className="dc-card"
+        style={{ borderRadius: 2, boxShadow: '0 1px 3px rgba(0,0,0,.08),0 4px 16px rgba(0,0,0,.06)', overflow: 'hidden', width, height, background: '#fff', ...style }}>
+        {children || <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#bbb', fontSize: 13, fontFamily: DC.font }}>{id}</div>}
+      </div>
+    </div>
+  );
+}
+
+// Inline rename — commits on blur or Enter.
+function DCEditable({ value, onChange, style, tag = 'span', onClick }) {
+  const T = tag;
+  return (
+    <T className="dc-editable" contentEditable suppressContentEditableWarning
+      onClick={onClick}
+      onPointerDown={(e) => e.stopPropagation()}
+      onBlur={(e) => onChange && onChange(e.currentTarget.textContent)}
+      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}
+      style={style}>{value}</T>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Focus mode — overlay one artboard; ←/→ within section, ↑/↓ across
+// sections, Esc or backdrop click to exit.
+// ─────────────────────────────────────────────────────────────
+function DCFocusOverlay({ entry, sectionMeta, sectionOrder }) {
+  const ctx = React.useContext(DCCtx);
+  const { sectionId, artboard } = entry;
+  const sec = ctx.section(sectionId);
+  const meta = sectionMeta[sectionId];
+  const peers = meta.slotIds;
+  const aid = artboard.props.id ?? artboard.props.label;
+  const idx = peers.indexOf(aid);
+  const secIdx = sectionOrder.indexOf(sectionId);
+
+  const go = (d) => { const n = peers[(idx + d + peers.length) % peers.length]; if (n) ctx.setFocus(`${sectionId}/${n}`); };
+  const goSection = (d) => {
+    const ns = sectionOrder[(secIdx + d + sectionOrder.length) % sectionOrder.length];
+    const first = sectionMeta[ns] && sectionMeta[ns].slotIds[0];
+    if (first) ctx.setFocus(`${ns}/${first}`);
+  };
+
+  React.useEffect(() => {
+    const k = (e) => {
+      if (e.key === 'ArrowLeft') { e.preventDefault(); go(-1); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); go(1); }
+      if (e.key === 'ArrowUp') { e.preventDefault(); goSection(-1); }
+      if (e.key === 'ArrowDown') { e.preventDefault(); goSection(1); }
+    };
+    document.addEventListener('keydown', k);
+    return () => document.removeEventListener('keydown', k);
+  });
+
+  const { width = 260, height = 480, children } = artboard.props;
+  const [vp, setVp] = React.useState({ w: window.innerWidth, h: window.innerHeight });
+  React.useEffect(() => { const r = () => setVp({ w: window.innerWidth, h: window.innerHeight }); window.addEventListener('resize', r); return () => window.removeEventListener('resize', r); }, []);
+  const scale = Math.max(0.1, Math.min((vp.w - 200) / width, (vp.h - 260) / height, 2));
+
+  const [ddOpen, setDd] = React.useState(false);
+  const Arrow = ({ dir, onClick }) => (
+    <button onClick={(e) => { e.stopPropagation(); onClick(); }}
+      style={{ position: 'absolute', top: '50%', [dir]: 28, transform: 'translateY(-50%)',
+        border: 'none', background: 'rgba(255,255,255,.08)', color: 'rgba(255,255,255,.9)',
+        width: 44, height: 44, borderRadius: 22, fontSize: 18, cursor: 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background .15s' }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,.18)')}
+      onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,.08)')}>
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <path d={dir === 'left' ? 'M11 3L5 9l6 6' : 'M7 3l6 6-6 6'} /></svg>
+    </button>
+  );
+
+  // Portal to body so position:fixed is the real viewport regardless of any
+  // transform on DesignCanvas's ancestors (including the canvas zoom itself).
+  return ReactDOM.createPortal(
+    <div onClick={() => ctx.setFocus(null)}
+      onWheel={(e) => e.preventDefault()}
+      style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(24,20,16,.6)', backdropFilter: 'blur(14px)',
+        fontFamily: DC.font, color: '#fff' }}>
+
+      {/* top bar: section dropdown (left) · close (right) */}
+      <div onClick={(e) => e.stopPropagation()}
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 72, display: 'flex', alignItems: 'flex-start', padding: '16px 20px 0', gap: 16 }}>
+        <div style={{ position: 'relative' }}>
+          <button onClick={() => setDd((o) => !o)}
+            style={{ border: 'none', background: 'transparent', color: '#fff', cursor: 'pointer', padding: '6px 8px',
+              borderRadius: 6, textAlign: 'left', fontFamily: 'inherit' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 18, fontWeight: 600, letterSpacing: -0.3 }}>{meta.title}</span>
+              <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" style={{ opacity: .7 }}><path d="M2 4l3.5 3.5L9 4"/></svg>
+            </span>
+            {meta.subtitle && <span style={{ display: 'block', fontSize: 13, opacity: .6, fontWeight: 400, marginTop: 2 }}>{meta.subtitle}</span>}
+          </button>
+          {ddOpen && (
+            <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: '#2a251f', borderRadius: 8,
+              boxShadow: '0 8px 32px rgba(0,0,0,.4)', padding: 4, minWidth: 200, zIndex: 10 }}>
+              {sectionOrder.map((sid) => (
+                <button key={sid} onClick={() => { setDd(false); const f = sectionMeta[sid].slotIds[0]; if (f) ctx.setFocus(`${sid}/${f}`); }}
+                  style={{ display: 'block', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer',
+                    background: sid === sectionId ? 'rgba(255,255,255,.1)' : 'transparent', color: '#fff',
+                    padding: '8px 12px', borderRadius: 5, fontSize: 14, fontWeight: sid === sectionId ? 600 : 400, fontFamily: 'inherit' }}>
+                  {sectionMeta[sid].title}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div style={{ flex: 1 }} />
+        <button onClick={() => ctx.setFocus(null)}
+          onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,.12)')}
+          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+          style={{ border: 'none', background: 'transparent', color: 'rgba(255,255,255,.7)', width: 32, height: 32,
+            borderRadius: 16, fontSize: 20, cursor: 'pointer', lineHeight: 1, transition: 'background .12s' }}>×</button>
+      </div>
+
+      {/* card centered, label + index below — only the card itself stops
+          propagation so any backdrop click (including the margins around
+          the card) exits focus */}
+      <div
+        style={{ position: 'absolute', top: 64, bottom: 56, left: 100, right: 100, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+        <div onClick={(e) => e.stopPropagation()} style={{ width: width * scale, height: height * scale, position: 'relative' }}>
+          <div style={{ width, height, transform: `scale(${scale})`, transformOrigin: 'top left', background: '#fff', borderRadius: 2, overflow: 'hidden',
+            boxShadow: '0 20px 80px rgba(0,0,0,.4)' }}>
+            {children || <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#bbb' }}>{aid}</div>}
+          </div>
+        </div>
+        <div onClick={(e) => e.stopPropagation()} style={{ fontSize: 14, fontWeight: 500, opacity: .85, textAlign: 'center' }}>
+          {(sec.labels || {})[aid] ?? artboard.props.label}
+          <span style={{ opacity: .5, marginLeft: 10, fontVariantNumeric: 'tabular-nums' }}>{idx + 1} / {peers.length}</span>
+        </div>
+      </div>
+
+      <Arrow dir="left" onClick={() => go(-1)} />
+      <Arrow dir="right" onClick={() => go(1)} />
+
+      {/* dots */}
+      <div onClick={(e) => e.stopPropagation()}
+        style={{ position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 8 }}>
+        {peers.map((p, i) => (
+          <button key={p} onClick={() => ctx.setFocus(`${sectionId}/${p}`)}
+            style={{ border: 'none', padding: 0, cursor: 'pointer', width: 6, height: 6, borderRadius: 3,
+              background: i === idx ? '#fff' : 'rgba(255,255,255,.3)' }} />
+        ))}
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Post-it — absolute-positioned sticky note
+// ─────────────────────────────────────────────────────────────
+function DCPostIt({ children, top, left, right, bottom, rotate = -2, width = 180 }) {
+  return (
+    <div style={{
+      position: 'absolute', top, left, right, bottom, width,
+      background: DC.postitBg, padding: '14px 16px',
+      fontFamily: '"Comic Sans MS", "Marker Felt", "Segoe Print", cursive',
+      fontSize: 14, lineHeight: 1.4, color: DC.postitText,
+      boxShadow: '0 2px 8px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)',
+      transform: `rotate(${rotate}deg)`,
+      zIndex: 5,
+    }}>{children}</div>
+  );
+}
+
+Object.assign(window, { DesignCanvas, DCSection, DCArtboard, DCPostIt });
+
+
+</script>
+<script type="text/babel" data-presets="react">
+
+// iOS.jsx — Simplified iOS 26 (Liquid Glass) device frame
+// Based on the iOS 26 UI Kit + Figma status bar spec. No assets, no deps.
+// Exports: IOSDevice, IOSStatusBar, IOSNavBar, IOSGlassPill, IOSList, IOSListRow, IOSKeyboard
+
+// ─────────────────────────────────────────────────────────────
+// Status bar
+// ─────────────────────────────────────────────────────────────
+function IOSStatusBar({ dark = false, time = '9:41' }) {
+  const c = dark ? '#fff' : '#000';
+  return (
+    <div style={{
+      display: 'flex', gap: 154, alignItems: 'center', justifyContent: 'center',
+      padding: '21px 24px 19px', boxSizing: 'border-box',
+      position: 'relative', zIndex: 20, width: '100%',
+    }}>
+      <div style={{ flex: 1, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 1.5 }}>
+        <span style={{
+          fontFamily: '-apple-system, "SF Pro", system-ui', fontWeight: 590,
+          fontSize: 17, lineHeight: '22px', color: c,
+        }}>{time}</span>
+      </div>
+      <div style={{ flex: 1, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, paddingTop: 1, paddingRight: 1 }}>
+        <svg width="19" height="12" viewBox="0 0 19 12">
+          <rect x="0" y="7.5" width="3.2" height="4.5" rx="0.7" fill={c}/>
+          <rect x="4.8" y="5" width="3.2" height="7" rx="0.7" fill={c}/>
+          <rect x="9.6" y="2.5" width="3.2" height="9.5" rx="0.7" fill={c}/>
+          <rect x="14.4" y="0" width="3.2" height="12" rx="0.7" fill={c}/>
+        </svg>
+        <svg width="17" height="12" viewBox="0 0 17 12">
+          <path d="M8.5 3.2C10.8 3.2 12.9 4.1 14.4 5.6L15.5 4.5C13.7 2.7 11.2 1.5 8.5 1.5C5.8 1.5 3.3 2.7 1.5 4.5L2.6 5.6C4.1 4.1 6.2 3.2 8.5 3.2Z" fill={c}/>
+          <path d="M8.5 6.8C9.9 6.8 11.1 7.3 12 8.2L13.1 7.1C11.8 5.9 10.2 5.1 8.5 5.1C6.8 5.1 5.2 5.9 3.9 7.1L5 8.2C5.9 7.3 7.1 6.8 8.5 6.8Z" fill={c}/>
+          <circle cx="8.5" cy="10.5" r="1.5" fill={c}/>
+        </svg>
+        <svg width="27" height="13" viewBox="0 0 27 13">
+          <rect x="0.5" y="0.5" width="23" height="12" rx="3.5" stroke={c} strokeOpacity="0.35" fill="none"/>
+          <rect x="2" y="2" width="20" height="9" rx="2" fill={c}/>
+          <path d="M25 4.5V8.5C25.8 8.2 26.5 7.2 26.5 6.5C26.5 5.8 25.8 4.8 25 4.5Z" fill={c} fillOpacity="0.4"/>
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Liquid glass pill — blur + tint + shine
+// ─────────────────────────────────────────────────────────────
+function IOSGlassPill({ children, dark = false, style = {} }) {
+  return (
+    <div style={{
+      height: 44, minWidth: 44, borderRadius: 9999,
+      position: 'relative', overflow: 'hidden',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      boxShadow: dark
+        ? '0 2px 6px rgba(0,0,0,0.35), 0 6px 16px rgba(0,0,0,0.2)'
+        : '0 1px 3px rgba(0,0,0,0.07), 0 3px 10px rgba(0,0,0,0.06)',
+      ...style,
+    }}>
+      {/* blur + tint */}
+      <div style={{
+        position: 'absolute', inset: 0, borderRadius: 9999,
+        backdropFilter: 'blur(12px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(12px) saturate(180%)',
+        background: dark ? 'rgba(120,120,128,0.28)' : 'rgba(255,255,255,0.5)',
+      }} />
+      {/* shine */}
+      <div style={{
+        position: 'absolute', inset: 0, borderRadius: 9999,
+        boxShadow: dark
+          ? 'inset 1.5px 1.5px 1px rgba(255,255,255,0.15), inset -1px -1px 1px rgba(255,255,255,0.08)'
+          : 'inset 1.5px 1.5px 1px rgba(255,255,255,0.7), inset -1px -1px 1px rgba(255,255,255,0.4)',
+        border: dark ? '0.5px solid rgba(255,255,255,0.15)' : '0.5px solid rgba(0,0,0,0.06)',
+      }} />
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', padding: '0 4px' }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Navigation bar — glass pills + large title
+// ─────────────────────────────────────────────────────────────
+function IOSNavBar({ title = 'Title', dark = false, trailingIcon = true }) {
+  const muted = dark ? 'rgba(255,255,255,0.6)' : '#404040';
+  const text = dark ? '#fff' : '#000';
+  const pillIcon = (content) => (
+    <IOSGlassPill dark={dark}>
+      <div style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {content}
+      </div>
+    </IOSGlassPill>
+  );
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', gap: 10,
+      paddingTop: 62, paddingBottom: 10, position: 'relative', zIndex: 5,
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '0 16px',
+      }}>
+        {/* back chevron */}
+        {pillIcon(
+          <svg width="12" height="20" viewBox="0 0 12 20" fill="none" style={{ marginLeft: -1 }}>
+            <path d="M10 2L2 10l8 8" stroke={muted} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        )}
+        {/* trailing ellipsis */}
+        {trailingIcon && pillIcon(
+          <svg width="22" height="6" viewBox="0 0 22 6">
+            <circle cx="3" cy="3" r="2.5" fill={muted}/>
+            <circle cx="11" cy="3" r="2.5" fill={muted}/>
+            <circle cx="19" cy="3" r="2.5" fill={muted}/>
+          </svg>
+        )}
+      </div>
+      {/* large title */}
+      <div style={{
+        padding: '0 16px',
+        fontFamily: '-apple-system, system-ui',
+        fontSize: 34, fontWeight: 700, lineHeight: '41px',
+        color: text, letterSpacing: 0.4,
+      }}>{title}</div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Grouped list (inset card, r:26) + row (52px)
+// ─────────────────────────────────────────────────────────────
+function IOSListRow({ title, detail, icon, chevron = true, isLast = false, dark = false }) {
+  const text = dark ? '#fff' : '#000';
+  const sec = dark ? 'rgba(235,235,245,0.6)' : 'rgba(60,60,67,0.6)';
+  const ter = dark ? 'rgba(235,235,245,0.3)' : 'rgba(60,60,67,0.3)';
+  const sep = dark ? 'rgba(84,84,88,0.65)' : 'rgba(60,60,67,0.12)';
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', minHeight: 52,
+      padding: '0 16px', position: 'relative',
+      fontFamily: '-apple-system, system-ui', fontSize: 17,
+      letterSpacing: -0.43,
+    }}>
+      {icon && (
+        <div style={{
+          width: 30, height: 30, borderRadius: 7, background: icon,
+          marginRight: 12, flexShrink: 0,
+        }} />
+      )}
+      <div style={{ flex: 1, color: text }}>{title}</div>
+      {detail && <span style={{ color: sec, marginRight: 6 }}>{detail}</span>}
+      {chevron && (
+        <svg width="8" height="14" viewBox="0 0 8 14" style={{ flexShrink: 0 }}>
+          <path d="M1 1l6 6-6 6" stroke={ter} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      )}
+      {!isLast && (
+        <div style={{
+          position: 'absolute', bottom: 0, right: 0,
+          left: icon ? 58 : 16, height: 0.5, background: sep,
+        }} />
+      )}
+    </div>
+  );
+}
+
+function IOSList({ header, children, dark = false }) {
+  const hc = dark ? 'rgba(235,235,245,0.6)' : 'rgba(60,60,67,0.6)';
+  const bg = dark ? '#1C1C1E' : '#fff';
+  return (
+    <div>
+      {header && (
+        <div style={{
+          fontFamily: '-apple-system, system-ui', fontSize: 13,
+          color: hc, textTransform: 'uppercase',
+          padding: '8px 36px 6px', letterSpacing: -0.08,
+        }}>{header}</div>
+      )}
+      <div style={{
+        background: bg, borderRadius: 26,
+        margin: '0 16px', overflow: 'hidden',
+      }}>{children}</div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Device frame
+// ─────────────────────────────────────────────────────────────
+function IOSDevice({
+  children, width = 402, height = 874, dark = false,
+  title, keyboard = false,
+}) {
+  return (
+    <div style={{
+      width, height, borderRadius: 48, overflow: 'hidden',
+      position: 'relative', background: dark ? '#000' : '#F2F2F7',
+      boxShadow: '0 40px 80px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.12)',
+      fontFamily: '-apple-system, system-ui, sans-serif',
+      WebkitFontSmoothing: 'antialiased',
+    }}>
+      {/* dynamic island */}
+      <div style={{
+        position: 'absolute', top: 11, left: '50%', transform: 'translateX(-50%)',
+        width: 126, height: 37, borderRadius: 24, background: '#000', zIndex: 50,
+      }} />
+      {/* status bar (absolute) */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }}>
+        <IOSStatusBar dark={dark} />
+      </div>
+      {/* nav + content */}
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        {title !== undefined && <IOSNavBar title={title} dark={dark} />}
+        <div style={{ flex: 1, overflow: 'auto' }}>{children}</div>
+        {keyboard && <IOSKeyboard dark={dark} />}
+      </div>
+      {/* home indicator — always on top */}
+      <div style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 60,
+        height: 34, display: 'flex', justifyContent: 'center', alignItems: 'flex-end',
+        paddingBottom: 8, pointerEvents: 'none',
+      }}>
+        <div style={{
+          width: 139, height: 5, borderRadius: 100,
+          background: dark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.25)',
+        }} />
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Keyboard — iOS 26 liquid glass
+// ─────────────────────────────────────────────────────────────
+function IOSKeyboard({ dark = false }) {
+  const glyph = dark ? 'rgba(255,255,255,0.7)' : '#595959';
+  const sugg = dark ? 'rgba(255,255,255,0.6)' : '#333';
+  const keyBg = dark ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.85)';
+
+  // special-key icons
+  const icons = {
+    shift: <svg width="19" height="17" viewBox="0 0 19 17"><path d="M9.5 1L1 9.5h4.5V16h8V9.5H18L9.5 1z" fill={glyph}/></svg>,
+    del: <svg width="23" height="17" viewBox="0 0 23 17"><path d="M7 1h13a2 2 0 012 2v11a2 2 0 01-2 2H7l-6-7.5L7 1z" fill="none" stroke={glyph} strokeWidth="1.6" strokeLinejoin="round"/><path d="M10 5l7 7M17 5l-7 7" stroke={glyph} strokeWidth="1.6" strokeLinecap="round"/></svg>,
+    ret: <svg width="20" height="14" viewBox="0 0 20 14"><path d="M18 1v6H4m0 0l4-4M4 7l4 4" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+  };
+
+  const key = (content, { w, flex, ret, fs = 25, k } = {}) => (
+    <div key={k} style={{
+      height: 42, borderRadius: 8.5,
+      flex: flex ? 1 : undefined, width: w, minWidth: 0,
+      background: ret ? '#08f' : keyBg,
+      boxShadow: '0 1px 0 rgba(0,0,0,0.075)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontFamily: '-apple-system, "SF Compact", system-ui',
+      fontSize: fs, fontWeight: 458, color: ret ? '#fff' : glyph,
+    }}>{content}</div>
+  );
+
+  const row = (keys, pad = 0) => (
+    <div style={{ display: 'flex', gap: 6.5, justifyContent: 'center', padding: `0 ${pad}px` }}>
+      {keys.map(l => key(l, { flex: true, k: l }))}
+    </div>
+  );
+
+  return (
+    <div style={{
+      position: 'relative', zIndex: 15, borderRadius: 27, overflow: 'hidden',
+      padding: '11px 0 2px',
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      boxShadow: dark
+        ? '0 -2px 20px rgba(0,0,0,0.09)'
+        : '0 -1px 6px rgba(0,0,0,0.018), 0 -3px 20px rgba(0,0,0,0.012)',
+    }}>
+      {/* liquid glass bg — same recipe as nav pills */}
+      <div style={{
+        position: 'absolute', inset: 0, borderRadius: 27,
+        backdropFilter: 'blur(12px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(12px) saturate(180%)',
+        background: dark ? 'rgba(120,120,128,0.14)' : 'rgba(255,255,255,0.25)',
+      }} />
+      <div style={{
+        position: 'absolute', inset: 0, borderRadius: 27,
+        boxShadow: dark
+          ? 'inset 1.5px 1.5px 1px rgba(255,255,255,0.15)'
+          : 'inset 1.5px 1.5px 1px rgba(255,255,255,0.7), inset -1px -1px 1px rgba(255,255,255,0.4)',
+        border: dark ? '0.5px solid rgba(255,255,255,0.15)' : '0.5px solid rgba(0,0,0,0.06)',
+        pointerEvents: 'none',
+      }} />
+
+      {/* autocorrect bar */}
+      <div style={{
+        display: 'flex', gap: 20, alignItems: 'center',
+        padding: '8px 22px 13px', width: '100%', boxSizing: 'border-box',
+        position: 'relative',
+      }}>
+        {['"The"', 'the', 'to'].map((w, i) => (
+          <React.Fragment key={i}>
+            {i > 0 && <div style={{ width: 1, height: 25, background: '#ccc', opacity: 0.3 }} />}
+            <div style={{
+              flex: 1, textAlign: 'center',
+              fontFamily: '-apple-system, system-ui', fontSize: 17,
+              color: sugg, letterSpacing: -0.43, lineHeight: '22px',
+            }}>{w}</div>
+          </React.Fragment>
+        ))}
+      </div>
+
+      {/* key layout */}
+      <div style={{
+        display: 'flex', flexDirection: 'column', gap: 13,
+        padding: '0 6.5px', width: '100%', boxSizing: 'border-box',
+        position: 'relative',
+      }}>
+        {row(['q','w','e','r','t','y','u','i','o','p'])}
+        {row(['a','s','d','f','g','h','j','k','l'], 20)}
+        <div style={{ display: 'flex', gap: 14.25, alignItems: 'center' }}>
+          {key(icons.shift, { w: 45, k: 'shift' })}
+          <div style={{ display: 'flex', gap: 6.5, flex: 1 }}>
+            {['z','x','c','v','b','n','m'].map(l => key(l, { flex: true, k: l }))}
+          </div>
+          {key(icons.del, { w: 45, k: 'del' })}
+        </div>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          {key('ABC', { w: 92.25, fs: 18, k: 'abc' })}
+          {key('', { flex: true, k: 'space' })}
+          {key(icons.ret, { w: 92.25, ret: true, k: 'ret' })}
+        </div>
+      </div>
+
+      {/* bottom spacer (emoji+mic area, icons omitted) */}
+      <div style={{ height: 56, width: '100%', position: 'relative' }} />
+    </div>
+  );
+}
+
+Object.assign(window, {
+  IOSDevice, IOSStatusBar, IOSNavBar, IOSGlassPill, IOSList, IOSListRow, IOSKeyboard,
+});
+
+</script>
+<script type="text/babel" data-presets="react">
+// primitives.jsx — shared LIFF UI primitives
+// Top bar, bottom nav, toast, skeleton, chips, buttons, icons
+
+// ─── Icons (stroke-based, no emoji) ──────────────────────────
+const I = {
+  close: (s=20, c='currentColor') => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+      <path d="M6 6l12 12M18 6L6 18" stroke={c} strokeWidth="1.8" strokeLinecap="round"/>
+    </svg>
+  ),
+  back: (s=20, c='currentColor') => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+      <path d="M14 6l-6 6 6 6" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
+  more: (s=20, c='currentColor') => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+      <circle cx="5" cy="12" r="1.6" fill={c}/><circle cx="12" cy="12" r="1.6" fill={c}/><circle cx="19" cy="12" r="1.6" fill={c}/>
+    </svg>
+  ),
+  search: (s=16, c='currentColor') => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+      <circle cx="11" cy="11" r="6.5" stroke={c} strokeWidth="1.8"/>
+      <path d="M20 20l-4.3-4.3" stroke={c} strokeWidth="1.8" strokeLinecap="round"/>
+    </svg>
+  ),
+  filter: (s=20, c='currentColor') => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+      <path d="M4 6h16M7 12h10M10 18h4" stroke={c} strokeWidth="1.8" strokeLinecap="round"/>
+    </svg>
+  ),
+  phone: (s=16, c='currentColor') => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+      <path d="M5 4h3l2 5-2.5 1.5a11 11 0 0 0 6 6L15 14l5 2v3a2 2 0 0 1-2 2A15 15 0 0 1 3 6a2 2 0 0 1 2-2z" stroke={c} strokeWidth="1.6" strokeLinejoin="round"/>
+    </svg>
+  ),
+  mobile: (s=16, c='currentColor') => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+      <rect x="7" y="3" width="10" height="18" rx="2" stroke={c} strokeWidth="1.6"/>
+      <circle cx="12" cy="17.5" r="0.9" fill={c}/>
+    </svg>
+  ),
+  mail: (s=16, c='currentColor') => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+      <rect x="3" y="5" width="18" height="14" rx="2" stroke={c} strokeWidth="1.6"/>
+      <path d="M4 7l8 6 8-6" stroke={c} strokeWidth="1.6" strokeLinejoin="round"/>
+    </svg>
+  ),
+  chat: (s=16, c='currentColor') => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+      <path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-7l-4 3v-3H6a2 2 0 0 1-2-2V6z" stroke={c} strokeWidth="1.6" strokeLinejoin="round"/>
+    </svg>
+  ),
+  pin: (s=16, c='currentColor') => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+      <path d="M12 22s7-6.5 7-12a7 7 0 1 0-14 0c0 5.5 7 12 7 12z" stroke={c} strokeWidth="1.6" strokeLinejoin="round"/>
+      <circle cx="12" cy="10" r="2.5" stroke={c} strokeWidth="1.6"/>
+    </svg>
+  ),
+  globe: (s=16, c='currentColor') => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="9" stroke={c} strokeWidth="1.6"/>
+      <path d="M3 12h18M12 3c2.5 3 2.5 15 0 18M12 3c-2.5 3-2.5 15 0 18" stroke={c} strokeWidth="1.6"/>
+    </svg>
+  ),
+  copy: (s=18, c='currentColor') => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+      <rect x="8" y="8" width="12" height="12" rx="2" stroke={c} strokeWidth="1.6"/>
+      <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" stroke={c} strokeWidth="1.6"/>
+    </svg>
+  ),
+  edit: (s=18, c='currentColor') => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+      <path d="M4 20h4l10-10-4-4L4 16v4z" stroke={c} strokeWidth="1.6" strokeLinejoin="round"/>
+      <path d="M13 6l4 4" stroke={c} strokeWidth="1.6"/>
+    </svg>
+  ),
+  tag: (s=18, c='currentColor') => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+      <path d="M13 3H4v9l9 9 9-9-9-9z" stroke={c} strokeWidth="1.6" strokeLinejoin="round"/>
+      <circle cx="8" cy="8" r="1.4" fill={c}/>
+    </svg>
+  ),
+  qr: (s=18, c='currentColor') => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+      <rect x="3" y="3" width="7" height="7" stroke={c} strokeWidth="1.6"/>
+      <rect x="14" y="3" width="7" height="7" stroke={c} strokeWidth="1.6"/>
+      <rect x="3" y="14" width="7" height="7" stroke={c} strokeWidth="1.6"/>
+      <path d="M14 14h3v3h-3zM20 14v3M14 20h3v1M20 17v4" stroke={c} strokeWidth="1.6"/>
+    </svg>
+  ),
+  card: (s=22, c='currentColor') => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+      <rect x="3" y="6" width="18" height="13" rx="2.5" stroke={c} strokeWidth="1.7"/>
+      <circle cx="9" cy="12" r="2" stroke={c} strokeWidth="1.6"/>
+      <path d="M14 11h4M14 14h3" stroke={c} strokeWidth="1.6" strokeLinecap="round"/>
+    </svg>
+  ),
+  chart: (s=22, c='currentColor') => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+      <path d="M4 20V9M10 20V4M16 20v-7M22 20H2" stroke={c} strokeWidth="1.7" strokeLinecap="round"/>
+    </svg>
+  ),
+  gear: (s=22, c='currentColor') => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="3.2" stroke={c} strokeWidth="1.7"/>
+      <path d="M12 2.5v2.5M12 19v2.5M4.2 7l2.1 1.2M17.7 15.8l2.1 1.2M4.2 17l2.1-1.2M17.7 8.2l2.1-1.2M2.5 12H5M19 12h2.5" stroke={c} strokeWidth="1.7" strokeLinecap="round"/>
+    </svg>
+  ),
+  plus: (s=18, c='currentColor') => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+      <path d="M12 5v14M5 12h14" stroke={c} strokeWidth="1.9" strokeLinecap="round"/>
+    </svg>
+  ),
+  check: (s=16, c='currentColor') => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+      <path d="M5 12l5 5 9-10" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
+  calendar: (s=16, c='currentColor') => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+      <rect x="3.5" y="5" width="17" height="15" rx="2" stroke={c} strokeWidth="1.6"/>
+      <path d="M3.5 10h17M8 3v4M16 3v4" stroke={c} strokeWidth="1.6" strokeLinecap="round"/>
+    </svg>
+  ),
+  alert: (s=16, c='currentColor') => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+      <path d="M12 3l10 18H2L12 3z" stroke={c} strokeWidth="1.6" strokeLinejoin="round"/>
+      <path d="M12 10v5M12 18v.1" stroke={c} strokeWidth="1.7" strokeLinecap="round"/>
+    </svg>
+  ),
+  trash: (s=16, c='currentColor') => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+      <path d="M4 7h16M10 4h4a1 1 0 0 1 1 1v2H9V5a1 1 0 0 1 1-1z" stroke={c} strokeWidth="1.6" strokeLinejoin="round"/>
+      <path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13" stroke={c} strokeWidth="1.6"/>
+    </svg>
+  ),
+  mic: (s=22, c='currentColor') => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+      <rect x="9" y="3" width="6" height="12" rx="3" stroke={c} strokeWidth="1.7"/>
+      <path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6" stroke={c} strokeWidth="1.7" strokeLinecap="round"/>
+    </svg>
+  ),
+  sparkle: (s=14, c='currentColor') => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+      <path d="M12 2l1.8 5.5L19 9l-5.2 1.8L12 16l-1.8-5.2L5 9l5.2-1.5L12 2z" fill={c}/>
+      <path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8L19 16z" fill={c} opacity="0.6"/>
+    </svg>
+  ),
+  caret: (s=12, c='currentColor') => (
+    <svg width={s} height={s} viewBox="0 0 12 12" fill="none">
+      <path d="M3 4.5l3 3 3-3" stroke={c} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
+};
+
+// ─── Top bar (48px, glass) ───────────────────────────────────
+function LiffTopBar({ left, title, right, glass = true }) {
+  return (
+    <div style={{
+      position: 'absolute', top: 0, left: 0, right: 0, zIndex: 30,
+      height: 48, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '0 8px',
+      background: glass ? 'rgba(250,250,247,0.78)' : 'var(--c-bg-base)',
+      backdropFilter: glass ? 'blur(20px) saturate(180%)' : 'none',
+      WebkitBackdropFilter: glass ? 'blur(20px) saturate(180%)' : 'none',
+    }}>
+      <div style={{ width: 44, display: 'flex', justifyContent: 'flex-start' }}>
+        {left && <button style={iconBtn}>{left}</button>}
+      </div>
+      <div className="display" style={{
+        fontSize: 15, fontWeight: 700, color: 'var(--c-text)',
+      }}>{title}</div>
+      <div style={{ width: 44, display: 'flex', justifyContent: 'flex-end' }}>
+        {right && <button style={iconBtn}>{right}</button>}
+      </div>
+    </div>
+  );
+}
+const iconBtn = {
+  width: 40, height: 40, borderRadius: 10,
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  color: 'var(--c-text)',
+};
+
+// ─── Bottom nav (56px) ───────────────────────────────────────
+function LiffBottomNav({ active = 'cards' }) {
+  const tabs = [
+    { id: 'cards', label: '名片', icon: I.card(22) },
+    { id: 'crm',   label: 'CRM',  icon: I.chart(22) },
+    { id: 'settings', label: '設定', icon: I.gear(22) },
+  ];
+  return (
+    <div style={{
+      position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 40,
+      height: 56, background: 'var(--c-bg-card)',
+      borderTop: '1px solid var(--c-hairline)',
+      display: 'flex', alignItems: 'stretch',
+    }}>
+      {tabs.map(t => {
+        const on = t.id === active;
+        const c = on ? 'var(--c-primary-deep)' : 'rgba(85,88,79,0.55)';
+        return (
+          <div key={t.id} style={{
+            flex: 1, display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', gap: 3,
+            color: c, position: 'relative',
+          }}>
+            <div style={{ display: 'flex' }}>{React.cloneElement(t.icon, { stroke: c })}</div>
+            <div style={{ fontSize: 10.5, fontWeight: on ? 700 : 500 }}>{t.label}</div>
+            {on && <div style={{
+              position: 'absolute', bottom: 4, width: 4, height: 4, borderRadius: 99,
+              background: 'var(--c-primary-deep)',
+            }}/>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Toast ───────────────────────────────────────────────────
+function LiffToast({ kind = 'success', children, top = 48 }) {
+  const bg = kind === 'success' ? 'var(--c-primary)' : 'var(--c-danger)';
+  return (
+    <div style={{
+      position: 'absolute', top, left: 0, right: 0, zIndex: 50,
+      height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      gap: 8, background: bg, color: '#fff',
+      fontSize: 14, fontWeight: 600,
+      animation: 'slideDown 200ms ease-out',
+    }}>
+      {children}
+    </div>
+  );
+}
+
+// ─── Avatar ──────────────────────────────────────────────────
+function Avatar({ name, size = 48, color, src }) {
+  const char = name ? name[0] : '?';
+  const palette = ['#E6F4EC', '#FCF2DE', '#E8EFFB', '#F3EBE3', '#EBF0E4'];
+  const textPal = ['#0E5E3A', '#8A5A0F', '#1D3E85', '#6A4A2E', '#3E5620'];
+  const idx = (name || '').charCodeAt(0) % palette.length;
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: 10, flexShrink: 0,
+      background: color || palette[idx],
+      color: textPal[idx], fontFamily: 'var(--f-display)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontWeight: 700, fontSize: size * 0.38,
+      overflow: 'hidden', position: 'relative',
+    }}>
+      {src ? <div style={{
+        position: 'absolute', inset: 0,
+        background: src, backgroundSize: 'cover', backgroundPosition: 'center',
+      }}/> : char}
+    </div>
+  );
+}
+
+// ─── Tag chip ────────────────────────────────────────────────
+function Chip({ children, active, onClick, size = 'md', variant = 'filter' }) {
+  const h = size === 'sm' ? 24 : 32;
+  const base = {
+    height: h, padding: size === 'sm' ? '0 10px' : '0 14px',
+    borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 6,
+    fontSize: size === 'sm' ? 12 : 13, fontWeight: 600,
+    whiteSpace: 'nowrap',
+  };
+  if (variant === 'tag') {
+    return <span style={{
+      ...base, height: 22, padding: '0 8px', fontSize: 11, fontWeight: 600,
+      background: 'var(--c-primary-softer)', color: 'var(--c-primary-deep)',
+      border: '1px solid rgba(31,139,92,0.2)',
+    }}>{children}</span>;
+  }
+  return (
+    <div onClick={onClick} style={{
+      ...base,
+      background: active ? 'var(--c-primary)' : 'var(--c-bg-section)',
+      color: active ? '#fff' : 'var(--c-text-sub)',
+    }}>{children}</div>
+  );
+}
+
+// ─── Button ──────────────────────────────────────────────────
+function PrimaryButton({ children, height = 52, disabled, icon }) {
+  return (
+    <div style={{
+      height, borderRadius: 12,
+      background: disabled ? 'var(--c-bg-input)'
+        : 'linear-gradient(180deg, #1F8B5C 0%, #0E5E3A 100%)',
+      color: disabled ? 'var(--c-text-disabled)' : '#fff',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+      fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em',
+      boxShadow: disabled ? 'none' : '0 1px 0 rgba(255,255,255,0.2) inset, 0 6px 18px rgba(14,94,58,0.2)',
+    }}>
+      {icon}{children}
+    </div>
+  );
+}
+function GhostButton({ children, height = 44, color = 'var(--c-text-sub)' }) {
+  return (
+    <div style={{
+      height, borderRadius: 10, padding: '0 16px',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+      fontSize: 14, fontWeight: 600, color,
+      background: 'transparent',
+    }}>{children}</div>
+  );
+}
+
+// ─── Skeleton ────────────────────────────────────────────────
+function SkelLine({ w = '80%', h = 12, style }) {
+  return <div className="skel" style={{ width: w, height: h, borderRadius: 6, ...style }}/>;
+}
+function SkelBlock({ w = 48, h = 48, r = 10, style }) {
+  return <div className="skel" style={{ width: w, height: h, borderRadius: r, ...style }}/>;
+}
+
+// Expose globals
+Object.assign(window, {
+  I, LiffTopBar, LiffBottomNav, LiffToast,
+  Avatar, Chip, PrimaryButton, GhostButton,
+  SkelLine, SkelBlock,
+});
+
+</script>
+<script type="text/babel" data-presets="react">
+// screens-cards.jsx — Cards tab (list + detail + sheets)
+
+// Sample data
+const SAMPLE_CARDS = [
+  { id:'c1', name:'王建華',  en:'Kenneth Wang', company:'台灣積體電路製造股份有限公司', title:'資深採購經理', tags:['VIP客戶','A級'], date:'04/19', initial:'王', tint:0 },
+  { id:'c2', name:'陳怡君',  en:'Yvonne Chen',  company:'華碩電腦',       title:'行銷副理',      tags:['潛在'],        date:'04/18', initial:'陳', tint:1 },
+  { id:'c3', name:'林俊傑',  en:'JJ Lin',       company:'富邦金控',       title:'理財顧問',      tags:['VIP客戶'],     date:'04/15', initial:'林', tint:2 },
+  { id:'c4', name:'陳俊宏',  en:'Michael Chen', company:'Google Taiwan',  title:'Product Manager',   tags:['合作夥伴'], date:'04/14', initial:'M', tint:3 },
+  { id:'c5', name:'黃淑芬',  en:'Sophia Huang', company:'統一超商',       title:'營運主管',      tags:[],             date:'04/11', initial:'黃', tint:4 },
+  { id:'c6', name:'張志明',  en:'Jimmy Chang',  company:'台北榮民總醫院', title:'醫療器材採購',   tags:['A級'],         date:'04/09', initial:'張', tint:0 },
+];
+
+// ─── 名片總表 ────────────────────────────────────────────────
+function CardsListScreen({ state = 'normal' }) {
+  // state: normal | searching | empty-search | empty | loading
+  const cards = state === 'searching' ? SAMPLE_CARDS.filter(c => c.name.includes('王') || c.company.includes('Google')) : SAMPLE_CARDS;
+  return (
+    <div className="liff" style={{ background: 'var(--c-bg-base)' }}>
+      <LiffTopBar left={I.close(20)} title="名片總表" right={I.more(20)} />
+
+      <div className="liff-scroll" style={{
+        position: 'absolute', inset: 0, paddingTop: 48, paddingBottom: 56 + 68,
+      }}>
+        {/* Search bar */}
+        <div style={{ padding: '8px 16px 0' }}>
+          <div style={{
+            height: 44, borderRadius: 12,
+            background: state === 'searching' || state === 'empty-search' ? '#fff' : 'var(--c-bg-input)',
+            border: state === 'searching' || state === 'empty-search' ? '2px solid var(--c-primary)' : '2px solid transparent',
+            display: 'flex', alignItems: 'center', padding: '0 12px', gap: 8,
+          }}>
+            <div style={{ color: 'var(--c-text-sub)', opacity: 0.7 }}>{I.search(16)}</div>
+            {state === 'searching' || state === 'empty-search' ? (
+              <div style={{ fontSize: 14, color: 'var(--c-text)' }}>
+                {state === 'empty-search' ? '周小姐' : '王'}
+                <span style={{
+                  display: 'inline-block', width: 1.5, height: 16, verticalAlign: -3,
+                  background: 'var(--c-primary)', marginLeft: 2, animation: 'pulseDot 1s infinite',
+                }}/>
+              </div>
+            ) : (
+              <div style={{ fontSize: 14, color: 'var(--c-text-mute)' }}>搜尋姓名、公司、職稱…</div>
+            )}
+          </div>
+        </div>
+
+        {/* Filter tabs (horizontal) */}
+        <div style={{
+          display: 'flex', gap: 8, padding: '14px 16px 0', overflowX: 'auto',
+          scrollbarWidth: 'none',
+        }}>
+          {['全部名片','最近新增','VIP客戶','A級','潛在','合作夥伴'].map((t, i) => (
+            <Chip key={t} active={i === 0}>{t}</Chip>
+          ))}
+        </div>
+
+        {/* Count hint */}
+        <div style={{ padding: '12px 16px 6px', fontSize: 12, color: 'var(--c-text-sub)' }}>
+          {state === 'searching' && <span>找到 <b className="num">{cards.length}</b> 筆</span>}
+          {state === 'empty-search' && <span>找不到符合「周小姐」的名片</span>}
+          {state === 'normal' && <span>共 <b className="num">{SAMPLE_CARDS.length}</b> 張名片 · 依建立日期排序</span>}
+          {state === 'loading' && <span>載入中…</span>}
+          {state === 'empty' && <span>&nbsp;</span>}
+        </div>
+
+        {/* Content body */}
+        {state === 'loading' && (
+          <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {[0,1,2].map(i => (
+              <div key={i} style={{
+                height: 72, background: '#fff', borderRadius: 16, padding: 12,
+                display: 'flex', gap: 12, alignItems: 'center',
+              }}>
+                <SkelBlock w={48} h={48} r={10}/>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <SkelLine w="55%" h={14}/>
+                  <SkelLine w="80%" h={11}/>
+                </div>
+                <SkelLine w={34} h={10}/>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {state === 'empty' && (
+          <div style={{ padding: '48px 24px 24px', textAlign: 'center' }}>
+            <div style={{
+              width: 160, height: 120, margin: '0 auto 18px',
+              background: 'var(--c-bg-section)', borderRadius: 16,
+              position: 'relative', overflow: 'hidden',
+            }}>
+              <div style={{
+                position: 'absolute', left: 20, top: 30, width: 120, height: 70, borderRadius: 8,
+                background: '#fff', border: '1.5px dashed rgba(31,139,92,0.3)', transform: 'rotate(-6deg)',
+              }}/>
+              <div style={{
+                position: 'absolute', left: 30, top: 22, width: 120, height: 70, borderRadius: 8,
+                background: '#fff', boxShadow: '0 4px 16px rgba(0,0,0,0.05)', transform: 'rotate(3deg)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'var(--c-primary)',
+              }}>{I.card(28, 'var(--c-primary)')}</div>
+            </div>
+            <div className="display" style={{ fontSize: 18, fontWeight: 700 }}>還沒有任何名片</div>
+            <div style={{ fontSize: 13, color: 'var(--c-text-sub)', marginTop: 6 }}>
+              拍張名片，AI 幫你建檔
+            </div>
+            <div style={{ padding: '24px 0 0' }}>
+              <PrimaryButton icon={I.plus(18, '#fff')}>新增第一張名片</PrimaryButton>
+            </div>
+          </div>
+        )}
+
+        {state === 'empty-search' && (
+          <div style={{ padding: '40px 24px', textAlign: 'center' }}>
+            <div style={{
+              width: 56, height: 56, margin: '0 auto 16px', borderRadius: 14,
+              background: 'var(--c-bg-section)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: 'var(--c-text-mute)',
+            }}>{I.search(24)}</div>
+            <div className="display" style={{ fontSize: 15, fontWeight: 700 }}>找不到符合「周小姐」的名片</div>
+            <div style={{ fontSize: 12, color: 'var(--c-text-sub)', marginTop: 4 }}>試試其他關鍵字</div>
+            <div style={{ marginTop: 16, fontSize: 13, fontWeight: 600, color: 'var(--c-primary-deep)' }}>
+              清除搜尋
+            </div>
+          </div>
+        )}
+
+        {(state === 'normal' || state === 'searching') && (
+          <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {cards.map(c => <CardRow key={c.id} c={c}/>)}
+          </div>
+        )}
+      </div>
+
+      {/* FAB */}
+      <div style={{
+        position: 'absolute', left: 16, right: 16, bottom: 56 + 12, zIndex: 20,
+      }}>
+        <PrimaryButton icon={I.plus(18, '#fff')}>新增名片</PrimaryButton>
+      </div>
+
+      <LiffBottomNav active="cards"/>
+    </div>
+  );
+}
+
+function CardRow({ c }) {
+  return (
+    <div style={{
+      height: 72, background: 'var(--c-bg-card)', borderRadius: 16, padding: 12,
+      display: 'flex', gap: 12, alignItems: 'center',
+      boxShadow: 'var(--sh-card)',
+    }}>
+      <Avatar name={c.initial} size={48}/>
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--c-text)', flexShrink: 0 }}>{c.name}</div>
+          {c.en && <div style={{ fontSize: 11, color: 'var(--c-text-mute)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.en}</div>}
+        </div>
+        <div style={{
+          fontSize: 12, color: 'var(--c-text-sub)',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>{c.company}{c.title && <> · {c.title}</>}</div>
+        {c.tags.length > 0 && (
+          <div style={{ display: 'flex', gap: 4, marginTop: 2 }}>
+            {c.tags.map(t => <Chip key={t} variant="tag">{t}</Chip>)}
+          </div>
+        )}
+      </div>
+      <div className="num" style={{ fontSize: 11, color: 'var(--c-text-mute)' }}>{c.date}</div>
+    </div>
+  );
+}
+
+// ─── 名片詳情 ────────────────────────────────────────────────
+function CardDetailScreen({ hasPhoto = true, memoMode = 'filled' }) {
+  // memoMode: filled | empty | inline-edit
+  return (
+    <div className="liff">
+      <LiffTopBar left={I.back(20)} title="名片詳情" right={I.close(20)}/>
+
+      <div className="liff-scroll" style={{ position: 'absolute', inset: 0, paddingTop: 48, paddingBottom: 56 + 56 }}>
+        {/* Photo preview */}
+        <div style={{
+          height: 160, background: 'var(--c-bg-section)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          position: 'relative',
+        }}>
+          {hasPhoto ? (
+            <div style={{
+              width: 250, height: 140, borderRadius: 10, background: '#fff',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.08)', padding: 14,
+              display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+              position: 'relative', overflow: 'hidden',
+            }}>
+              <div style={{
+                position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%',
+                background: 'var(--c-primary-soft)', opacity: 0.8,
+              }}/>
+              <div>
+                <div className="display" style={{ fontSize: 16, fontWeight: 700 }}>王建華 <span style={{ fontSize: 10, color: 'var(--c-text-sub)', fontWeight: 500 }}>Kenneth</span></div>
+                <div style={{ fontSize: 10, color: 'var(--c-text-sub)', marginTop: 2 }}>資深採購經理</div>
+              </div>
+              <div style={{ fontSize: 9, color: 'var(--c-text-sub)', lineHeight: 1.5 }}>
+                <div style={{ fontWeight: 700, color: 'var(--c-text)', fontSize: 10 }}>TSMC 台灣積體電路</div>
+                <div>+886 3 563 6688 · wang@tsmc.com</div>
+                <div>新竹市力行六路 8 號</div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ color: 'var(--c-text-mute)', fontSize: 13 }}>尚無名片照片</div>
+          )}
+          <div style={{
+            position: 'absolute', right: 12, bottom: 12,
+            width: 32, height: 32, borderRadius: 8,
+            background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(8px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: 'var(--c-text-sub)',
+          }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 9V5a1 1 0 0 1 1-1h4M20 9V5a1 1 0 0 0-1-1h-4M4 15v4a1 1 0 0 0 1 1h4M20 15v4a1 1 0 0 1-1 1h-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+          </div>
+        </div>
+
+        {/* Main info card */}
+        <div style={{ padding: '12px 16px 0' }}>
+          <div style={{ background: '#fff', borderRadius: 16, padding: 16, boxShadow: 'var(--sh-card)' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+              <div className="display" style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em' }}>王建華</div>
+              <div style={{ fontSize: 13, color: 'var(--c-text-sub)', fontWeight: 500 }}>Kenneth Wang</div>
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--c-text-sub)', marginTop: 4 }}>資深採購經理</div>
+            <div style={{ fontSize: 13, color: 'var(--c-text-sub)' }}>台灣積體電路製造股份有限公司</div>
+          </div>
+        </div>
+
+        {/* Contact list */}
+        <div style={{ padding: '12px 16px 0' }}>
+          <div style={{ background: '#fff', borderRadius: 16, overflow: 'hidden', boxShadow: 'var(--sh-card)' }}>
+            <ContactRow icon={I.phone(16)} label="公司電話" value="+886 3 563 6688"/>
+            <ContactRow icon={I.mobile(16)} label="手機"     value="0912-345-678"/>
+            <ContactRow icon={I.mail(16)}   label="Email"    value="wang.ch@tsmc.com"/>
+            <ContactRow icon={I.chat(16)}   label="LINE ID"  value="@wangch" muted/>
+            <ContactRow icon={I.pin(16)}    label="地址"     value="新竹市東區力行六路 8 號" addr/>
+            <ContactRow icon={I.globe(16)}  label="網站"     value="tsmc.com" last/>
+          </div>
+        </div>
+
+        {/* Memo */}
+        <div style={{ padding: '12px 16px 0' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--c-text-sub)', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '0 4px 6px' }}>
+            備忘錄
+          </div>
+          <div style={{
+            background: 'var(--c-bg-section)', borderRadius: 12, padding: 14,
+            border: memoMode === 'inline-edit' ? '2px solid var(--c-primary)' : '2px solid transparent',
+          }}>
+            {memoMode === 'filled' && (
+              <div style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--c-text)' }}>
+                04/18 展場相遇。對新一代 3nm 製程很有興趣，特別關注散熱方案。下次聯絡時提供白皮書 + 報價。
+              </div>
+            )}
+            {memoMode === 'empty' && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontSize: 13, color: 'var(--c-text-mute)' }}>尚未新增備忘錄</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-primary-deep)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  {I.plus(14, 'var(--c-primary-deep)')} 快速新增
+                </div>
+              </div>
+            )}
+            {memoMode === 'inline-edit' && (
+              <>
+                <div style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--c-text)', minHeight: 56 }}>
+                  04/18 展場相遇。對新一代 3nm 製程很有興趣，
+                  <span style={{
+                    display: 'inline-block', width: 1.5, height: 15, verticalAlign: -3,
+                    background: 'var(--c-primary)', animation: 'pulseDot 1s infinite',
+                  }}/>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--c-hairline)' }}>
+                  <div style={{ fontSize: 11, color: 'var(--c-text-mute)' }}>30 / 500</div>
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text-sub)' }}>取消</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-primary-deep)' }}>儲存</span>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Tags */}
+        <div style={{ padding: '14px 16px 0' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--c-text-sub)', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '0 4px 6px' }}>
+            群組標籤
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            <Chip variant="tag">VIP客戶</Chip>
+            <Chip variant="tag">A級</Chip>
+            <Chip variant="tag">台積電</Chip>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom action bar */}
+      <div style={{
+        position: 'absolute', left: 0, right: 0, bottom: 56, zIndex: 20,
+        height: 56, background: '#fff', borderTop: '1px solid var(--c-hairline)',
+        display: 'flex', alignItems: 'stretch',
+      }}>
+        {[{i:I.edit(18), l:'編輯'},{i:I.tag(18), l:'群組'},{i:I.qr(18), l:'QR'}].map((b,idx) => (
+          <div key={idx} style={{
+            flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
+            color: 'var(--c-text)',
+            borderLeft: idx > 0 ? '1px solid var(--c-hairline)' : '0',
+          }}>
+            {b.i}
+            <div style={{ fontSize: 11, fontWeight: 600 }}>{b.l}</div>
+          </div>
+        ))}
+      </div>
+
+      <LiffBottomNav active="cards"/>
+    </div>
+  );
+}
+
+function ContactRow({ icon, label, value, last, muted, addr }) {
+  return (
+    <div style={{
+      minHeight: 54, padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 12,
+      borderBottom: last ? '0' : '1px solid rgba(26,27,24,0.05)',
+    }}>
+      <div style={{
+        width: 32, height: 32, borderRadius: 8, background: 'var(--c-primary-softer)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: 'var(--c-primary-deep)', flexShrink: 0,
+      }}>{icon}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 10.5, color: 'var(--c-text-mute)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>{label}</div>
+        <div style={{
+          fontSize: 14, color: muted ? 'var(--c-text-mute)' : 'var(--c-text)', marginTop: 1,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: addr ? 'normal' : 'nowrap',
+          fontFamily: label === 'Email' || label === '網站' ? 'var(--f-mono), var(--f-ui)' : 'var(--f-ui)',
+          fontWeight: 500, letterSpacing: '-0.005em',
+        }}>{value}</div>
+      </div>
+      <div style={{ color: 'var(--c-text-mute)', opacity: 0.6 }}>{I.copy(18)}</div>
+    </div>
+  );
+}
+
+Object.assign(window, { CardsListScreen, CardDetailScreen, CardRow });
+
+</script>
+<script type="text/babel" data-presets="react">
+// screens-sheets.jsx — Edit sheet + Tag sheet (with delete confirm) + AI cards
+
+// ─── 名片編輯 Bottom Sheet ─────────────────────────────────
+function EditSheetScreen({ mode = 'normal' }) {
+  // mode: normal | saving | success | error
+  return (
+    <div className="liff" style={{ background: 'rgba(0,0,0,0.4)' }}>
+      {mode === 'success' && <LiffToast>{I.check(16,'#fff')}<span>名片已更新</span></LiffToast>}
+      {mode === 'error'   && <LiffToast kind="error">{I.alert(16,'#fff')}<span>儲存失敗，請重試</span></LiffToast>}
+
+      {/* Behind sheet: show dimmed list page */}
+      <div style={{
+        position: 'absolute', inset: 0, background: 'var(--c-bg-base)', opacity: 0.4,
+      }}/>
+
+      {/* Sheet */}
+      <div style={{
+        position: 'absolute', left: 0, right: 0, bottom: 0,
+        background: '#fff', borderRadius: '20px 20px 0 0',
+        maxHeight: '92%', display: 'flex', flexDirection: 'column',
+        boxShadow: '0 -8px 30px rgba(0,0,0,0.12)',
+      }}>
+        <div style={{ padding: '10px 0 6px', display: 'flex', justifyContent: 'center' }}>
+          <div style={{ width: 40, height: 4, borderRadius: 99, background: 'var(--c-bg-input)' }}/>
+        </div>
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '4px 16px 12px',
+        }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--c-text-sub)' }}>取消</div>
+          <div className="display" style={{ fontSize: 16, fontWeight: 700 }}>編輯名片</div>
+          <div style={{
+            fontSize: 14, fontWeight: 700,
+            color: mode === 'saving' ? 'var(--c-text-disabled)' : 'var(--c-primary-deep)',
+            display: 'flex', alignItems: 'center', gap: 6,
+          }}>
+            {mode === 'saving' && (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="9" stroke="currentColor" strokeOpacity="0.25" strokeWidth="2.5"/>
+                <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+              </svg>
+            )}
+            {mode === 'saving' ? '更新中…' : '儲存'}
+          </div>
+        </div>
+
+        <div className="liff-scroll" style={{
+          flex: 1, padding: '0 16px 20px',
+          opacity: mode === 'saving' ? 0.5 : 1, pointerEvents: mode === 'saving' ? 'none' : 'auto',
+        }}>
+          {/* Thumbnail row */}
+          <div style={{
+            display: 'flex', gap: 12, alignItems: 'center', padding: '6px 0 16px',
+          }}>
+            <div style={{
+              width: 72, height: 72, borderRadius: 10, background: 'var(--c-bg-section)',
+              border: '1px solid var(--c-hairline)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontFamily: 'var(--f-display)', fontWeight: 700, color: 'var(--c-primary-deep)',
+              fontSize: 12, flexShrink: 0, flexDirection: 'column', gap: 4, position: 'relative', overflow: 'hidden',
+            }}>
+              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(31,139,92,0.1), rgba(43,108,214,0.05))' }}/>
+              <div style={{ position: 'relative', fontSize: 20 }}>王</div>
+              <div style={{ position: 'relative', fontSize: 9, color: 'var(--c-text-sub)' }}>TSMC</div>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text)' }}>對照原始照片修正</div>
+              <div style={{ fontSize: 11, color: 'var(--c-text-mute)', marginTop: 3 }}>點擊縮圖可全螢幕預覽</div>
+            </div>
+          </div>
+
+          <Field label="姓名" required value="王建華" filled/>
+          <Field label="英文名" value="Kenneth Wang" filled/>
+          <Field label="職稱" value="資深採購經理" filled/>
+          <Field label="公司" value="台灣積體電路製造股份有限公司" filled/>
+          <Field label="電話" value="+886 3 563 6688" mono filled/>
+          <Field label="手機" value="" placeholder="輸入手機號碼"/>
+          <Field label="Email" value="wang.ch@tsmc.com" mono filled/>
+          <Field label="地址" value="新竹市東區力行六路 8 號" filled/>
+          <Field label="備忘錄" value="" placeholder="新增備忘錄…" multi/>
+
+          <div style={{ paddingTop: 12 }}>
+            <PrimaryButton disabled={mode === 'saving'}>{mode === 'saving' ? '更新中…' : '更新名片'}</PrimaryButton>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+function Field({ label, required, value, placeholder, mono, multi, filled, focused }) {
+  return (
+    <div style={{ paddingBottom: 14 }}>
+      <div style={{
+        fontSize: 11, fontWeight: 700, color: 'var(--c-text-sub)',
+        textTransform: 'uppercase', letterSpacing: '0.06em', paddingBottom: 6, paddingLeft: 2,
+      }}>
+        {label}{required && <span style={{ color: 'var(--c-danger)', marginLeft: 3 }}>*</span>}
+      </div>
+      <div style={{
+        minHeight: multi ? 88 : 44, padding: multi ? '11px 14px' : '0 14px',
+        display: 'flex', alignItems: multi ? 'flex-start' : 'center', gap: 8,
+        background: filled ? '#fff' : 'var(--c-bg-input)',
+        border: focused ? '2px solid var(--c-primary)' : filled ? '1px solid var(--c-hairline)' : '1px solid transparent',
+        borderRadius: 10,
+      }}>
+        <div style={{
+          flex: 1, fontSize: 14,
+          fontFamily: mono ? 'var(--f-mono), var(--f-ui)' : 'var(--f-ui)',
+          color: filled ? 'var(--c-text)' : 'var(--c-text-mute)',
+          letterSpacing: mono ? 0 : '-0.005em',
+        }}>
+          {value || placeholder}
+        </div>
+        {filled && (
+          <div style={{
+            width: 20, height: 20, borderRadius: 99, background: 'var(--c-bg-input)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--c-text-mute)',
+          }}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/></svg>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── 標籤套用 Sheet ─────────────────────────────────────────
+function TagSheetScreen({ tab = 1, role = 'admin', showDelete = false }) {
+  return (
+    <div className="liff" style={{ background: 'rgba(0,0,0,0.4)' }}>
+      <div style={{ position: 'absolute', inset: 0, background: 'var(--c-bg-base)', opacity: 0.35 }}/>
+
+      {/* Main sheet */}
+      <div style={{
+        position: 'absolute', left: 0, right: 0, bottom: 0,
+        background: '#fff', borderRadius: '20px 20px 0 0', maxHeight: '88%',
+        boxShadow: '0 -8px 30px rgba(0,0,0,0.12)',
+        display: 'flex', flexDirection: 'column',
+      }}>
+        <div style={{ padding: '10px 0 6px', display: 'flex', justifyContent: 'center' }}>
+          <div style={{ width: 40, height: 4, borderRadius: 99, background: 'var(--c-bg-input)' }}/>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 16px 10px' }}>
+          <div style={{ fontSize: 14, color: 'var(--c-text-sub)', display: 'flex', alignItems: 'center', gap: 4 }}>{I.close(18)}</div>
+          <div className="display" style={{ fontSize: 16, fontWeight: 700 }}>選擇群組標籤</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--c-primary-deep)' }}>確認</div>
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--c-hairline)' }}>
+          {[
+            { id: 1, label: '此名片標籤' },
+            { id: 2, label: '所有標籤' },
+          ].map(t => {
+            const on = t.id === tab;
+            return (
+              <div key={t.id} style={{
+                flex: 1, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 13, fontWeight: on ? 700 : 500, color: on ? 'var(--c-primary-deep)' : 'var(--c-text-sub)',
+                borderBottom: on ? '2px solid var(--c-primary)' : '2px solid transparent',
+                marginBottom: -1,
+              }}>{t.label}</div>
+            );
+          })}
+        </div>
+
+        <div className="liff-scroll" style={{ flex: 1, padding: '14px 16px 24px' }}>
+          {tab === 1 ? (
+            <>
+              {/* Card info */}
+              <div style={{
+                background: 'var(--c-bg-section)', borderRadius: 12, padding: '10px 12px',
+                display: 'flex', alignItems: 'center', gap: 10,
+              }}>
+                <Avatar name="王" size={36}/>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-text)' }}>王建華</div>
+                    <div style={{ fontSize: 11, color: 'var(--c-text-mute)', fontWeight: 500 }}>Kenneth Wang</div>
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--c-text-sub)' }}>台灣積體電路 · 資深採購經理</div>
+                </div>
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--c-text-sub)', padding: '14px 2px 10px' }}>
+                為這張名片選擇群組標籤（可多選）
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                <TagChip on>VIP客戶</TagChip>
+                <TagChip on>A級</TagChip>
+                <TagChip>潛在</TagChip>
+                <TagChip>合作夥伴</TagChip>
+                <TagChip>待聯繫</TagChip>
+                <TagChip>展場認識</TagChip>
+                <TagChip>需報價</TagChip>
+                <TagChip dashed>＋ 新標籤</TagChip>
+              </div>
+
+              {role === 'admin' && (
+                <div style={{
+                  marginTop: 24, padding: '14px 4px', borderTop: '1px solid var(--c-hairline)',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                }}>
+                  <div style={{ fontSize: 12, color: 'var(--c-text-sub)' }}>要新增 / 刪除標籤？</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-primary-deep)' }}>
+                    管理所有標籤 →
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              {role === 'admin' && (
+                <div style={{
+                  display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10,
+                  background: 'var(--c-bg-input)', borderRadius: 10, padding: '4px 4px 4px 12px',
+                }}>
+                  <div style={{ flex: 1, fontSize: 14, color: 'var(--c-text-mute)' }}>輸入新標籤名稱</div>
+                  <div style={{
+                    width: 36, height: 36, borderRadius: 8, background: 'var(--c-primary)',
+                    color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>{I.plus(18, '#fff')}</div>
+                </div>
+              )}
+              {[
+                { c: '#1F8B5C', n: 'VIP客戶', u: 12 },
+                { c: '#B06B0F', n: 'A級',     u: 28 },
+                { c: '#2B6CD6', n: '潛在',     u: 47 },
+                { c: '#8A4AB8', n: '合作夥伴', u: 9 },
+                { c: '#C2483A', n: '待聯繫',   u: 5 },
+                { c: '#3A6B45', n: '展場認識', u: 34 },
+              ].map((t, i) => (
+                <div key={i} style={{
+                  height: 48, display: 'flex', alignItems: 'center', gap: 12,
+                  borderBottom: '1px solid var(--c-hairline)',
+                }}>
+                  <div style={{ width: 10, height: 10, borderRadius: 99, background: t.c }}/>
+                  <div style={{ flex: 1, fontSize: 15, color: 'var(--c-text)' }}>{t.n}</div>
+                  <div style={{ fontSize: 11, color: 'var(--c-text-mute)' }}>{t.u} 張</div>
+                  {role === 'admin' && <div style={{ color: 'var(--c-text-mute)', padding: '0 4px' }}>{I.trash(16)}</div>}
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Delete confirm overlay */}
+      {showDelete && (
+        <>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)' }}/>
+          <div style={{
+            position: 'absolute', left: 0, right: 0, bottom: 0,
+            background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(20px)',
+            borderRadius: '20px 20px 0 0', padding: '14px 20px 28px',
+            boxShadow: '0 -8px 30px rgba(0,0,0,0.18)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <div style={{ width: 40, height: 4, borderRadius: 99, background: 'var(--c-bg-input)' }}/>
+            </div>
+            <div style={{
+              margin: '14px auto 10px', width: 44, height: 44, borderRadius: 99,
+              background: 'var(--c-danger-soft)', color: 'var(--c-danger)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>{I.trash(20, 'var(--c-danger)')}</div>
+            <div className="display" style={{ fontSize: 17, fontWeight: 700, textAlign: 'center' }}>
+              刪除「VIP客戶」？
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--c-text-sub)', textAlign: 'center', marginTop: 6, lineHeight: 1.5 }}>
+              此標籤已用於 <b className="num" style={{ color: 'var(--c-text)' }}>12</b> 張名片，刪除後無法復原
+            </div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
+              <div style={{
+                flex: 1, height: 48, borderRadius: 12, background: 'var(--c-bg-section)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 15, fontWeight: 600, color: 'var(--c-text)',
+              }}>取消</div>
+              <div style={{
+                flex: 1, height: 48, borderRadius: 12, background: 'var(--c-danger)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 15, fontWeight: 700, color: '#fff',
+              }}>刪除</div>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+function TagChip({ on, dashed, children }) {
+  if (dashed) return (
+    <div style={{
+      height: 32, padding: '0 12px', borderRadius: 999,
+      display: 'inline-flex', alignItems: 'center',
+      fontSize: 13, fontWeight: 600, color: 'var(--c-text-sub)',
+      border: '1.5px dashed var(--c-outline)',
+    }}>{children}</div>
+  );
+  return (
+    <div style={{
+      height: 32, padding: '0 14px', borderRadius: 999,
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      fontSize: 13, fontWeight: 600,
+      background: on ? 'var(--c-primary)' : 'var(--c-bg-section)',
+      color: on ? '#fff' : 'var(--c-text-sub)',
+    }}>
+      {on && I.check(13, '#fff')}
+      {children}
+    </div>
+  );
+}
+
+Object.assign(window, { EditSheetScreen, TagSheetScreen });
+
+</script>
+<script type="text/babel" data-presets="react">
+// screens-crm.jsx — Todo list + CRM view + Team settings + AI screens
+
+// ─── 待辦清單 ────────────────────────────────────────────────
+function TodoScreen() {
+  const todos = [
+    { id: 't1', text: '寄送 3nm 白皮書與報價', person: '王建華 · 台積電', due: 'overdue', date: '04/20 過期' },
+    { id: 't2', text: '回覆產品型錄需求',      person: '助理小李 · 台積電', due: 'today',   date: '今日 17:00' },
+    { id: 't3', text: '安排線上 demo 會議',    person: '陳怡君 · 華碩',    due: 'today',   date: '今日' },
+    { id: 't4', text: '確認 PO 金額',          person: '黃淑芬 · 統一超商', due: 'future',  date: '04/24' },
+    { id: 't5', text: '發送季度報告',          person: '林俊傑 · 富邦',    due: 'future',  date: '04/25' },
+    { id: 't6', text: '整理展場聯絡人名單',    person: '內部任務',         due: 'future',  date: '04/28' },
+  ];
+  return (
+    <div className="liff">
+      <LiffTopBar left={I.close(20)} title="待辦事項" right={I.filter(20)}/>
+      <div className="liff-scroll" style={{ position: 'absolute', inset: 0, paddingTop: 48, paddingBottom: 56 + 12 }}>
+        {/* Tabs */}
+        <div style={{ display: 'flex', gap: 8, padding: '10px 16px 4px', overflowX: 'auto' }}>
+          {['今日到期','本週','全部','已完成'].map((t, i) => (
+            <Chip key={t} active={i === 0}>{t}{i === 0 && <span className="num" style={{ marginLeft: 4, opacity: 0.9 }}>3</span>}</Chip>
+          ))}
+        </div>
+        {/* Summary strip */}
+        <div style={{
+          margin: '10px 16px 10px', padding: '12px 14px', borderRadius: 14,
+          background: 'var(--c-primary-softer)',
+          display: 'flex', alignItems: 'center', gap: 12,
+        }}>
+          <div className="display" style={{ fontSize: 28, fontWeight: 800, color: 'var(--c-primary-deep)' }}>3</div>
+          <div>
+            <div style={{ fontSize: 12, color: 'var(--c-primary-deep)', fontWeight: 700 }}>今日到期</div>
+            <div style={{ fontSize: 11, color: 'var(--c-text-sub)', marginTop: 2 }}>
+              其中 <b style={{ color: 'var(--c-danger)' }}>1 項已過期</b>，盡快處理
+            </div>
+          </div>
+          <div style={{ flex: 1 }}/>
+          <div style={{
+            width: 40, height: 40, borderRadius: 10, background: '#fff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: 'var(--c-primary-deep)',
+          }}>{I.sparkle(18, 'var(--c-primary)')}</div>
+        </div>
+
+        <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {todos.map(t => <TodoRow key={t.id} t={t}/>)}
+        </div>
+
+        {/* Empty completed preview tile */}
+        <div style={{
+          margin: '16px 16px 0', padding: '14px', borderRadius: 14,
+          border: '1.5px dashed var(--c-outline)', textAlign: 'center',
+          color: 'var(--c-text-sub)', fontSize: 12,
+        }}>
+          已完成 <b className="num" style={{ color: 'var(--c-text)' }}>14</b> 項 · 點擊查看
+        </div>
+      </div>
+      <LiffBottomNav active="crm"/>
+    </div>
+  );
+}
+function TodoRow({ t }) {
+  const dueColor = t.due === 'overdue' || t.due === 'today' ? 'var(--c-danger)' : 'var(--c-text-sub)';
+  return (
+    <div style={{
+      minHeight: 64, background: '#fff', borderRadius: 12, padding: '12px 14px',
+      display: 'flex', gap: 12, alignItems: 'center',
+      boxShadow: 'var(--sh-card)',
+      borderLeft: t.due === 'overdue' ? '3px solid var(--c-danger)' : '3px solid transparent',
+    }}>
+      <div style={{
+        width: 22, height: 22, borderRadius: 99, border: '2px solid var(--c-outline)',
+        flexShrink: 0,
+      }}/>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--c-text)', lineHeight: 1.3 }}>{t.text}</div>
+        <div style={{ fontSize: 11, color: 'var(--c-text-sub)', marginTop: 3 }}>{t.person}</div>
+      </div>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 4,
+        fontSize: 11, fontWeight: 700, color: dueColor,
+        whiteSpace: 'nowrap',
+      }}>
+        {t.due === 'overdue' && I.alert(13, dueColor)}
+        {t.due === 'today' && I.calendar(13, dueColor)}
+        {t.due === 'future' && I.calendar(13, 'var(--c-text-mute)')}
+        <span className="num">{t.date}</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── CRM Contact View ──────────────────────────────────────
+function CRMContactScreen() {
+  return (
+    <div className="liff">
+      <LiffTopBar left={I.back(20)} title="王建華 · Kenneth" right={I.close(20)}/>
+      <div className="liff-scroll" style={{ position: 'absolute', inset: 0, paddingTop: 48, paddingBottom: 56 + 12 }}>
+        {/* Identity strip */}
+        <div style={{ padding: '10px 16px 0' }}>
+          <div style={{
+            background: '#fff', borderRadius: 14, padding: '12px 14px',
+            display: 'flex', gap: 12, alignItems: 'center',
+            boxShadow: 'var(--sh-card)',
+          }}>
+            <Avatar name="王" size={44}/>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                <div className="display" style={{ fontSize: 17, fontWeight: 700 }}>王建華</div>
+                <div style={{ fontSize: 12, color: 'var(--c-text-mute)', fontWeight: 500 }}>Kenneth Wang</div>
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--c-text-sub)' }}>台灣積體電路 · 資深採購經理</div>
+            </div>
+            <div style={{
+              padding: '4px 10px', borderRadius: 99, background: 'var(--c-primary-softer)',
+              fontSize: 10, fontWeight: 700, color: 'var(--c-primary-deep)',
+              border: '1px solid rgba(31,139,92,0.2)',
+            }}>已聯絡 3 次</div>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div style={{
+          display: 'flex', padding: '10px 16px 4px', gap: 4,
+        }}>
+          {[
+            { label: '案件', n: 2, active: true },
+            { label: '互動記錄', n: 5 },
+            { label: '待辦', n: 3 },
+          ].map((t, i) => (
+            <div key={t.label} style={{
+              flex: 1, height: 36, borderRadius: 10,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+              fontSize: 12, fontWeight: 700,
+              background: t.active ? 'var(--c-primary-deep)' : 'transparent',
+              color: t.active ? '#fff' : 'var(--c-text-sub)',
+            }}>
+              {t.label}<span className="num" style={{ opacity: 0.8 }}>{t.n}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Deals */}
+        <div style={{ padding: '8px 16px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <DealCard
+            company="TSMC 3nm 散熱方案" stage="需求確認" stageIdx={2}
+            amount="$2,400,000" summary="客戶要求 4/28 前提供正式報價與白皮書" next="2026-04-28"
+          />
+          <DealCard
+            company="TSMC 5nm 擴廠案" stage="議價中" stageIdx={4}
+            amount="$8,750,000" summary="PM 對交期有疑慮，需法務審閱 SLA 條款" next="2026-05-03"
+          />
+        </div>
+
+        {/* Interaction timeline header */}
+        <div style={{ padding: '18px 16px 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--c-text-sub)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            最近互動
+          </div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--c-primary-deep)' }}>查看全部</div>
+        </div>
+
+        <div style={{ padding: '0 16px 0' }}>
+          <div style={{ background: '#fff', borderRadius: 14, padding: '14px 14px 4px', boxShadow: 'var(--sh-card)' }}>
+            <TimelineItem
+              date="2026-04-18" sent="pos" title="展場初次接觸"
+              summary={[
+                'AI 摘要：客戶對 3nm 節點散熱方案表示高度興趣，特別關注導熱係數。',
+                '下一步行動：於本週內寄送白皮書並安排 demo。',
+              ]}
+            />
+            <TimelineItem
+              date="2026-04-10" sent="neu" title="電話確認需求"
+              summary={[
+                'AI 摘要：客戶正在比較三家供應商，預算敏感度中等，交期比價格更關鍵。',
+              ]}
+            />
+            <TimelineItem
+              date="2026-03-28" sent="pos" title="Email 交換產品規格"
+              last
+              summary={[ 'AI 摘要：確認需符合 JEDEC MO-220 規範，樣品數量 50 pcs。' ]}
+            />
+          </div>
+        </div>
+      </div>
+      <LiffBottomNav active="crm"/>
+    </div>
+  );
+}
+
+function DealCard({ company, stage, stageIdx, amount, summary, next }) {
+  const stageStyles = [
+    { bg: 'var(--c-primary-softer)', c: 'var(--c-primary-deep)' }, // 0-2
+    { bg: 'var(--c-warning-soft)',  c: 'var(--c-warning)' },       // 3-5
+    { bg: 'var(--c-info-soft)',     c: 'var(--c-info)' },          // 6
+  ];
+  const s = stageIdx <= 2 ? stageStyles[0] : stageIdx <= 5 ? stageStyles[1] : stageStyles[2];
+  return (
+    <div style={{ background: '#fff', borderRadius: 14, padding: 14, boxShadow: 'var(--sh-card)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--c-text)', flex: 1, lineHeight: 1.3 }}>{company}</div>
+        <div style={{
+          padding: '3px 9px', borderRadius: 99,
+          background: s.bg, color: s.c, fontSize: 11, fontWeight: 700,
+          border: '1px solid rgba(0,0,0,0.04)', whiteSpace: 'nowrap',
+        }}>{stage}</div>
+      </div>
+      <div className="num" style={{ fontSize: 20, fontWeight: 800, color: 'var(--c-text)', marginTop: 6, letterSpacing: '-0.02em' }}>{amount}</div>
+      <div style={{ fontSize: 12, color: 'var(--c-text-sub)', marginTop: 8, lineHeight: 1.5 }}>{summary}</div>
+      <div style={{
+        marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--c-hairline)',
+        display: 'flex', alignItems: 'center', gap: 6,
+        fontSize: 11, color: 'var(--c-text-sub)',
+      }}>
+        {I.calendar(12, 'var(--c-text-sub)')}
+        <span>下次行動</span>
+        <span className="num" style={{ color: 'var(--c-text)', fontWeight: 700 }}>{next}</span>
+      </div>
+    </div>
+  );
+}
+
+function TimelineItem({ date, sent, title, summary, last }) {
+  const sentColors = { pos: 'var(--c-primary)', neu: 'var(--c-warning)', neg: 'var(--c-danger)' };
+  const sentLabel = { pos: 'Positive', neu: 'Neutral', neg: 'Negative' };
+  return (
+    <div style={{ display: 'flex', gap: 10, paddingBottom: last ? 12 : 16 }}>
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 4,
+      }}>
+        <div style={{ width: 10, height: 10, borderRadius: 99, background: sentColors[sent], flexShrink: 0 }}/>
+        {!last && <div style={{ width: 2, flex: 1, background: 'var(--c-hairline)', marginTop: 4 }}/>}
+      </div>
+      <div style={{ flex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span className="num" style={{ fontSize: 11, fontWeight: 700, color: 'var(--c-text-sub)' }}>{date}</span>
+          <span style={{
+            fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 99,
+            background: 'var(--c-bg-section)', color: sentColors[sent],
+          }}>{sentLabel[sent]}</span>
+        </div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--c-text)', marginTop: 4 }}>{title}</div>
+        <div className="ai-border-left" style={{
+          marginTop: 8, background: 'var(--c-ai-soft)', borderRadius: 8,
+          padding: '8px 10px 8px 14px',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, color: 'var(--c-ai)', marginBottom: 4 }}>
+            {I.sparkle(10, 'var(--c-ai)')} AI 整理
+          </div>
+          {summary.map((s, i) => (
+            <div key={i} style={{ fontSize: 12.5, color: 'var(--c-text)', lineHeight: 1.5, marginTop: i > 0 ? 4 : 0 }}>
+              · {s.replace(/^AI 摘要：/, '').replace(/^下一步行動：/, '')}
+            </div>
+          ))}
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--c-primary-deep)', marginTop: 6 }}>展開原文 ↓</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── 團隊管理 ────────────────────────────────────────────────
+function TeamScreen({ role = 'admin' }) {
+  return (
+    <div className="liff">
+      <LiffTopBar left={I.close(20)} title="名片管理員"/>
+      <div className="liff-scroll" style={{ position: 'absolute', inset: 0, paddingTop: 48, paddingBottom: 56 + 12 }}>
+        {/* Team name block */}
+        <div style={{
+          margin: '10px 16px 0', padding: '14px 16px', borderRadius: 14,
+          background: 'var(--c-bg-section)',
+        }}>
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--c-text-mute)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>工作室</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+            <div className="display" style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em' }}>
+              晨光業務團隊
+            </div>
+            {role === 'admin' && (
+              <div style={{ color: 'var(--c-text-sub)' }}>{I.edit(16, 'var(--c-text-sub)')}</div>
+            )}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--c-text-sub)', marginTop: 4 }}>
+            建立於 2024-11-03 · 共 <b className="num" style={{ color: 'var(--c-text)' }}>6</b> 位成員
+          </div>
+        </div>
+
+        {/* Invite card (admin) */}
+        {role === 'admin' && (
+          <div style={{ padding: '12px 16px 0' }}>
+            <div style={{
+              background: '#fff', borderRadius: 14, padding: 14, boxShadow: 'var(--sh-card)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{
+                  padding: '2px 8px', borderRadius: 99, fontSize: 10, fontWeight: 700,
+                  background: 'var(--c-primary-softer)', color: 'var(--c-primary-deep)',
+                  border: '1px solid rgba(31,139,92,0.2)',
+                }}>● 啟用中</div>
+                <div style={{ fontSize: 11, color: 'var(--c-text-sub)' }}>剩餘 7 天</div>
+              </div>
+              <div style={{
+                marginTop: 10, padding: '10px 12px', borderRadius: 10,
+                background: 'var(--c-bg-section)',
+                fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--c-text)',
+                wordBreak: 'break-all',
+              }}>
+                https://crm.app/j/aK7x9
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                <div style={{
+                  flex: 1, height: 44, borderRadius: 10,
+                  background: 'var(--c-bg-section)', color: 'var(--c-text)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  fontSize: 13, fontWeight: 600,
+                }}>{I.copy(16)} 複製連結</div>
+                <div style={{
+                  flex: 1.5, height: 44, borderRadius: 10,
+                  background: 'linear-gradient(180deg, #1F8B5C 0%, #0E5E3A 100%)', color: '#fff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  fontSize: 13, fontWeight: 700,
+                }}>{I.chat(16, '#fff')} 邀請給成員</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Members */}
+        <div style={{ padding: '18px 16px 0' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 4px 8px' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--c-text-sub)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              成員 <span className="num">(6)</span>
+            </div>
+          </div>
+          <div style={{ background: '#fff', borderRadius: 14, boxShadow: 'var(--sh-card)', overflow: 'hidden' }}>
+            {[
+              { n: '張志強', r: 'admin' },
+              { n: '李美玲', r: 'admin' },
+              { n: '王冠傑', r: 'member' },
+              { n: '陳柏宏', r: 'member' },
+              { n: '林雅芬', r: 'member' },
+            ].map((m, i, arr) => (
+              <div key={m.n} style={{
+                minHeight: 56, padding: '0 14px', display: 'flex', alignItems: 'center', gap: 10,
+                borderBottom: i < arr.length - 1 ? '1px solid rgba(26,27,24,0.05)' : 0,
+              }}>
+                <Avatar name={m.n} size={32}/>
+                <div style={{ flex: 1, fontSize: 14, color: 'var(--c-text)', fontWeight: 500 }}>{m.n}</div>
+                <div style={{
+                  padding: '2px 8px', borderRadius: 99, fontSize: 10, fontWeight: 700,
+                  background: m.r === 'admin' ? 'var(--c-primary-soft)' : 'var(--c-bg-section)',
+                  color: m.r === 'admin' ? 'var(--c-primary-deep)' : 'var(--c-text-sub)',
+                }}>{m.r === 'admin' ? '管理員' : '成員'}</div>
+                {role === 'admin' && m.r !== 'admin' && (
+                  <div style={{ color: 'var(--c-text-mute)', padding: '0 4px' }}>{I.trash(16)}</div>
+                )}
+              </div>
+            ))}
+          </div>
+          <div style={{ textAlign: 'center', padding: '14px 0 4px', fontSize: 12, fontWeight: 600, color: 'var(--c-primary-deep)' }}>
+            顯示全部 6 位成員 ↓
+          </div>
+        </div>
+      </div>
+      <LiffBottomNav active="settings"/>
+    </div>
+  );
+}
+
+// ─── AI wait screen ─────────────────────────────────────────
+function AIWaitScreen({ stepIdx = 1 }) {
+  const steps = [
+    '正在萃取資訊…',
+    'AI 正在整理資訊…',
+    'AI 正在輸入資料庫…',
+    '即將完成…',
+  ];
+  const pct = [18, 42, 72, 92][stepIdx];
+  return (
+    <div className="liff" style={{
+      background: 'linear-gradient(180deg, #FAFAF7 0%, #E6F4EC 60%, #F1FAF4 100%)',
+    }}>
+      <LiffTopBar left={I.close(20)} title="名片辨識中" glass={false}/>
+      <div style={{
+        position: 'absolute', inset: 0, paddingTop: 48, paddingBottom: 56,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      }}>
+        {/* Ripple logo */}
+        <div style={{ position: 'relative', width: 160, height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {[0, 1, 2].map(i => (
+            <div key={i} style={{
+              position: 'absolute', width: 160, height: 160, borderRadius: '50%',
+              border: '1.5px solid var(--c-primary)',
+              opacity: [0.35, 0.22, 0.1][i],
+              transform: `scale(${[0.5, 0.75, 1][i]})`,
+            }}/>
+          ))}
+          <div style={{
+            width: 72, height: 72, borderRadius: 20,
+            background: 'linear-gradient(135deg, #1F8B5C 0%, #2B6CD6 100%)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 12px 30px rgba(31,139,92,0.35)',
+            color: '#fff',
+          }}>{I.sparkle(30, '#fff')}</div>
+        </div>
+
+        <div className="display" style={{ fontSize: 20, fontWeight: 700, marginTop: 32, color: 'var(--c-text)', textAlign: 'center' }}>
+          {steps[stepIdx]}
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--c-text-sub)', marginTop: 8 }}>
+          通常需要 5–10 秒
+        </div>
+
+        {/* Progress */}
+        <div style={{ width: 260, marginTop: 28 }}>
+          <div style={{
+            height: 6, borderRadius: 99, background: 'rgba(31,139,92,0.15)', overflow: 'hidden',
+          }}>
+            <div style={{
+              width: pct + '%', height: '100%',
+              background: 'linear-gradient(90deg, #1F8B5C, #2B6CD6)',
+              borderRadius: 99,
+              transition: 'width 300ms',
+            }}/>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 10, color: 'var(--c-text-mute)' }}>
+            {steps.map((_, i) => (
+              <div key={i} style={{
+                width: 6, height: 6, borderRadius: 99,
+                background: i <= stepIdx ? 'var(--c-primary)' : 'rgba(26,27,24,0.15)',
+              }}/>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── AI 確認卡 ────────────────────────────────────────────
+function AIConfirmScreen() {
+  return (
+    <div className="liff">
+      <LiffTopBar left={I.close(20)} title="AI 整理結果"/>
+      <div className="liff-scroll" style={{ position: 'absolute', inset: 0, paddingTop: 48, paddingBottom: 16 }}>
+        <div style={{ padding: '12px 16px 0' }}>
+          <div style={{ fontSize: 12, color: 'var(--c-text-sub)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            {I.sparkle(13, 'var(--c-ai)')}
+            <span>根據你 35 秒的語音紀錄整理</span>
+          </div>
+        </div>
+
+        {/* Main AI card */}
+        <div style={{ padding: '10px 16px 0' }}>
+          <div className="ai-border-top" style={{
+            background: '#fff', borderRadius: 16, overflow: 'hidden',
+            boxShadow: 'var(--sh-card)', paddingTop: 3,
+          }}>
+            <div style={{ padding: '14px 16px 8px' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--c-ai)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                AI 已整理以下資訊
+              </div>
+              <div className="display" style={{ fontSize: 17, fontWeight: 700, marginTop: 2 }}>
+                請確認或編輯
+              </div>
+            </div>
+
+            {/* Case update */}
+            <AISection title="案件更新" n={1}>
+              <div style={{
+                padding: '10px 12px', background: 'var(--c-ai-soft)', borderRadius: 10,
+                display: 'flex', alignItems: 'center', gap: 10,
+              }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700 }}>TSMC 3nm 散熱方案</div>
+                  <div style={{ fontSize: 11, color: 'var(--c-text-sub)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span>初步接觸</span>
+                    <span>→</span>
+                    <b style={{ color: 'var(--c-primary-deep)' }}>需求確認</b>
+                  </div>
+                </div>
+                <div style={{ color: 'var(--c-text-mute)' }}>{I.edit(16)}</div>
+              </div>
+            </AISection>
+
+            <AISection title="新聯絡人" n={2}>
+              {[
+                { n: '王總', m: '從展場名片解析', tag: '新' },
+                { n: '助理小李', m: '談話中提到', tag: '新' },
+              ].map(p => (
+                <div key={p.n} style={{
+                  padding: '10px 12px', background: 'var(--c-ai-soft)', borderRadius: 10,
+                  display: 'flex', alignItems: 'center', gap: 10,
+                }}>
+                  <Avatar name={p.n} size={32}/>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700 }}>{p.n}</div>
+                    <div style={{ fontSize: 11, color: 'var(--c-text-sub)' }}>{p.m}</div>
+                  </div>
+                  <div style={{
+                    fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 99,
+                    background: '#fff', color: 'var(--c-ai)', border: '1px solid rgba(43,108,214,0.2)',
+                  }}>{p.tag}</div>
+                </div>
+              ))}
+            </AISection>
+
+            <AISection title="下一步行動" n={2} last>
+              {[
+                { d: '04/28', t: '寄送 3nm 白皮書與報價給王總' },
+                { d: '04/30', t: '寄產品型錄給助理小李' },
+              ].map((a, i) => (
+                <div key={i} style={{
+                  padding: '10px 12px', background: 'var(--c-ai-soft)', borderRadius: 10,
+                  display: 'flex', alignItems: 'center', gap: 10,
+                }}>
+                  <div style={{
+                    width: 20, height: 20, borderRadius: 6, border: '2px solid var(--c-outline)',
+                    background: '#fff', flexShrink: 0,
+                  }}/>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text)' }}>{a.t}</div>
+                  </div>
+                  <div className="num" style={{
+                    fontSize: 11, fontWeight: 700, color: 'var(--c-primary-deep)',
+                    background: 'var(--c-primary-softer)', padding: '2px 8px', borderRadius: 99,
+                  }}>{a.d}</div>
+                </div>
+              ))}
+            </AISection>
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div style={{ padding: '16px 16px 0', display: 'flex', gap: 10 }}>
+          <div style={{
+            flex: 1, height: 52, borderRadius: 12,
+            border: '1.5px solid var(--c-outline)', background: '#fff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            fontSize: 14, fontWeight: 700, color: 'var(--c-text)',
+          }}>{I.edit(16)} 編輯</div>
+          <div style={{ flex: 1.6 }}>
+            <PrimaryButton icon={I.check(16, '#fff')}>確認無誤</PrimaryButton>
+          </div>
+        </div>
+        <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--c-text-mute)', padding: '12px 0' }}>
+          AI 有時會出錯 · 確認後將自動歸檔
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AISection({ title, n, children, last }) {
+  return (
+    <div style={{
+      padding: '10px 16px 14px',
+      borderBottom: last ? 0 : '1px solid var(--c-hairline)',
+    }}>
+      <div style={{
+        fontSize: 10.5, fontWeight: 700, color: 'var(--c-text-sub)',
+        textTransform: 'uppercase', letterSpacing: '0.08em', paddingBottom: 8,
+        display: 'flex', alignItems: 'center', gap: 6,
+      }}>
+        <span>{title}</span>
+        <span className="num" style={{
+          padding: '1px 6px', borderRadius: 99, background: 'var(--c-bg-section)',
+          fontSize: 10, color: 'var(--c-text-sub)',
+        }}>{n}</span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>{children}</div>
+    </div>
+  );
+}
+
+Object.assign(window, { TodoScreen, CRMContactScreen, TeamScreen, AIWaitScreen, AIConfirmScreen });
+
+</script>
+
+<script type="text/babel">
+// ─── App ─────────────────────────────────────────────────────
+// Wrap every LIFF screen in an iOS 402x874 device frame.
+function Phone({ children, label }) {
+  return (
+    <IOSDevice width={402} height={874}>
+      <div style={{ position: 'absolute', inset: 0 }}>{children}</div>
+    </IOSDevice>
+  );
+}
+
+function App() {
+  const W = 402, H = 874;
+  return (
+    <DesignCanvas>
+      <DCSection id="intro" title="Conversational CRM · LIFF" subtitle="手機主戰場 · 375pt @2x · iOS 26 frame · 原創配色（非 LINE 品牌）">
+        <DCArtboard id="notes" label="Design system" width={360} height={420}>
+          <div style={{
+            height: '100%', background: '#fff', borderRadius: 12, padding: 22,
+            fontFamily: 'Inter, "Noto Sans TC", system-ui',
+            fontSize: 12, color: '#1A1B18', lineHeight: 1.55,
+            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+            overflow: 'hidden',
+          }}>
+            <div style={{ fontFamily: '"Plus Jakarta Sans"', fontWeight: 700, fontSize: 17, letterSpacing: '-0.02em' }}>
+              系統：Moss Green · Warm Neutrals · AI Blue
+            </div>
+            <div style={{ color: '#55584F', marginTop: 4, fontSize: 11 }}>
+              原創配色取向 — 不使用 LINE 品牌色
+            </div>
+
+            <div style={{ display: 'flex', gap: 6, marginTop: 14 }}>
+              {[
+                ['#1F8B5C', 'Primary'],
+                ['#0E5E3A', 'Deep'],
+                ['#E6F4EC', 'Soft'],
+                ['#2B6CD6', 'AI'],
+                ['#FAFAF7', 'BG'],
+                ['#1A1B18', 'Text'],
+              ].map(([c, n]) => (
+                <div key={c} style={{ flex: 1, textAlign: 'center' }}>
+                  <div style={{ height: 40, borderRadius: 8, background: c, border: '1px solid rgba(0,0,0,0.05)' }}/>
+                  <div style={{ fontSize: 9, marginTop: 4, color: '#55584F' }}>{n}</div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ marginTop: 16, fontWeight: 700, fontSize: 11, color: '#55584F', textTransform: 'uppercase', letterSpacing: '0.06em' }}>字體</div>
+            <div style={{ fontFamily: '"Plus Jakarta Sans"', fontSize: 20, fontWeight: 800, marginTop: 4, letterSpacing: '-0.02em' }}>Plus Jakarta — Aa 123</div>
+            <div style={{ fontFamily: 'Inter', fontSize: 13, color: '#55584F', marginTop: 2 }}>Inter — UI body 14/13/12</div>
+            <div style={{ fontFamily: '"Noto Sans TC"', fontSize: 13, color: '#55584F' }}>Noto Sans TC — 繁體中文補字</div>
+
+            <div style={{ marginTop: 14, fontWeight: 700, fontSize: 11, color: '#55584F', textTransform: 'uppercase', letterSpacing: '0.06em' }}>原則</div>
+            <ul style={{ margin: '4px 0 0 14px', padding: 0, fontSize: 11, lineHeight: 1.65 }}>
+              <li>No-line: 用色階取代分隔線</li>
+              <li>AI 內容：左側綠藍漸層 3px border</li>
+              <li>圓角 16 卡片 / 10 input / 999 chip</li>
+              <li>52px 高 CTA · 44px hit-target</li>
+            </ul>
+          </div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="cards-main" title="名片 Tab · 總表與詳情">
+        <DCArtboard id="list-normal" label="總表 · 正常" width={W} height={H}>
+          <CardsListScreen state="normal"/>
+        </DCArtboard>
+        <DCArtboard id="list-search" label="總表 · 搜尋中（找到 N 筆）" width={W} height={H}>
+          <CardsListScreen state="searching"/>
+        </DCArtboard>
+        <DCArtboard id="list-empty-search" label="搜尋無結果" width={W} height={H}>
+          <CardsListScreen state="empty-search"/>
+        </DCArtboard>
+        <DCArtboard id="list-empty" label="空狀態" width={W} height={H}>
+          <CardsListScreen state="empty"/>
+        </DCArtboard>
+        <DCArtboard id="list-loading" label="載入中（Skeleton）" width={W} height={H}>
+          <CardsListScreen state="loading"/>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="cards-detail" title="名片詳情 · 備忘錄快捷">
+        <DCArtboard id="detail-photo" label="詳情 · 含照片" width={W} height={H}>
+          <CardDetailScreen hasPhoto={true} memoMode="filled"/>
+        </DCArtboard>
+        <DCArtboard id="detail-nophoto" label="詳情 · 無照片" width={W} height={H}>
+          <CardDetailScreen hasPhoto={false} memoMode="filled"/>
+        </DCArtboard>
+        <DCArtboard id="detail-memo-empty" label="詳情 · 備忘錄空狀態" width={W} height={H}>
+          <CardDetailScreen hasPhoto={true} memoMode="empty"/>
+        </DCArtboard>
+        <DCArtboard id="detail-memo-inline" label="詳情 · 備忘錄 inline 編輯" width={W} height={H}>
+          <CardDetailScreen hasPhoto={true} memoMode="inline-edit"/>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="edit" title="名片編輯 Bottom Sheet">
+        <DCArtboard id="edit-normal" label="編輯 · 可互動" width={W} height={H}>
+          <EditSheetScreen mode="normal"/>
+        </DCArtboard>
+        <DCArtboard id="edit-saving" label="編輯 · 儲存中" width={W} height={H}>
+          <EditSheetScreen mode="saving"/>
+        </DCArtboard>
+        <DCArtboard id="edit-success" label="編輯 · 儲存成功 Toast" width={W} height={H}>
+          <EditSheetScreen mode="success"/>
+        </DCArtboard>
+        <DCArtboard id="edit-error" label="編輯 · 儲存失敗 Toast" width={W} height={H}>
+          <EditSheetScreen mode="error"/>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="tags" title="標籤套用 Sheet（含管理員入口）">
+        <DCArtboard id="tag-tab1-admin" label="Tab 1 · 此名片標籤（管理員）" width={W} height={H}>
+          <TagSheetScreen tab={1} role="admin"/>
+        </DCArtboard>
+        <DCArtboard id="tag-tab1-member" label="Tab 1 · 成員視角（無入口）" width={W} height={H}>
+          <TagSheetScreen tab={1} role="member"/>
+        </DCArtboard>
+        <DCArtboard id="tag-tab2-admin" label="Tab 2 · 所有標籤（管理員）" width={W} height={H}>
+          <TagSheetScreen tab={2} role="admin"/>
+        </DCArtboard>
+        <DCArtboard id="tag-tab2-member" label="Tab 2 · 所有標籤（成員）" width={W} height={H}>
+          <TagSheetScreen tab={2} role="member"/>
+        </DCArtboard>
+        <DCArtboard id="tag-delete" label="刪除確認" width={W} height={H}>
+          <TagSheetScreen tab={2} role="admin" showDelete={true}/>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="todo" title="待辦清單（CRM Tab）">
+        <DCArtboard id="todo-today" label="今日到期 · 正常" width={W} height={H}>
+          <TodoScreen/>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="crm" title="聯絡人 CRM 視角">
+        <DCArtboard id="crm-view" label="案件 + 互動時間軸（含 AI 標示）" width={W} height={H}>
+          <CRMContactScreen/>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="team" title="團隊管理">
+        <DCArtboard id="team-admin" label="管理員視角" width={W} height={H}>
+          <TeamScreen role="admin"/>
+        </DCArtboard>
+        <DCArtboard id="team-member" label="成員視角" width={W} height={H}>
+          <TeamScreen role="member"/>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="ai" title="AI 專屬 UX 模式">
+        <DCArtboard id="ai-wait-1" label="AI 等待 · 步驟 1" width={W} height={H}>
+          <AIWaitScreen stepIdx={0}/>
+        </DCArtboard>
+        <DCArtboard id="ai-wait-2" label="AI 等待 · 步驟 2" width={W} height={H}>
+          <AIWaitScreen stepIdx={1}/>
+        </DCArtboard>
+        <DCArtboard id="ai-wait-3" label="AI 等待 · 步驟 3" width={W} height={H}>
+          <AIWaitScreen stepIdx={2}/>
+        </DCArtboard>
+        <DCArtboard id="ai-wait-4" label="AI 等待 · 步驟 4" width={W} height={H}>
+          <AIWaitScreen stepIdx={3}/>
+        </DCArtboard>
+        <DCArtboard id="ai-confirm" label="AI 確認卡片（語音 Recap 結果）" width={W} height={H}>
+          <AIConfirmScreen/>
+        </DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

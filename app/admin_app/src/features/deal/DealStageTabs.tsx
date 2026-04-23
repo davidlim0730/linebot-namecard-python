@@ -12,18 +12,19 @@ const TABS = [
 
 export default function DealStageTabs({ activeTab, onChange, counts }: DealStageTabsProps) {
   return (
-    <div className="flex gap-1 border-b border-gray-200 mb-4">
+    <div className="mb-5 flex gap-2">
       {TABS.map(tab => (
         <button
           key={tab.id}
           onClick={() => onChange(tab.id)}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${
+          className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
             activeTab === tab.id
-              ? 'border-green-500 text-green-700'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
+              ? 'bg-[color:var(--color-primary-light)] text-[color:var(--color-primary-dark)]'
+              : 'bg-[color:var(--color-bg-section)] text-[color:var(--color-text-secondary)]'
           }`}
         >
-          {tab.label} ({counts[tab.id]})
+          {tab.label}
+          <span className="mono ml-1 text-[11px] opacity-70">{counts[tab.id]}</span>
         </button>
       ))}
     </div>

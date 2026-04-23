@@ -98,25 +98,41 @@ def get_namecard_carousel_msg(
     return FlexSendMessage(alt_text=f"找到 {len(bubbles)} 張名片", contents=carousel)
 
 
-def get_namecard_flex_msg(card_data: dict, card_id: str) -> FlexSendMessage:
+def _card_attr(obj, *keys, default=None):
+    """從 dict 或物件中依序嘗試多個 key，回傳第一個非 None 的值"""
+    for key in keys:
+        if isinstance(obj, dict):
+            val = obj.get(key)
+        else:
+            val = getattr(obj, key, None)
+        if val is not None:
+            return val
+    return default
+
+
+def get_namecard_flex_msg(card_data, card_id: str) -> FlexSendMessage:
+    """接受 dict（舊版 namecard）或 Contact 物件（新版）"""
     def _s(val, default="N/A"):
         if val is None:
             return default
         return str(val).strip() or default
 
-    # 確保基本資料存在
-    name = _s(card_data.get("name"))
-    title = _s(card_data.get("title"))
-    company = _s(card_data.get("company"))
-    address = _s(card_data.get("address"))
-    phone = _s(card_data.get("phone"))
-    email = _s(card_data.get("email"))
-    mobile = _s(card_data.get("mobile"))
-    line_id = _s(card_data.get("line_id"))
-    memo = _s(card_data.get("memo"), default="")
-    added_by = _s(card_data.get("added_by"), default="")
+    # 欄位對應：Contact 用 display_name/company_name，Card dict 用 name/company
+    name = _s(_card_attr(card_data, "display_name", "name"))
+    title = _s(_card_attr(card_data, "title"))
+    company = _s(_card_attr(card_data, "company_name", "company"))
+    address = _s(_card_attr(card_data, "address"))
+    phone = _s(_card_attr(card_data, "phone"))
+    email = _s(_card_attr(card_data, "email"))
+    mobile = _s(_card_attr(card_data, "mobile"))
+    line_id = _s(_card_attr(card_data, "line_id"))
+    memo = _s(_card_attr(card_data, "memo"), default="")
+    added_by = _s(_card_attr(card_data, "added_by"), default="")
     added_by_label = added_by[-8:] if added_by else "—"
-    role_tags = card_data.get("role_tags") or []
+    # 支援 Contact.tags 與舊版 namecard.role_tags 兩種來源
+    role_tags = _card_attr(card_data, "tags", "role_tags") or []
+    if isinstance(role_tags, dict):
+        role_tags = list(role_tags.values())
     role_tags_text = ", ".join(role_tags) if role_tags else None
 
     flex_msg = {
